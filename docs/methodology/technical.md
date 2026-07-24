@@ -181,7 +181,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | Frontend Components | Jest + Vue Test Utils | (included in 207) | `frontend/test/components/` |
 | Frontend Composables | Jest + Vue Test Utils | (included in 207) | `frontend/test/composables/` |
 | Frontend Views | Jest + Vue Test Utils | (included in 207) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 201 spec files | `frontend/e2e/` |
+| Frontend E2E User Flows | Playwright | 204 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -193,8 +193,10 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 ### Quality Gate
 
-- Custom Python analyzer: `scripts/test_quality_gate.py`
+- Custom Python analyzer: `scripts/test_quality_gate.py` — scope a run with `--include-file` / `--include-glob` (there is no `--files` flag)
 - Modular analyzers: `scripts/quality/` (backend, frontend-unit, frontend-e2e)
+- Per-project config: `.testquality.yml` — junk detectors with thresholds `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`, `max_timeout_ms 100`, `banned_tokens: batch/coverage/cov/deep`
+- Grandfathered debt: `.junk-baseline.json` (553 findings — fe-unit 382, fe-e2e 171, backend 0); CI blocks NEW junk, baseline stays warning-only and may only shrink
 - CI workflow: `.github/workflows/test-quality-gate.yml`
 - Pre-commit hook integration
 - Standards doc: `docs/TESTING_QUALITY_STANDARDS.md`
@@ -248,7 +250,7 @@ gym_project/
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
 │   ├── test/                 # 207 unit test files (11 subdirectories)
-│   ├── e2e/                  # 201 E2E spec files
+│   ├── e2e/                  # 204 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

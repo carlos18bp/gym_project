@@ -148,7 +148,7 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 | **Security** | JWT auth, CSRF protection, reCAPTCHA, Wompi signature verification, file upload validation (python-magic), CORS configuration |
 | **Reliability** | Automated daily backups (DB + media) via Huey with 20-backup retention; error logging to file |
 | **Scalability** | Redis-backed Huey task queue for async processing; SQLite (dev) / MySQL (prod) |
-| **Testing** | pytest (backend), Jest (frontend unit), Playwright (frontend E2E); test quality gate with CI enforcement |
+| **Testing** | pytest (backend), Jest (frontend unit), Playwright (frontend E2E); test quality gate with CI enforcement — junk-test detectors (`.testquality.yml`) block NEW low-value tests while a grandfathered `.junk-baseline.json` holds existing debt |
 | **Accessibility** | Responsive design via TailwindCSS; PWA for mobile/tablet |
 | **Monitoring** | Silk profiling dashboard (staff only); weekly slow-query reports; silk garbage collection |
 

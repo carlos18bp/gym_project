@@ -69,7 +69,7 @@ flowchart LR
     subgraph Test["Testing"]
         Pytest["pytest\n101 test files"]
         Jest["Jest\n207 test files"]
-        PW["Playwright\n201 E2E specs"]
+        PW["Playwright\n204 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 

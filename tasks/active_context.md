@@ -19,7 +19,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 - **Notification Center (Req #5)** ✅: `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), in-app center with categories (`signature_*`, `process_alert`, `general`), priorities, snooze, archive, deep-link via `link_type`/`link_id`.
 - **Process Alerts (Req #7)** ✅: `StageAlert` (OneToOne with `Stage`, CASCADE), auto-created for ALL stages on `create_process`/`update_process` (last stage gets user-config, others get defaults), daily Huey task at 14:00 UTC sends 3-day & 1-day reminders via email + in-app, configurable recipients (`notify_clients`).
 
-### Codebase Metrics (verified 2026-07-22 — full recount; previous table had duplicated rows from a merge)
+### Codebase Metrics (re-verified 2026-07-24 — structural counts held since 2026-07-22; only test-function counts grew)
 
 | Metric | Count |
 |--------|-------|
@@ -28,25 +28,32 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 32 |
 | Backend serializer files | 13 |
 | Backend URL patterns | 205 |
-| Backend test files | 101 (3142 tests) |
+| Backend test files | 101 (3176 test functions, 582 `Test*` classes, 16 parametrize uses) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 115 |
 | Frontend view pages | 45 |
 | Frontend Pinia store files | 46 |
 | Frontend composables | 15 |
-| Frontend unit test files | 207 |
-| Frontend E2E spec files | 204 (630 tests, 0 audit suspects) |
+| Frontend unit test files | 207 (2287 test cases) |
+| Frontend E2E spec files | 204 (633 test cases) |
 | Frontend E2E flows (flow-definitions.json) | 164 (v1.12.0) |
 
 ---
 
 ## 2. Recent Focus Areas
 
+- **Report-only test-audit + methodology campaign (2026-07-24)**:
+  - **Phase 1 — Memory Bank refresh (✅ this update)**: recounted all codebase/test metrics as of 2026-07-24 and recorded the new test-quality gate + CI regime (below). Phases 2–4 of the same run are report-only: fake-data refresh, USER_FLOW_MAP ↔ flow-definitions reconciliation, and a whole-corpus junk-test audit report. No test files or runtime touched in Phase 1.
+  - **New test-quality gate + CI regime** (commits `7c3af01` adopt canonical core, `7395579` block new junk in CI + grandfather debt, `ed9eb07` align testing skills, `ac17e4f` merge-when-green guards release branches): a per-project `.testquality.yml` gate with junk detectors (thresholds `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`, `max_timeout_ms 100`, `banned_tokens: batch/coverage/cov/deep`). A grandfathered `.junk-baseline.json` holds **553** findings (frontend-unit **382**, frontend-e2e **171**, backend **0**); CI blocks NEW junk while the baseline stays a warning-only debt that may only shrink. Current gate score **98** with **557 warnings** (weak_assertion 371, flow_tag_mismatch 81, no_user_interaction 73, global_state_leak 60, no_data_assertion 14, duplicate_coverage 14, too_many_assertions 4).
+  - **SECOP manual-sync button fixed** (`17491a6`): the round-6 "product bug" (inert `SyncStatus.vue` with no `defineEmits`, 180s fake spinner) is now resolved — the button emits `trigger-sync`, so `POST secop/sync/trigger/` actually schedules the Huey sync (disabled window kept as a re-trigger cooldown). Signature "clear" button a11y gap also fixed (`1092803`).
+  - **Two tooling defects found this session** (report-only, recorded in lessons-learned): (a) `scripts/maintenance/resolve-work-coordinate.sh` referenced by the `test-audit` skill does not exist in this repo; (b) the `backend-test-coverage` / `frontend-unit-test-coverage` / `frontend-e2e-test-coverage` skills invoke a `--files` gate flag that does not exist — the real flags are `--include-file` / `--include-glob`.
+  - **Flow-map drift noted** (Phase 3 reconciles it): USER_FLOW_MAP.md **168** vs flow-definitions.json **164** (v1.12.0) vs coverage snapshots **150–153**.
+
 - **Real-interaction audit (2026-07-23, ronda 6)**:
   - New criterion, sharper than R5's: does the test DRIVE the user action, or does it pre-cook a mock, `goto()` the end state and assert what it cooked? Measured by `scripts/audit_e2e_interactions.py` (persisted, exits 1 while suspects remain — usable as a CI/pre-commit gate).
   - **159 suspects → 0**; interactive tests 394 → 544; 11 genuine load-only flows (guards/empty states) marked `// audit: load-only flow (reason)`. Criterion written into `docs/TESTING_QUALITY_STANDARDS.md` § "Drive the Interaction, Assert the Transition".
   - **Mutation-validated**: removing `pageSize` from the `SecopList.vue` watcher turns the page-size test red; restoring it returns green. The suite now detects real breakage.
-  - **Product bugs found**: SECOP sync button is inert (`SyncStatus.vue` has no `defineEmits` → `POST secop/sync/trigger/` never fires; 180s fake spinner) — left for a product decision since fixing it starts real Socrata syncs. Signature "clear" button has no accessible name (its test was dead because the locator never matched) — real a11y gap.
+  - **Product bugs found (both now FIXED)**: SECOP sync button was inert (`SyncStatus.vue` had no `defineEmits` → `POST secop/sync/trigger/` never fired; 180s fake spinner) — **fixed 2026-07-23 in `17491a6`**: the button now emits `trigger-sync` and actually schedules the Huey sync (disabled window kept as a re-trigger cooldown). Signature "clear" button had no accessible name (its test was dead because the locator never matched) — **fixed in `1092803`**.
   - **Phantom coverage**: `document-key-fields.spec.js` tested an `is_key` field that exists nowhere in `src/`; another test faked navigation with `page.evaluate(router.push)`; one was fully redundant with three siblings.
   - **Unreachable routes/dead branches catalogued**: `/signed-documents`, `/subscriptions`, `/legal_requests` (sidebar filters both entries), `/no_connection`; `GuideNavigation` sub-sections, the "Firmantes requeridos" alert, `deleteOrganization`.
 - **Depth round: anti-synthetic E2E pass (2026-07-23, ronda 5)**:

@@ -37,7 +37,7 @@
 ### Ruff for Backend, Jest/Playwright for Frontend
 - Backend: **Ruff** for linting, **pytest** for testing
 - Frontend: **Jest** for unit tests, **Playwright** for E2E tests
-- Backend test markers: `edge`, `contract`, `integration`, `rest`
+- Backend test markers actually applied (verified 2026-07-24): `django_db` 995, `edge` 151, `contract` 64, `integration` 60. `rest` is declared in `pytest.ini` but used **0** times — don't cite it as a live marker.
 - E2E flow coverage tracking with custom Playwright reporters and `flow-definitions.json`
 
 ### Test Execution Constraints
@@ -52,6 +52,20 @@
 - No conditionals in test body — use parameterization
 - Follow AAA pattern: Arrange → Act → Assert
 - Mock only at system boundaries (external APIs, clock, email)
+
+### Coverage Is the Readout, Not the Goal
+- A coverage percentage measures which lines a test *touched*, not whether the test would *fail if the behavior broke*. A spec that renders a component and asserts `#app` exists lifts coverage while verifying nothing.
+- The coverage skills (`backend-test-coverage`, `frontend-unit-test-coverage`, `frontend-e2e-test-coverage`) exist to close *behavioral* gaps — write the assertion that goes red on a real regression first, and let coverage move as a side effect.
+- This framing is now enforced mechanically: the junk detectors below fail tests that raise coverage without observable assertions.
+
+### Test-Quality Gate: `.testquality.yml` Thresholds & Junk Baseline (2026-07-23/24)
+- The canonical test-quality core (`7c3af01`) reads a per-project `.testquality.yml`. Key thresholds: `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`, `max_timeout_ms 100`, and `banned_tokens: batch / coverage / cov / deep` (a test named `*_batch`/`*_coverage*` is a junk smell — name it after the behavior instead).
+- Existing debt is grandfathered in `.junk-baseline.json` (**553** findings: frontend-unit 382, frontend-e2e 171, backend 0). CI blocks only NEW junk; the baseline is warning-only and **may only ever shrink** — never append to it to silence a fresh finding.
+- Run the gate scoped with `--include-file <path>` or `--include-glob <glob>`. Current gate score **98** with 557 warnings (dominated by weak_assertion 371 and flow_tag_mismatch 81).
+
+### Gate/Skill Tooling Defects Found 2026-07-24 (report-only, not yet fixed)
+- `scripts/maintenance/resolve-work-coordinate.sh` — referenced by the `test-audit` skill (and `merge-when-green`) — **does not exist in this repo**. Any skill step that shells out to it will fail; resolve the work coordinate manually until the script is added.
+- The three coverage skills (`backend-test-coverage`, `frontend-unit-test-coverage`, `frontend-e2e-test-coverage`) document a gate invocation with a **`--files` flag that does not exist**. The real flags are `--include-file` / `--include-glob` (see `scripts/test_quality_gate.py`). Substitute them when following those skills.
 
 ---
 

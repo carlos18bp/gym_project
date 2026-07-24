@@ -1765,110 +1765,36 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 > Módulo exclusivo para **Lawyer**. Permite navegar, filtrar, clasificar y monitorear procesos de contratación pública del portal SECOP.
 
-### secop-list-browse: Browse SECOP processes
-- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control
+> **Nota de reconciliación (2026-07-24):** las definiciones detalladas de los 17 flujos SECOP
+> (con **Pasos** y **Ramificaciones**) viven de forma canónica en la sección **Flujos — Lawyer**,
+> dado que SECOP es un módulo exclusivo de ese rol (`secop-list-error-retry` se documenta además en
+> la sección de auditoría 2026-07-22). Este bloque duplicaba 15 de esos flujos con descripciones
+> abreviadas; se consolidó para evitar definiciones divergentes. La tabla resume el inventario y su
+> estado según `scripts/flow_coverage_audit.py`.
 
-**Pasos:**
-1. Navega a `/secop`
-2. Tabla con lista de procesos paginada
-3. Filtros por departamento, entidad, estado, rango presupuestal, fechas, UNSPSC
-4. Ordenamiento por columnas, control de tamaño de página
+| Flow id | Prioridad | Estado (audit 2026-07-24) |
+|---------|-----------|---------------------------|
+| `secop-list-browse` | P2 | ✅ covered |
+| `secop-process-detail` | P2 | ✅ covered |
+| `secop-classify-process` | P2 | ✅ covered |
+| `secop-create-alert` | P2 | 🟠 junk-only |
+| `secop-manage-alerts` | P3 | ✅ covered |
+| `secop-export-excel` | P3 | ✅ covered |
+| `secop-add-notes` | P3 | ✅ covered |
+| `secop-save-view` | P3 | 🟠 junk-only |
+| `secop-apply-saved-view` | P3 | 🟠 junk-only |
+| `secop-view-in-portal` | P3 | ✅ covered |
+| `secop-sync-status` | P3 | 🟠 junk-only |
+| `secop-trigger-sync` | P4 | ✅ covered |
+| `secop-filter-classifications` | P3 | ✅ covered |
+| `secop-saved-view-favorites` | P3 | 🟠 junk-only |
+| `secop-keyword-tags` | P3 | 🟠 junk-only |
+| `secop-edit-saved-view` | P3 | ✅ covered |
+| `secop-list-error-retry` | P4 | ✅ covered |
 
----
-
-### secop-process-detail: View SECOP process detail
-- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop/:id` | **E2E:** ✅
-- **Descripción:** View full detail of a SECOP procurement process with entity info, dates, budget
-
-**Pasos:**
-1. Click en proceso desde lista
-2. Vista detallada con info de entidad, fechas, presupuesto
-3. Acciones: clasificar, agregar notas, abrir en portal
-
----
-
-### secop-classify-process: Classify a SECOP process
-- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop/:id` | **E2E:** ✅
-- **Descripción:** Mark a process with classification status and add internal notes for team collaboration
-
-**Ramificaciones:**
-- ├── **Interesante:** Marcar como interesante para seguimiento
-- ├── **En Revisión:** Proceso bajo análisis
-- ├── **Aplicado:** Se presentó propuesta
-- └── **Descartado:** No viable
-
----
-
-### secop-create-alert: Create SECOP alert
-- **Módulo:** secop | **Prioridad:** P2 | **Ruta:** `/secop` (modal) | **E2E:** ✅
-- **Descripción:** Configure alert criteria to receive notifications for matching SECOP processes
-
----
-
-### secop-manage-alerts: Manage SECOP alerts
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab) | **E2E:** ✅
-- **Descripción:** Edit, toggle, or delete existing SECOP alerts
-
----
-
-### secop-export-excel: Export SECOP processes to Excel
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Export filtered SECOP process list to .xlsx file
-
----
-
-### secop-add-notes: Add internal notes to a SECOP process
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop/:id` | **E2E:** ✅
-- **Descripción:** Add internal notes to a classified process for team collaboration
-
----
-
-### secop-save-view: Save filter combination as named view
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (modal) | **E2E:** ✅
-- **Descripción:** Save current filter combination as a named view for quick future access
-
----
-
-### secop-apply-saved-view: Apply a saved filter view
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Apply a previously saved filter combination to the process list
-
----
-
-### secop-view-in-portal: Open deep-link to SECOP portal
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop/:id` | **E2E:** ✅
-- **Descripción:** Open the official SECOP portal page for a process in a new tab
-
----
-
-### secop-sync-status: View sync status and history
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (header) | **E2E:** ✅
-- **Descripción:** View the last synchronization time and status indicator in the header
-
----
-
-### secop-trigger-sync: Admin triggers manual sync
-- **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` (header) | **E2E:** ✅
-- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button
-
----
-
-### secop-filter-classifications: Filter classified processes by status
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Mis Clasificaciones) | **E2E:** ✅
-- **Descripción:** Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)
-
----
-
-### secop-saved-view-favorites: Toggle saved view as favorite
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Filtros Guardados) | **E2E:** ✅
-- **Descripción:** Mark/unmark a saved view as favorite so it loads automatically. Favorite views show a star icon and appear first in the list.
-
----
-
-### secop-keyword-tags: Keyword tags in saved views and filters
-- **Módulo:** secop | **Prioridad:** P3 | **Ruta:** `/secop` (tab Filtros Guardados) | **E2E:** ✅
-- **Descripción:** Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.
+> 🟠 `junk-only` = existen tests etiquetados `@flow:<id>` pero **ninguno ejercita el flujo**
+> (descalificados por `no_user_interaction` / `flow_tag_mismatch`): reportan verde pero no cubren.
+> Reescribir esos specs es prioritario frente a cualquier flujo `missing`.
 
 ---
 
@@ -2121,34 +2047,37 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 ## Resumen de Cobertura E2E
 
-| Módulo | Flujos totales | ✅ Cubierto | ⚠️ Parcial | ❌ Sin cobertura |
-|--------|---------------|------------|-----------|------------------|
-| Auth | 13 | 13 | 0 | 0 |
+| Módulo | Flujos | ✅ Cubierto | 🟠 Junk-only | ❌ Sin cobertura |
+|--------|--------|------------|-------------|------------------|
+| Auth | 13 | 9 | 4 | 0 |
 | Subscriptions | 6 | 6 | 0 | 0 |
-| Profile | 2 | 2 | 0 | 0 |
+| Profile | 2 | 1 | 1 | 0 |
 | Dashboard | 8 | 8 | 0 | 0 |
-| Directory | 1 | 1 | 0 | 0 |
-| Processes | 11 | 11 | 0 | 0 |
-| Documents | 34 | 34 | 0 | 0 |
-| Signatures | 12 | 12 | 0 | 0 |
+| Directory | 2 | 2 | 0 | 0 |
+| Processes | 12 | 8 | 2 | 2 |
+| Documents | 34 | 32 | 0 | 2 |
+| Signatures | 13 | 12 | 1 | 0 |
 | Legal Requests | 8 | 8 | 0 | 0 |
-| Organizations | 16 | 16 | 0 | 0 |
+| Organizations | 17 | 17 | 0 | 0 |
 | Schedule | 1 | 1 | 0 | 0 |
 | Intranet | 3 | 3 | 0 | 0 |
-| **SECOP** | **16** | **16** | **0** | **0** |
-| **Servicios y Tramites** | **15** | **15** | **0** | **0** |
-| Notifications | 1 | 1 | 0 | 0 |
-| Misc | 4 | 4 | 0 | 0 |
+| **SECOP** | **17** | **11** | **6** | **0** |
+| **Servicios y Tramites** | **16** | **11** | **5** | **0** |
+| Notifications | 6 | 6 | 0 | 0 |
+| Misc | 4 | 3 | 1 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
 | Admin | 1 | 1 | 0 | 0 |
-| **Total** | **153** | **153** | **0** | **0** |
+| **Total** | **164** | **140** | **20** | **4** |
 
-> **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`), alineada con el reporter `flow-coverage-reporter.mjs`. Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que ya no hay fila "Basic" separada.
+> **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`) y del estado reportado por `scripts/flow_coverage_audit.py` (2026-07-24). Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que no hay fila "Basic" separada.
 >
-> **Cerrados el 16-07-2026:** `process-alert-configure` ganó su spec dedicado (`process-alert-configure-flow.spec.js`, toggle `notify_clients` + descripción con `data-testid`s nuevos) y `process-alerts` completó sus 3 specs (`process-alert-recipients`, `process-alert-inactive-indicator`, `process-alert-past-date-guard`).
+> **Semántica de columnas (nueva):** `Cubierto` = existe un test que ejercita el flujo; `Junk-only` = existen tests etiquetados pero **ninguno califica** (descalificados por `no_user_interaction` o `flow_tag_mismatch`) — reportan verde pero no cubren, por eso son la prioridad; `Sin cobertura` = ningún test referencia el flujo.
 >
-> **Cubierto con knownGap (1):**
-> - `service-admin-edit` (Servicios): el spec cubre create/toggle; la edición completa de etapas + campos no está totalmente aseverada.
+> **Total reconciliado 153 → 164 (2026-07-24):** la tabla anterior no había incorporado los 11 flujos añadidos en la auditoría 2026-07-22 (v1.12.0); `flow-definitions.json` (164) es la fuente autoritativa. Ver nota de reconciliación al pie de esta sección.
+>
+> **Regresión detectada — `process-alert-configure` y `process-alerts`:** la nota previa los daba por cerrados el 16-07-2026, pero el audit 2026-07-24 no encuentra evidencia calificada (0 tests que los ejerciten) → hoy figuran `missing`. Junto a `minutas-columns` y `minutas-shared-visibility` (documents) forman los 4 flujos sin cobertura. Requieren re-verificar si el spec perdió su tag `@flow:<id>` o fue renombrado.
+>
+> **knownGap (1):** `service-admin-edit` (Servicios) es además `junk-only`: el/los test(s) etiquetados no ejercitan la edición completa de etapas + campos.
 
 ---
 
@@ -2156,31 +2085,47 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 
 Auditoría de doble fuente (interacciones frontend + clasificación de 205 endpoints) sobre el registro v1.11.0. Se detectaron y cubrieron 11 flujos:
 
-### notification-mark-read / notification-snooze / notification-archive-toggle / notification-delete / notification-pagination
-- **Módulo:** notifications | **Prioridad:** P3-P4 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js` — 6 tests)
-- **Descripción:** Acciones por ítem del centro de notificaciones: marcar leída/no-leída (individual y masiva, badge sincronizado), posponer con intervalos (1h/3h/1d/3d), archivar/desarchivar entre pestañas, eliminar definitivamente y paginación Anterior/Siguiente. Nota: la auditoría destapó y corrigió un bug real — el menú de snooze quedaba invisible/enterrado al salir del hover de la fila (fix: barra de acciones fijada con z-20 mientras su menú está abierto).
+### notification-mark-read: Marcar notificaciones como leídas
+- **Módulo:** notifications | **Prioridad:** P3 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js`)
+- **Descripción:** Marcar una notificación (o todas) como leída/no-leída; el badge de no-leídas se sincroniza.
 
-### service-admin-delete
+### notification-snooze: Posponer notificación (snooze)
+- **Módulo:** notifications | **Prioridad:** P3 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js`)
+- **Descripción:** Posponer una notificación con intervalos (1h/3h/1d/3d). Fix de auditoría 2026-07-22: la barra de acciones se fija con `z-20` mientras el menú de snooze está abierto (antes quedaba invisible al salir del hover de la fila).
+
+### notification-archive-toggle: Archivar y desarchivar notificación
+- **Módulo:** notifications | **Prioridad:** P3 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js`)
+- **Descripción:** Archivar y desarchivar una notificación, moviéndola entre pestañas.
+
+### notification-delete: Eliminar notificación
+- **Módulo:** notifications | **Prioridad:** P3 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js`)
+- **Descripción:** Eliminar una notificación definitivamente.
+
+### notification-pagination: Paginación del centro de notificaciones
+- **Módulo:** notifications | **Prioridad:** P4 | **Ruta:** `/notifications` | **E2E:** ✅ (`notification-actions.spec.js`)
+- **Descripción:** Paginar el centro de notificaciones con Anterior/Siguiente.
+
+### service-admin-delete: Eliminar servicio (admin)
 - **Módulo:** services | **Prioridad:** P2 | **Ruta:** `/services_admin` | **E2E:** ✅ (`service-admin-flow.spec.js`)
 - **Descripción:** Admin selecciona un servicio, pulsa "Eliminar servicio", confirma en SweetAlert ("Sí, eliminar") y el servicio sale del catálogo; las solicitudes ya enviadas se conservan.
 
-### process-users-modal
+### process-users-modal: Modal de participantes del proceso
 - **Módulo:** processes | **Prioridad:** P3 | **Ruta:** `/process_detail/:id` | **E2E:** ✅ (`process-detail-actions.spec.js`)
 - **Descripción:** "Ver usuarios" abre el modal de participantes del proceso con los clientes asociados (avatar/iniciales + nombre) y estado vacío si no hay usuarios.
 
-### sign-download-signatures-pdf
+### sign-download-signatures-pdf: Descargar certificado de firmas (PDF)
 - **Módulo:** signatures | **Prioridad:** P3 | **Ruta:** `/dynamic_document_dashboard/signed-documents` | **E2E:** ✅ (`signed-documents-flow.spec.js`)
 - **Descripción:** Sobre un documento completamente firmado, la acción "Descargar Doc. Formalizado" del menú de la tarjeta descarga el certificado de firmas (`generate-signatures-pdf`). Requiere estado FullySigned y ≥1 firma registrada.
 
-### org-corporate-dashboard-stats
+### org-corporate-dashboard-stats: KPIs del dashboard corporativo
 - **Módulo:** organizations | **Prioridad:** P2 | **Ruta:** dashboard corporativo | **E2E:** ✅ (`organizations-corporate-invite-member-stats.spec.js`)
 - **Descripción:** KPIs del dashboard del cliente corporativo (organizaciones, miembros, invitaciones pendientes) servidos por `organizations/stats/`; se actualizan tras invitar un miembro.
 
-### directory-navigate-to-process
+### directory-navigate-to-process: Navegar del directorio a procesos
 - **Módulo:** directory | **Prioridad:** P4 | **Ruta:** `/directory_list` | **E2E:** ✅ (`directory.spec.js`)
 - **Descripción:** Desde el modal de detalle de usuario, "Ver proceso" navega al detalle y "Ver todos en Procesos" al listado filtrado por el usuario.
 
-### secop-list-error-retry
+### secop-list-error-retry: Reintentar carga del listado SECOP
 - **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅ (`secop-list-error-retry.spec.js`)
 - **Descripción:** Ante un fallo de carga del listado, se muestra el estado de error con "Reintentar"; el botón recarga y renderiza la tabla.
 
@@ -2216,8 +2161,51 @@ Los 159 se reescribieron para ejecutar la acción y asertar la transición. Vali
 - Ramas muertas: sub-secciones de `GuideNavigation.vue` que ningún módulo define; SweetAlert "Firmantes requeridos" inalcanzable porque el botón ya se deshabilita; `deleteOrganization` en el store sin componente que lo llame.
 - `hasMore` con page size hardcodeado a 20 en `LegalRequestsList.vue`.
 
+## Reconciliación mapa ↔ flow-definitions.json — 2026-07-24 (v1.12.1)
+
+Auditoría estática de flujos (`scripts/flow_coverage_audit.py`) sobre el registro v1.12.0.
+Fuente autoritativa: **`frontend/e2e/flow-definitions.json` (164 flujos)** — es el inventario que
+consume el audit y es superconjunto exacto del mapa (0 flujos huérfanos solo-en-mapa).
+
+**Drift de conteo resuelto (168 headings brutos → 164 conformes únicos = 164 en JSON):**
+- **15 duplicados eliminados.** Los 15 flujos SECOP estaban definidos dos veces: bloque detallado en
+  la sección *Flujos — Lawyer* (canónico, con Pasos/Ramificaciones) + copia abreviada en la sección
+  dedicada *Flujos — SECOP*. Se consolidó dejando el bloque rico como único; la sección dedicada
+  quedó como puntero + tabla de estado (sin headings `###` duplicados).
+- **11 headings normalizados.** Los 11 flujos añadidos el 2026-07-22 SÍ estaban en el JSON, pero en
+  el mapa se documentaron con headings no contables (5 `notification-*` agrupados en un solo `###`
+  separado por `/`; 6 ids sin sufijo `: <desc>`), por lo que el conteo de headings del mapa (153
+  únicos) quedaba por debajo del JSON (164). Se reescribieron como `### <id>: <desc>`.
+- **Resultado:** 164 headings únicos conformes ≡ 164 flujos del JSON (coincidencia de conjunto exacta).
+- **JSON intacto:** no se tocó `flow-definitions.json` (ya era autoritativo y todos sus flujos están
+  referenciados por tests reales). La reconciliación fue solo sobre el mapa + esta nota.
+
+**Estado de cobertura real (audit 2026-07-24): 140 covered · 20 junk-only · 4 missing.**
+
+- **junk-only (20)** — reportan verde pero **ningún test los ejercita** (descalificados por
+  `no_user_interaction` / `flow_tag_mismatch`); reescribir su spec es la prioridad #1:
+  - P1: `auth-login-google`, `auth-login-outlook`, `service-fill-form`, `service-submit-request`
+  - P2: `auth-idle-logout`, `auth-router-guards`, `legal-files-auto-redirect`, `process-case-file-upload`,
+    `process-edit`, `profile-complete`, `secop-create-alert`, `service-admin-edit`, `service-save-draft`
+  - P3: `secop-apply-saved-view`, `secop-keyword-tags`, `secop-save-view`, `secop-saved-view-favorites`,
+    `secop-sync-status`, `service-admin-form-validation`
+  - P4: `misc-offline`
+- **missing (4)** — cero evidencia: `minutas-columns`, `minutas-shared-visibility` (documents);
+  `process-alert-configure`, `process-alerts` (processes). Los dos últimos figuraban como "cerrados
+  16-07" en el resumen previo, pero el audit no encuentra tests que los ejerciten → revisar si el spec
+  perdió su tag `@flow:<id>` o fue renombrado.
+
+**Deuda de esquema (hallazgo de metodología):** los 164 flujos aún declaran el campo antiguo
+`expectedSpecs`; **0 declaran `outcomes`**. El audit corre sobre el fallback `["success"]`, así que hoy
+solo verifica la clase `success` de cada flujo — por eso los 18 módulos aparecen como "declara solo
+success" y no hay señal de cobertura para `error` / `failure` / `display`. Migrar a `outcomes` (declarar
+las clases por flujo) es el siguiente paso para endurecer el gate; no se hizo aquí para no inventar
+requisitos no revisados.
+
+---
+
 ---
 
 **Documento generado:** July 22, 2026
 **Versión:** 1.12.0
-**Estado:** 164/164 flujos cubiertos, 0 parciales, 0 sin cobertura. Matriz derivada de `flow-definitions.json` v1.12.0 (cobertura estática por tags `@flow:`).
+**Estado:** 164 flujos declarados (≡ `flow-definitions.json`). Cobertura por `scripts/flow_coverage_audit.py` (2026-07-24): **140 covered · 20 junk-only · 4 missing**. Ver "Reconciliación mapa ↔ flow-definitions.json — 2026-07-24". Nota: el conteo previo "164/164 cubiertos" reflejaba el reporter antiguo (verde con un solo test tagged), no el audit por-outcome.

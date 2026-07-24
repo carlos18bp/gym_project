@@ -58,7 +58,26 @@
 
 ## 4. Testing Status
 
-### Backend Tests (101 files / 3142 tests — verified 2026-07-22)
+### Test Quality Gate & CI Regime (adopted 2026-07-23/24)
+
+The canonical test-quality core was adopted (`7c3af01`) with a per-project `.testquality.yml`:
+thresholds `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`,
+`max_timeout_ms 100`, and `banned_tokens: batch/coverage/cov/deep`. Junk detectors classify
+weak assertions, missing user interaction, global-state leaks, flow-tag mismatches, etc.
+
+- **Grandfathered debt**: `.junk-baseline.json` holds **553** pre-existing findings
+  (frontend-unit **382**, frontend-e2e **171**, backend **0**). CI blocks any NEW junk while the
+  baseline stays warning-only and may only shrink (`7395579`).
+- **Testing skills** realigned to the new gate (`ed9eb07`); **merge-when-green** now guards
+  release branches (`ac17e4f`).
+- **Current gate score: 98** with **557 warnings** — weak_assertion 371, flow_tag_mismatch 81,
+  no_user_interaction 73, global_state_leak 60, no_data_assertion 14, duplicate_coverage 14,
+  too_many_assertions 4.
+
+### Backend Tests (101 files / 3176 test functions, 582 `Test*` classes — verified 2026-07-24)
+
+> Markers actually applied: `django_db` 995, `edge` 151, `contract` 64, `integration` 60.
+> Only 16 `parametrize` uses across the suite. `rest` is declared in `pytest.ini` but used **0** times.
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
@@ -78,7 +97,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (207 files — verified 2026-07-22)
+### Frontend Unit Tests (207 files / 2287 test cases — verified 2026-07-24)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -94,7 +113,9 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (204 spec files / 630 tests, 0 audit suspects — verified 2026-07-23) — **164 flows registered, 164/164 covered (v1.12.0)**
+### Frontend E2E Tests (204 spec files / 633 test cases — verified 2026-07-24) — **164 flows registered in flow-definitions.json (v1.12.0)**
+
+> **Flow-map drift (Phase 3 of the 2026-07-24 campaign reconciles it):** USER_FLOW_MAP.md lists **168** flows, flow-definitions.json registers **164**, and the coverage snapshots report **150–153** — the three sources have drifted apart.
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)
