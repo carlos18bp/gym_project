@@ -61,7 +61,7 @@ describe("ResponseThread.vue", () => {
 
     await wrapper.find("[data-test='add-response']").trigger("click");
 
-    expect(wrapper.emitted("response-added")).toBeTruthy();
+    expect(wrapper.emitted("response-added")).toHaveLength(1);
     expect(wrapper.emitted("response-added")[0]).toEqual([{ id: 1 }]);
   });
 });

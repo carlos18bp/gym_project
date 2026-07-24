@@ -129,20 +129,20 @@ describe("OrganizationCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Nueva Solicitud"));
 
-    expect(createBtn).toBeTruthy();
+    expect(createBtn.text()).toContain("Nueva Solicitud");
     await createBtn.trigger("click");
 
-    expect(wrapper.emitted("create-request")).toBeTruthy();
+    expect(wrapper.emitted("create-request")).toHaveLength(1);
     expect(wrapper.emitted("create-request")[0]).toEqual([10]);
 
     const viewBtn = wrapper
       .findAll("button")
       .find((b) => (b.text() || "").includes("Ver Detalles") || (b.text() || "").includes("Detalles"));
 
-    expect(viewBtn).toBeTruthy();
+    expect(viewBtn.text()).toContain("Detalles");
     await viewBtn.trigger("click");
 
-    expect(wrapper.emitted("view-details")).toBeTruthy();
+    expect(wrapper.emitted("view-details")).toHaveLength(1);
     expect(wrapper.emitted("view-details")[0]).toEqual([10]);
   });
 

@@ -180,7 +180,7 @@ describe("InvitationCard.vue", () => {
       .findAll("span")
       .find((span) => span.text() === "UNKNOWN");
 
-    expect(statusBadge).toBeTruthy();
+    expect(statusBadge.text()).toBe("UNKNOWN");
     expect(statusBadge.classes()).toEqual(
       expect.arrayContaining(["bg-gray-100", "text-gray-800"])
     );
@@ -228,7 +228,7 @@ describe("InvitationCard.vue", () => {
 
     const acceptBtn = getActionButton(wrapper, "Aceptar");
 
-    expect(acceptBtn).toBeTruthy();
+    expect(acceptBtn.text()).toContain("Aceptar");
 
     await acceptBtn.trigger("click");
     await flushPromises();
@@ -236,7 +236,7 @@ describe("InvitationCard.vue", () => {
     expect(respondSpy).toHaveBeenCalledWith(10, "accept");
     expect(mockShowNotification).toHaveBeenCalledWith("Invitación aceptada exitosamente", "success");
 
-    expect(wrapper.emitted("responded")).toBeTruthy();
+    expect(wrapper.emitted("responded")).toHaveLength(1);
     expect(wrapper.emitted("responded")[0]).toEqual([{ id: 10, status: "ACCEPTED" }]);
   });
 
@@ -259,7 +259,7 @@ describe("InvitationCard.vue", () => {
 
     const rejectBtn = getActionButton(wrapper, "Rechazar");
 
-    expect(rejectBtn).toBeTruthy();
+    expect(rejectBtn.text()).toContain("Rechazar");
 
     await rejectBtn.trigger("click");
     await flushPromises();
@@ -270,7 +270,7 @@ describe("InvitationCard.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("responded")).toBeTruthy();
+    expect(wrapper.emitted("responded")).toHaveLength(1);
     expect(wrapper.emitted("responded")[0]).toEqual([{ id: 10, status: "REJECTED" }]);
   });
 

@@ -34,11 +34,12 @@ describe("ClassificationModal.vue", () => {
     const saveButton = wrapper.findAll("button").find((b) => b.text() === "Guardar");
     await saveButton.trigger("click");
 
-    expect(wrapper.emitted("save")).toBeTruthy();
-    const payload = wrapper.emitted("save")[0][0];
-    expect(payload).toHaveProperty("process", 1);
-    expect(payload).toHaveProperty("status");
-    expect(payload).toHaveProperty("notes");
+    expect(wrapper.emitted("save")).toHaveLength(1);
+    expect(wrapper.emitted("save")[0][0]).toEqual({
+      process: 1,
+      status: "INTERESTING",
+      notes: "",
+    });
   });
 
   test("emits close on cancel click", async () => {
@@ -49,7 +50,7 @@ describe("ClassificationModal.vue", () => {
     const cancelButton = wrapper.findAll("button").find((b) => b.text() === "Cancelar");
     await cancelButton.trigger("click");
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("emits delete with classification id when editing", async () => {
@@ -63,7 +64,7 @@ describe("ClassificationModal.vue", () => {
     const deleteButton = wrapper.findAll("button").find((b) => b.text() === "Eliminar");
     await deleteButton.trigger("click");
 
-    expect(wrapper.emitted("delete")).toBeTruthy();
+    expect(wrapper.emitted("delete")).toHaveLength(1);
     expect(wrapper.emitted("delete")[0]).toEqual([5, 1]);
   });
 });

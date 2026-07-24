@@ -56,15 +56,15 @@ describe("StatusUpdateModal.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Actualizar"));
 
-    expect(updateButton.attributes("disabled")).toBeDefined();
+    expect(updateButton.element.disabled).toBe(true);
 
     await wrapper.find("select").setValue("PENDING");
 
-    expect(updateButton.attributes("disabled")).toBeDefined();
+    expect(updateButton.element.disabled).toBe(true);
 
     await wrapper.find("select").setValue("RESPONDED");
 
-    expect(updateButton.attributes("disabled")).toBeUndefined();
+    expect(updateButton.element.disabled).toBe(false);
   });
 
   test("updates status and emits updated", async () => {
@@ -92,7 +92,7 @@ describe("StatusUpdateModal.vue", () => {
     await flushPromises();
 
     expect(mockUpdateRequestStatus).toHaveBeenCalledWith(1, "RESPONDED");
-    expect(wrapper.emitted("updated")).toBeTruthy();
+    expect(wrapper.emitted("updated")).toHaveLength(1);
     expect(wrapper.emitted("updated")[0]).toEqual([updatedRequest]);
   });
 

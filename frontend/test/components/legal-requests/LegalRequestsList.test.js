@@ -132,7 +132,6 @@ describe("LegalRequestsList.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Limpiar"));
 
-    expect(clearButton).toBeTruthy();
     await clearButton.trigger("click");
 
     expect(select.element.value).toBe("");

@@ -137,7 +137,6 @@ describe("LegalRequestDetail.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Cambiar Estado"));
 
-    expect(statusButton).toBeTruthy();
     await statusButton.trigger("click");
 
     expect(wrapper.find("[data-test='status-modal']").exists()).toBe(true);
@@ -172,7 +171,6 @@ describe("LegalRequestDetail.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Agregar archivos"));
 
-    expect(addFilesButton).toBeTruthy();
     await addFilesButton.trigger("click");
 
     expect(wrapper.find("[data-test='add-files-modal']").exists()).toBe(true);

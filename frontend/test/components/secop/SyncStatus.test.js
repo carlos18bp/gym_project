@@ -135,6 +135,6 @@ describe("SyncStatus.vue", () => {
     await btn.trigger("click");
     await nextTick();
 
-    expect(btn.attributes("disabled")).toBeDefined();
+    expect(btn.element.disabled).toBe(true);
   });
 });

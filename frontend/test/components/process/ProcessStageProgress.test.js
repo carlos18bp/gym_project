@@ -14,7 +14,7 @@ describe("ProcessStageProgress.vue", () => {
 
     await wrapper.find("button").trigger("click");
 
-    expect(wrapper.emitted("openHistory")).toBeTruthy();
+    expect(wrapper.emitted("openHistory")).toHaveLength(1);
   });
 
   test("derives progress from stages and fills segments", () => {
