@@ -82,8 +82,12 @@ declared abstention **is not a failure**.
 
 ## Workflow
 
-1. Read the coverage report, and re-read it as a list of *behaviors*, not lines.
-2. Pick by risk (table above), not by lowest percentage.
+1. **Enumerate untested behaviors from the code** — walk Models, Serializers,
+   Views, Utils and Tasks and list what each one *does* (validations, permissions,
+   money, state transitions, error paths). The code is the entry point.
+2. Pick by risk (table above), not by lowest percentage. Use the coverage report
+   only as a *secondary readout* — to confirm which enumerated behavior has no line
+   hit; a covered line with a weak assertion is still an untested behavior.
 3. Consult `docs/TESTING_QUALITY_STANDARDS.md`.
 4. Search for an existing test to extend.
 5. Implement, satisfying the three-part definition of done.
@@ -103,7 +107,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Coverage leído como comportamiento | ✅ | N behaviors sin test identificados |
+| Comportamientos enumerados desde el código | ✅ | N behaviors sin test identificados |
 | Priorizado por riesgo | ✅ | reglas de negocio y error paths primero |
 | Búsqueda anti-duplicado | ✅ | N ya cubiertos → se extendió el existente |
 | Tests agregados | ✅ | N tests con assert de valor concreto |

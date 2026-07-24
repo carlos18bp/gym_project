@@ -79,6 +79,8 @@ class IssueCategory(Enum):
     WEAK_ASSERTION = auto()
     DUPLICATE_COVERAGE = auto()
     TAUTOLOGICAL_SELECTOR = auto()
+    MOCK_ONLY_ASSERTION = auto()
+    REIMPLEMENTS_SUT = auto()
 
 
 # Centralized semantic rule identifiers used for rollout gating and reporting.
@@ -112,6 +114,10 @@ SEMANTIC_RULE_IDS: frozenset[str] = frozenset(
         "weak_assertion",
         "duplicate_coverage",
         "tautological_selector",
+        # Added 2026-07-24: the two source-detectable gaps the mutation-testing
+        # research surfaced — asserting on the mock, and re-implementing the SUT.
+        "mock_only_assertion",
+        "reimplements_sut",
     }
 )
 
@@ -127,6 +133,8 @@ JUNK_RULE_CATEGORIES: dict[str, str] = {
     "weak_assertion": "WEAK_ASSERTION",
     "duplicate_coverage": "DUPLICATE_COVERAGE",
     "tautological_selector": "TAUTOLOGICAL_SELECTOR",
+    "mock_only_assertion": "MOCK_ONLY_ASSERTION",
+    "reimplements_sut": "REIMPLEMENTS_SUT",
 }
 
 

@@ -6,6 +6,27 @@ allowed-tools: Bash
 argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 ---
 
+## Entorno requerido
+
+**Esta skill SOLO funciona desde un VPS** — necesita `systemctl`, `nginx`, `journalctl`, y paths `/home/ryzepeck/webapps/...`. Si la invocás desde la dev machine, los restarts de servicio fallarán y los logs no estarán disponibles.
+
+**Verificación obligatoria ANTES de cualquier otro paso**:
+
+```bash
+if [[ -d /home/dev-env/webapps || -d /home/dev_env/webapps ]]; then
+  echo "❌ Esta skill no se puede ejecutar desde la dev machine."
+  echo "   SSH primero al VPS destino:"
+  echo "     ssh vps-projectapp-staging   (o vps-gym)"
+  echo "     cd ~/webapps/<proyecto> && claude → /deploy-and-check"
+  exit 2
+fi
+echo "✅ Entorno VPS detectado, procediendo."
+```
+
+Si el bloque aborta con ❌, **NO continuar** con las fases siguientes — SSH al VPS destino y re-invocar la skill allí.
+
+---
+
 # Deploy & Check — Generic
 
 Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-toolkit/projects.yml`). Funciona para staging y producción.
@@ -58,7 +79,6 @@ GIT_CURRENT_BRANCH=$(cd "$PROJECT_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev
 BRANCH="${ARGUMENTS:-$GIT_CURRENT_BRANCH}"
 [ -n "$BRANCH" ] || { echo "❌ ERROR: no se pudo determinar la rama actual y no se especificó argumento"; exit 1; }
 
-# Resolve DJANGO_SETTINGS_MODULE EXACTAMENTE como lo corre el servicio de prod.
 # manage.py defaultea a *_dev (SQLite) en varios proyectos del fleet, así que
 # migrate/collectstatic DEBEN usar el módulo de prod o pegan a la base equivocada.
 # Fuente primaria: el Environment= del unit systemd de gunicorn. Fallback: backend/.env.

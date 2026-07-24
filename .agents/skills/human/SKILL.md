@@ -1,6 +1,7 @@
 ---
 name: human
 description: "Respuesta puntual y escaneable: conclusión primero, tablas/listas por default, cero relleno. Siempre en español."
+argument-hint: "[topic or question]"
 ---
 
 ## Objetivo
@@ -29,6 +30,10 @@ Respuesta escaneable en 10 segundos: la primera línea es la conclusión; el res
 ## Idioma
 
 Español. Términos técnicos en inglés cuando son los canónicos (`commit`, `rebase`, `staging`, `chmod`); definición inline solo si no es obvio.
+
+## Input
+
+$ARGUMENTS
 
 ---
 

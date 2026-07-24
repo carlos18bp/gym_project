@@ -119,14 +119,45 @@ resultados".
 2. **Clasifica cada punto**: tipo (🐞 bug / 💡 requerimiento-mejora / ❓ duda
    aclarada) y estado (✅ Atendido / ⏭️ Fuera de alcance / ⚠️ Parcial / 🔄 En curso).
 3. **Redacta** con la plantilla de abajo. Reglas de estilo:
-   - Español, **no técnico**: nada de nombres de funciones, endpoints ni jerga.
-     Los módulos y botones se nombran como los ve el usuario ("Archivos
-     Jurídicos", "Previsualizar"), no como se llaman en el código.
+   - Español, **no técnico**: nada de nombres de funciones, endpoints de API ni
+     variables de código. Los módulos y botones se nombran como los ve el
+     usuario ("Archivos Jurídicos", "Previsualizar"), no como se llaman en el
+     código. **Excepción:** las URLs y rutas navegables SÍ se incluyen — son
+     texto que el usuario final ve y usa en el navegador, no jerga técnica.
    - Si existe el texto original del cliente (correo, reporte de bugs, acta),
      cítalo **textualmente** en el blockquote del punto.
    - "Cómo validar que funciona" siempre en **pasos numerados** accionables.
    - "Antes de probar necesitas": rol requerido, datos previos, y desde qué
      vista se empieza.
+   - **Sin saltos de línea a mitad de párrafo.** Cada párrafo, ítem de lista,
+     cita (`>`) y celda de tabla va en **una sola línea física**, por larga que
+     sea — no envuelvas el texto manualmente a ~80 columnas. El cliente suele
+     abrir el `.md` en visores que respetan los saltos duros, y un wrap a media
+     frase se ve como un corte raro. La separación entre bloques se hace con
+     **líneas en blanco**, nunca partiendo una frase.
+   - **Asumí que quien valida es un usuario nuevo que no conoce el sistema.** No
+     des nada por obvio: nombrá el menú, la pestaña y el botón exactos con el
+     texto tal cual aparece en pantalla (en **negrita**), y describí el
+     **resultado observable** esperado en cada paso. Si un botón muestra texto
+     en inglés, ponelo con su traducción.
+   - **Siempre incluí las URLs.** Cada punto debe indicar la URL donde (a) se
+     presentaba el problema y (b) se valida el arreglo. Declará **una vez** la
+     URL base del ambiente de pruebas en la cabecera; en cada punto, el **primer
+     paso** de validación da la **URL completa** para llegar (lista para
+     copiar/pegar) y los pasos siguientes usan nombres de pestañas/botones.
+
+   **Cómo obtener las URLs reales (no las inventes):**
+
+   ```bash
+   # URL base del ambiente de pruebas (el staging del fleet suele ser *.projectapp.co):
+   grep -rhoE 'https?://[a-z0-9.-]+\.(projectapp\.co|com)[^ )`"]*' docs/reports/ 2>/dev/null | sort -u
+   # Ruta exacta de cada vista/módulo (Vue router / Django urls):
+   grep -rnE "path:[[:space:]]*[\"']" frontend/src/router/ 2>/dev/null   # SPA Vue
+   grep -rnE "path\(|re_path\(" backend/*/urls.py 2>/dev/null            # Django
+   ```
+
+   Si no encontrás la URL base con seguridad, preguntá al operador una vez;
+   nunca la inventes.
 4. **Escribe el archivo**:
 
 ```bash
@@ -208,7 +239,9 @@ esto.**
 - ❓ = duda del cliente que se aclara
 - ✅ Atendido | ⏭️ Fuera de alcance | ⚠️ Parcial | 🔄 En curso
 
-**Para todas las pruebas:** <requisito global: ambiente, tipo de cuenta.>
+**Ambiente de pruebas:** <URL base del staging, ej. `https://proyecto.projectapp.co`>. Iniciá sesión en <URL base>/<ruta de login, ej. `/sign_in`> con una cuenta de <rol>.
+
+**Para todas las pruebas:** <requisito global: datos previos, rol si varía por punto.>
 
 ---
 
@@ -233,15 +266,17 @@ esto.**
 **Qué se hizo:** <explicación no técnica. Si ayuda, usar el par
 **Antes:** / **Ahora:** para contrastar comportamiento.>
 
+**Dónde se ve / URL:** <URL completa, ej. `https://proyecto.projectapp.co/ruta?tab=…`> — <breadcrumb: Módulo → pestaña → sección donde ocurría y donde se valida>.
+
 **Antes de probar necesitas:**
 - <rol con el que ingresar>
 - <datos o estado previo necesario>
-- <vista/módulo donde empezar>
+- <la URL exacta desde donde empezás (la de arriba)>
 
 **Cómo validar que funciona:**
-1. <paso>
-2. <paso>
-3. <resultado esperado observable>
+1. Abre <URL completa> (si no iniciaste sesión, primero te llevará al login).
+2. <paso: nombrá la pestaña/botón literal en **negrita** y el resultado visible>
+3. <resultado final esperado, observable y sin ambigüedad>
 
 ---
 

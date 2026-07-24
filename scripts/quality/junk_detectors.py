@@ -49,6 +49,10 @@ DATA_ASSERTIONS: frozenset[str] = frozenset({
     "toHaveText", "toContainText", "toHaveValue", "toHaveURL", "toHaveCount",
     "toHaveAttribute", "toHaveTitle", "toHaveJSProperty", "toEqual",
     "toMatchObject", "toStrictEqual",
+    # Concrete, falsifiable UI-state matchers: an element being disabled/enabled/
+    # checked is a real assertion about behaviour (e.g. "submit is disabled while
+    # the cart is empty"), not mere presentation like toBeVisible.
+    "toBeDisabled", "toBeEnabled", "toBeChecked",
 })
 
 # Assertions that are satisfied by almost any DOM, so they cannot fail
@@ -84,8 +88,14 @@ MUTATING_VERBS: frozenset[str] = frozenset({
 # Evidence that a test checked the resulting state, not just the starting one.
 _STATE_CHANGE_RE = re.compile(
     r"\.not\.|toHaveCount\(|toBeHidden\(|toHaveText\(|toContainText\(|"
-    r"toHaveValue\(|toHaveURL\(|getByRole\(\s*['\"](?:alert|status)['\"]|"
-    r"toEqual\(|toMatchObject\(|toHaveBeenCalled"
+    r"toHaveValue\(|toHaveURL\(|toHaveAttribute\(|getByRole\(\s*['\"](?:alert|status)['\"]|"
+    r"toBeDisabled\(|toBeEnabled\(|toBeChecked\(|"
+    r"toEqual\(|toMatchObject\(|toStrictEqual\(|toHaveBeenCalled|"
+    # A content-bearing locator asserted after the action is the mutation's
+    # observable result: "submit → getByText('Request received') is visible" is
+    # the canonical form-submission assertion. Flagging it as a tag mismatch
+    # treated correct success/error-message tests as junk.
+    r"getByText\(|getByRole\([^)]*name\s*:|\.toBe\("
 )
 
 # Opt-out markers, mirroring the existing `quality: allow-*` convention.
@@ -94,6 +104,8 @@ ALLOW_MARKERS: dict[str, str] = {
     "allow-deep-link": "deep_link_entry",
     "allow-render-only": "no_data_assertion",
     "allow-duplicate": "duplicate_coverage",
+    "allow-mock-only": "mock_only_assertion",
+    "allow-reimpl": "reimplements_sut",
 }
 
 # `test`/`it` must be a standalone identifier, never a method. A plain \b here
@@ -158,6 +170,18 @@ class TestBlock:
         still caught.
         """
         body = self.body_source()
+        # Replace each string/template literal with a token derived from its
+        # exact content, BEFORE collapsing whitespace. Keeps distinct values
+        # distinct (the whole point) and stops the whitespace collapse below from
+        # turning `''` and `'   '` into the same token — isNonEmpty('') and
+        # isNonEmpty('   ') are different tests, and merging them deletes real
+        # coverage of the whitespace case.
+        body = re.sub(
+            r"(['\"`])((?:\\.|(?!\1).)*)\1",
+            lambda m: "S" + hashlib.md5(m.group(2).encode("utf-8")).hexdigest()[:8],
+            body,
+            flags=re.DOTALL,
+        )
         body = re.sub(r"//[^\n]*", "", body)
         body = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)
         body = re.sub(r"\s+", "", body)
@@ -260,6 +284,19 @@ def extract_test_blocks(source: str, file: str = "") -> list[TestBlock]:
             continue
 
         raw = source[match.start():close_idx]
+
+        # A real test declaration takes a callback. `test.skip(cond, 'reason')`
+        # and `test.slow(cond, 'reason')` are conditional STATEMENTS inside a
+        # test, not declarations — they carry no function, and parsing them as
+        # tests invented a phantom test named after the skip reason, with no
+        # interactions, that then tripped no_user_interaction. (Same shape as
+        # the regex `.test()` case: the token is right, the call is not a test.)
+        # A genuinely skipped test — test.skip('name', () => {...}) — keeps its
+        # callback and is still analysed.
+        masked_raw = masked[match.start():close_idx]
+        if not re.search(r"=>|\bfunction\b", masked_raw):
+            continue
+
         start_line = source.count("\n", 0, match.start()) + 1
         end_line = source.count("\n", 0, close_idx) + 1
 
@@ -616,6 +653,13 @@ _CONTENT_LOCATOR_RE = re.compile(
 
 _WEAK_RE = re.compile(r"\.(toBeTruthy|toBeDefined|toBeAttached)\s*\(\s*\)")
 _TAUTOLOGICAL_COUNT_RE = re.compile(r"\.toBeGreaterThanOrEqual\(\s*0\s*\)")
+# A concrete-value assertion: the matcher pins an actual expected value, so the
+# test can fail. `toBe(false)` counts; `toBeDefined()` does not.
+_STRONG_ASSERTION_RE = re.compile(
+    r"\.(toBe|toEqual|toStrictEqual|toMatchObject|toContain|toContainEqual|"
+    r"toHaveLength|toHaveText|toContainText|toHaveValue|toHaveCount|toHaveURL|"
+    r"toHaveAttribute|toHaveBeenCalledWith|toHaveBeenCalledTimes|toThrow)\s*\(\s*\S"
+)
 
 
 def detect_weak_assertion(block: TestBlock) -> Finding | None:
@@ -623,6 +667,13 @@ def detect_weak_assertion(block: TestBlock) -> Finding | None:
     weak = sorted(set(_WEAK_RE.findall(block.source)))
     tautological = bool(_TAUTOLOGICAL_COUNT_RE.search(block.source))
     if not weak and not tautological:
+        return None
+
+    # A weak assertion alongside a concrete one is redundant noise, not a junk
+    # test: `expect(route).toBeDefined(); expect(route.path).toBe('/')` verifies
+    # real behavior. Flagging it buries the real findings, so only fire when the
+    # weak assertion is the test's whole check.
+    if _STRONG_ASSERTION_RE.search(block.source):
         return None
 
     detail = ", ".join(f"{w}()" for w in weak)
@@ -670,9 +721,112 @@ def detect_tautological_selector(block: TestBlock) -> Finding | None:
     )
 
 
+# Bare `.toHaveBeenCalled()` — no args, no times. `toHaveBeenCalledWith(payload)`
+# and `toHaveBeenCalledTimes(n)` pin a real expectation and live in
+# _STRONG_ASSERTION_RE, so this deliberately matches only the empty-argument form.
+_BARE_CALLED_RE = re.compile(r"\.toHaveBeenCalled\s*\(\s*\)")
+
+
+def detect_mock_only_assertion(block: TestBlock) -> Finding | None:
+    """
+    A unit test whose only verification is that a spy was called.
+
+    `expect(spy).toHaveBeenCalled()` confirms the code reached the collaborator,
+    never that it did the right thing with the result — it passes even when the
+    effect is wrong. Fires only on the bare call and only when no concrete-value
+    assertion accompanies it, so a test that also pins the payload
+    (`toHaveBeenCalledWith`) or asserts the returned value is left alone.
+    """
+    if "mock_only_assertion" in block.allow_markers:
+        return None
+    if not _BARE_CALLED_RE.search(block.source):
+        return None
+    if _STRONG_ASSERTION_RE.search(block.source):
+        return None
+    if block.assertions() & DATA_ASSERTIONS:
+        return None
+    return Finding(
+        rule_id="mock_only_assertion",
+        message=(
+            "the only assertion is toHaveBeenCalled() on a spy - it verifies the "
+            "collaborator was reached, never that the code produced the right result, "
+            "so it passes on a wrong effect"
+        ),
+        file=block.file,
+        line=block.start_line,
+        identifier=block.name,
+        suggestion=(
+            "Assert the resulting value or state, or pin the payload with "
+            "toHaveBeenCalledWith(...). Justify a genuine exception with "
+            "`// quality: allow-mock-only (reason)`"
+        ),
+    )
+
+
+_EQ_MATCHER_RE = re.compile(r"\.(?:toBe|toEqual|toStrictEqual)\s*\(")
+# An arithmetic operation with at least one identifier operand. The lookbehinds
+# stop the `e` of scientific notation (1e-5) and mid-token chars from reading as
+# an identifier, so pure-literal arithmetic stays silent.
+_ARITH_IDENT_RE = re.compile(
+    r"(?<![\w$.])[A-Za-z_$][\w$.]*\s*[-+*/%]\s*[\w$.(]"
+    r"|[\w$.)]\s*[-+*/%]\s*(?<![\w$.])[A-Za-z_$]"
+)
+
+
+def detect_reimplements_sut(block: TestBlock) -> Finding | None:
+    """
+    An equality assertion whose expected side recomputes the result.
+
+    `expect(sum(a, b)).toBe(a + b)` re-derives the answer with the same operator
+    the code uses, so a bug shared by the implementation and the test passes. A
+    real test uses a hand-verified literal (`toBe(7)`). Fires only when the
+    expected argument does arithmetic on an identifier; pure-literal arithmetic
+    (`toBe(2 + 3)`), string concatenation and property access stay silent. String
+    and comment content is masked first so a literal cannot supply a false token.
+    """
+    if "reimplements_sut" in block.allow_markers:
+        return None
+    masked = _strip_for_scanning(block.source)
+    for m in _EQ_MATCHER_RE.finditer(masked):
+        open_idx = m.end() - 1
+        close_idx = _match_paren(masked, open_idx)
+        if close_idx == -1:
+            continue
+        expected = masked[open_idx + 1:close_idx - 1]
+        if _ARITH_IDENT_RE.search(expected):
+            return Finding(
+                rule_id="reimplements_sut",
+                message=(
+                    "the expected value recomputes the result with an operator on a "
+                    "variable (e.g. toBe(a + b)) instead of a hand-verified literal - "
+                    "a bug shared by the code and the test would pass"
+                ),
+                file=block.file,
+                line=block.start_line,
+                identifier=block.name,
+                suggestion=(
+                    "Assert a concrete literal computed by hand (toBe(7)). Justify a "
+                    "genuine exception with `// quality: allow-reimpl (reason)`"
+                ),
+            )
+    return None
+
+
 def detect_duplicates(blocks: list[TestBlock]) -> list[Finding]:
     """
-    Group tests that are structurally identical or share a name across files.
+    Group tests whose bodies are structurally identical.
+
+    The signal is the body fingerprint (formatting and comments stripped,
+    literals kept), which catches genuine copy-paste. A shared test NAME is
+    deliberately NOT a signal on its own:
+
+        describe('isValidPassword', () => it('returns false for null', ...isValidPassword(null)))
+        describe('isNonEmpty',      () => it('returns false for null', ...isNonEmpty(null)))
+
+    are different tests of different functions that happen to share a title. An
+    earlier name-collision rule flagged these, and BaseInput/BaseSelect sharing a
+    behavior-contract test name across files — both false positives. If two tests
+    are truly the same, their bodies match and the fingerprint catches them.
 
     Reported on every member but the first, so the survivor is unambiguous.
     """
@@ -699,38 +853,6 @@ def detect_duplicates(blocks: list[TestBlock]) -> list[Finding]:
                 line=dup.start_line,
                 identifier=dup.name,
                 suggestion="Merge into the stronger of the two and delete this one",
-            ))
-
-    # Name collisions count only WITHIN a file. Across files the same name is
-    # normal and healthy: BaseInput and BaseSelect both legitimately have
-    # 'respects size="sm" with smaller padding/text' because they share a
-    # behavior contract, and flagging that pattern produced mostly noise. A test
-    # genuinely copied into another file is caught by the structural
-    # fingerprint above instead.
-    by_name: dict[tuple[str, str], list[TestBlock]] = {}
-    for block in blocks:
-        if not block.name or "duplicate_coverage" in block.allow_markers:
-            continue
-        by_name.setdefault((block.file, block.name.strip().lower()), []).append(block)
-
-    already = {(f.file, f.line) for f in findings}
-    for group in by_name.values():
-        if len(group) < 2:
-            continue
-        keeper = group[0]
-        for dup in group[1:]:
-            if (dup.file, dup.start_line) in already:
-                continue
-            findings.append(Finding(
-                rule_id="duplicate_coverage",
-                message=(
-                    f"duplicated test name in the same file (also at line "
-                    f"{keeper.start_line}) - two tests claiming the same behavior"
-                ),
-                file=dup.file,
-                line=dup.start_line,
-                identifier=dup.name,
-                suggestion="Rename to describe the distinct behavior, or merge the two tests",
             ))
 
     return findings
@@ -780,7 +902,12 @@ def analyze_unit_source(source: str, file: str, spec_path: Path | None = None) -
 
     for block in extract_test_blocks(source, file):
         block.expanded = effective_source(block, known)
-        for detector in (detect_weak_assertion, detect_tautological_selector):
+        for detector in (
+            detect_weak_assertion,
+            detect_tautological_selector,
+            detect_mock_only_assertion,
+            detect_reimplements_sut,
+        ):
             found = detector(block)
             if found:
                 findings.append(found)
