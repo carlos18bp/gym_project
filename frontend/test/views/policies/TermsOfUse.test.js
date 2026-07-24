@@ -15,6 +15,7 @@ describe("views/policies/TermsOfUse.vue", () => {
   });
 
   test("offers a back link to the sign-in route", () => {
+    // quality: allow-duplicate (distinct SUT vs PrivacyPolicy)
     const wrapper = mountView();
 
     const links = wrapper.findAllComponents(RouterLinkStub);

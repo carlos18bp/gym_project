@@ -118,6 +118,7 @@ describe("SendDocumentModal.vue", () => {
   });
 
   test("clicking overlay emits close", async () => {
+    // quality: allow-duplicate (distinct SUT vs EditDocumentModal)
     const wrapper = mountModal(pinia);
     await flushPromises();
 

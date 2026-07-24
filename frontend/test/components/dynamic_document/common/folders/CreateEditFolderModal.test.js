@@ -87,6 +87,7 @@ describe("CreateEditFolderModal.vue", () => {
   });
 
   test("submit button is disabled when name is empty", async () => {
+    // quality: allow-duplicate (distinct SUT vs UseDocumentByClient)
     const wrapper = mountModal(pinia);
     await flushPromises();
 

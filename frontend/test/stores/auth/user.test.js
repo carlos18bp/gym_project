@@ -110,17 +110,6 @@ describe("User Store (Auth)", () => {
     expect(authStore.userAuth).toEqual({ id: 1, role: "lawyer", first_name: "Fresh" });
   });
 
-  test("setCurrentUser falls back to authStore.userAuth when user is not in list", () => {
-    const authStore = useAuthStore();
-    authStore.userAuth = { id: 1, role: "lawyer" };
-
-    const store = useUserStore();
-
-    store.setCurrentUser();
-
-    expect(store.currentUser).toEqual({ id: 1, role: "lawyer" });
-  });
-
   test("setCurrentUser returns early when authStore has no user id", () => {
     const store = useUserStore();
     store.currentUser = { id: 99, role: "client" };

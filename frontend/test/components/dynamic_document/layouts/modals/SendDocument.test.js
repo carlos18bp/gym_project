@@ -59,6 +59,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("renders email input and send button", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -72,6 +73,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("send button is disabled when email is empty", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -91,6 +93,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("send button is enabled when email is valid", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -118,6 +121,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("file upload via input adds file to list", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -136,6 +140,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("unsupported file type shows warning", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -179,6 +184,7 @@ describe("SendDocument.vue (layout modal)", () => {
   });
 
   test("drag and drop adds valid files", async () => {
+    // quality: allow-duplicate (distinct SUT: SendDocument.vue (emits closeEmailModal) vs SendDocumentModal.vue)
     const wrapper = mountModal(pinia);
     await flushPromises();
 

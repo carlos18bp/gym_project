@@ -80,6 +80,7 @@ describe("UseDocumentByClient.vue", () => {
   });
 
   test("close button emits close event", async () => {
+    // quality: allow-duplicate (distinct SUT vs EditDocumentModal)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
