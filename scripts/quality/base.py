@@ -14,6 +14,7 @@ import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from pathlib import Path
 from typing import Any
 
 
@@ -69,6 +70,15 @@ class IssueCategory(Enum):
     LINTER_MISCONFIGURED = auto()
     TOOL_UNAVAILABLE = auto()
     PERFORMANCE_BUDGET = auto()
+    # Junk-test categories (2026-07-23). Everything above checks the form of a
+    # test; these ask whether it exercises the behavior it claims to cover.
+    NO_USER_INTERACTION = auto()
+    FLOW_TAG_MISMATCH = auto()
+    DEEP_LINK_ENTRY = auto()
+    NO_DATA_ASSERTION = auto()
+    WEAK_ASSERTION = auto()
+    DUPLICATE_COVERAGE = auto()
+    TAUTOLOGICAL_SELECTOR = auto()
 
 
 # Centralized semantic rule identifiers used for rollout gating and reporting.
@@ -93,8 +103,31 @@ SEMANTIC_RULE_IDS: frozenset[str] = frozenset(
         "fragile_test_data",
         "data_isolation",
         "vague_assertion",
+        # Junk-test rules: they judge meaning, not syntax, so they belong to the
+        # semantic set and honour --semantic-rules off/soft/strict.
+        "no_user_interaction",
+        "flow_tag_mismatch",
+        "deep_link_entry",
+        "no_data_assertion",
+        "weak_assertion",
+        "duplicate_coverage",
+        "tautological_selector",
     }
 )
+
+
+# Junk rules start as warnings so a fleet-wide calibration pass can measure the
+# false-positive rate per rule before any of them can block a merge. Promotion
+# to ERROR is a deliberate, separate change - not a side effect of rollout.
+JUNK_RULE_CATEGORIES: dict[str, str] = {
+    "no_user_interaction": "NO_USER_INTERACTION",
+    "flow_tag_mismatch": "FLOW_TAG_MISMATCH",
+    "deep_link_entry": "DEEP_LINK_ENTRY",
+    "no_data_assertion": "NO_DATA_ASSERTION",
+    "weak_assertion": "WEAK_ASSERTION",
+    "duplicate_coverage": "DUPLICATE_COVERAGE",
+    "tautological_selector": "TAUTOLOGICAL_SELECTOR",
+}
 
 
 class Colors:
@@ -153,8 +186,20 @@ class Config:
     """
     
     # File discovery
-    backend_app_name: str = "gym_app"
-    py_allowed_folders: frozenset[str] = frozenset({"models", "serializers", "views", "utils", "tasks", "services"})
+    backend_app_name: str = "content"
+    py_allowed_folders: frozenset[str] = frozenset(
+        {
+            "commands",
+            "management",
+            "models",
+            "permissions",
+            "serializers",
+            "services",
+            "tasks",
+            "utils",
+            "views",
+        }
+    )
     py_test_file_glob: str = "test_*.py"
     js_unit_suffixes: tuple[str, ...] = (".test.js", ".spec.js", ".test.ts", ".spec.ts")
     js_e2e_suffixes: tuple[str, ...] = (".spec.js", ".spec.ts")
@@ -203,6 +248,145 @@ class Config:
 
 
 DEFAULT_CONFIG = Config()
+
+
+# ---------------------------------------------------------------------------
+# Per-project configuration (.testquality.yml)
+# ---------------------------------------------------------------------------
+#
+# The quality core is canonical and lives in the ops toolkit; it is propagated
+# verbatim to every project. Everything that legitimately differs per project
+# (Django app name, test directories, module folders) is declared in a
+# `.testquality.yml` at the repo root instead of being forked into the code.
+#
+# Only a flat subset of YAML is supported on purpose: scalars, inline lists and
+# block lists. This keeps the core dependency-free (no PyYAML) so it runs from
+# any project venv, matching how the rest of the fleet parses YAML.
+
+CONFIG_FILENAME = ".testquality.yml"
+
+# Fields a project may override, mapped to how the raw value is coerced.
+_CONFIG_COERCIONS: dict[str, str] = {
+    "backend_app_name": "str",
+    "py_test_file_glob": "str",
+    "frontend_unit_dir": "str",
+    "frontend_e2e_dir": "str",
+    "py_allowed_folders": "frozenset",
+    "frontend_unit_allowed_folders": "frozenset",
+    "frontend_e2e_allowed_folders": "frozenset",
+    "js_unit_suffixes": "tuple",
+    "js_e2e_suffixes": "tuple",
+    "banned_tokens": "tuple",
+    "max_test_lines": "int",
+    "min_test_lines": "int",
+    "max_assertions_per_test": "int",
+    "max_patches_per_test": "int",
+    "min_lines_for_docstring": "int",
+    "max_timeout_ms": "int",
+}
+
+
+def _strip_scalar(raw: str) -> str:
+    """Strip inline comments and surrounding quotes from a scalar."""
+    value = raw.strip()
+    if value and value[0] in "\"'":
+        quote = value[0]
+        end = value.find(quote, 1)
+        if end != -1:
+            return value[1:end]
+    value = value.split("#", 1)[0].strip()
+    return value.strip("\"'")
+
+
+def _parse_inline_list(raw: str) -> list[str]:
+    """Parse `[a, "b", c]` into a list of strings."""
+    inner = raw.strip()[1:-1]
+    return [_strip_scalar(part) for part in inner.split(",") if _strip_scalar(part)]
+
+
+def parse_simple_yaml(text: str) -> dict[str, Any]:
+    """
+    Parse the flat YAML subset used by `.testquality.yml`.
+
+    Supports `key: scalar`, `key: [a, b]` and block lists of `  - item`.
+    Nested mappings are intentionally not supported.
+    """
+    data: dict[str, Any] = {}
+    current_key: str | None = None
+
+    for line in text.splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+
+        stripped = line.strip()
+
+        # Block-list item belonging to the previous key.
+        if stripped.startswith("- "):
+            if current_key is not None:
+                item = _strip_scalar(stripped[2:])
+                if item:
+                    data.setdefault(current_key, []).append(item)
+            continue
+
+        if ":" not in stripped:
+            continue
+
+        key, _, raw_value = stripped.partition(":")
+        key = key.strip()
+        raw_value = raw_value.strip()
+
+        if not raw_value:
+            # Key introducing a block list; items arrive on following lines.
+            data[key] = []
+            current_key = key
+            continue
+
+        current_key = None
+        if raw_value.startswith("[") and raw_value.endswith("]"):
+            data[key] = _parse_inline_list(raw_value)
+        else:
+            data[key] = _strip_scalar(raw_value)
+
+    return data
+
+
+def load_project_config(repo_root: Path | str, base: Config | None = None) -> Config:
+    """
+    Build a Config for a project, applying `.testquality.yml` overrides.
+
+    Falls back to the canonical defaults when the file is absent, so a repo that
+    has not been onboarded yet still gets analyzed instead of silently skipped.
+    Unknown keys are ignored rather than fatal: the core is propagated ahead of
+    the per-project files, so a newer key must not break an older checkout.
+    """
+    from dataclasses import replace
+
+    config = base or DEFAULT_CONFIG
+    config_path = Path(repo_root) / CONFIG_FILENAME
+    if not config_path.is_file():
+        return config
+
+    raw = parse_simple_yaml(config_path.read_text(encoding="utf-8"))
+    overrides: dict[str, Any] = {}
+
+    for key, kind in _CONFIG_COERCIONS.items():
+        if key not in raw:
+            continue
+        value = raw[key]
+        try:
+            if kind == "int":
+                overrides[key] = int(str(value).strip())
+            elif kind == "str":
+                overrides[key] = str(value)
+            elif kind == "frozenset":
+                overrides[key] = frozenset(value if isinstance(value, list) else [value])
+            elif kind == "tuple":
+                overrides[key] = tuple(value if isinstance(value, list) else [value])
+        except (TypeError, ValueError):
+            # A malformed single field must not sink the whole run.
+            continue
+
+    return replace(config, **overrides) if overrides else config
 
 
 @dataclass

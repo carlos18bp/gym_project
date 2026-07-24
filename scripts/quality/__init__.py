@@ -17,6 +17,9 @@ from .base import (
     FileResult,
     SuiteResult,
     DEFAULT_CONFIG,
+    CONFIG_FILENAME,
+    load_project_config,
+    parse_simple_yaml,
 )
 from .patterns import Patterns
 
@@ -32,5 +35,8 @@ __all__ = [
     "FileResult",
     "SuiteResult",
     "DEFAULT_CONFIG",
+    "CONFIG_FILENAME",
+    "load_project_config",
+    "parse_simple_yaml",
     "Patterns",
 ]

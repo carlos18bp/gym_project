@@ -4,6 +4,17 @@ description: "Audita vulnerabilidades y dependencias en backend (Python) y front
 argument-hint: "[backend|frontend]  # vacío = ambas superficies"
 ---
 
+## Cuándo usar cuál (familia de auditoría)
+
+| Skill | Úsala cuando | Cadencia típica |
+|---|---|---|
+| `/full-audit` | Veredicto integral 🟢/🟡/🔴 del VPS o del fleet (`--all`): configs, drift, envs, timers, health, email — 12 fases automatizadas, ~4 min | Post-cambio grande, post-incidente, trimestral |
+| `/server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
+| `/vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm), con updates aplicados | Por proyecto, mensual o ante CVE |
+
+No se orquestan entre sí (cada una es independiente); full-audit NO corre a las otras dos.
+
+
 # vuln-audit — Vulnerability & Dependency Audit (multi-stack)
 
 ## Goal

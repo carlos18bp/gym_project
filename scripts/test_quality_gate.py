@@ -21,6 +21,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import re
 import sys
@@ -44,7 +45,9 @@ from quality import (
     SuiteResult,
     DEFAULT_CONFIG,
     Patterns,
+    load_project_config,
 )
+from quality.junk_detectors import set_junk_policy
 from quality.backend_analyzer import PythonAnalyzer
 from quality.external_lint import ExternalLintRunResult, ExternalLintRunner
 
@@ -59,6 +62,13 @@ ALLOW_MARKER_RULE_IDS: dict[str, str] = {
     "allow-fragile-selector": "fragile_locator",
     "allow-serial": "serial_dependency",
     "allow-multi-render": "multi_render",
+    # Junk-test rules. Each opt-out must carry a reason in parentheses; the
+    # report lists active exceptions so they stay visible instead of quietly
+    # becoming the norm.
+    "allow-no-interaction": "no_user_interaction",
+    "allow-deep-link": "deep_link_entry",
+    "allow-render-only": "no_data_assertion",
+    "allow-duplicate": "duplicate_coverage",
 }
 
 ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {
@@ -70,14 +80,52 @@ ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {
 RELAXED_CROSS_ENGINE_RULE_IDS: frozenset[str] = frozenset({"sleep_call", "wait_for_timeout"})
 
 
+JUNK_RULE_IDS: frozenset[str] = frozenset({
+    "no_user_interaction", "flow_tag_mismatch", "deep_link_entry",
+    "no_data_assertion", "weak_assertion", "duplicate_coverage",
+    "tautological_selector",
+})
+
+
+def _iter_issues(report: dict) -> "list[dict]":
+    """Every issue dict in a built report, wherever it is nested."""
+    found: list[dict] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if "severity" in node and "file" in node:
+                found.append(node)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(report)
+    return found
+
+
 def build_config(args: argparse.Namespace) -> Config:
-    """Build configuration from CLI arguments."""
-    return Config(
-        backend_app_name=args.backend_app,
-        max_test_lines=args.max_test_lines,
-        max_assertions_per_test=args.max_assertions,
-        max_patches_per_test=args.max_patches,
-    )
+    """
+    Build configuration for the run.
+
+    Precedence: explicit CLI flag > `.testquality.yml` at the repo root >
+    canonical defaults shipped with the quality core. CLI flags default to None
+    so that "not passed" is distinguishable from "passed the default value" —
+    otherwise every run would silently clobber the project's declared config.
+    """
+    config = load_project_config(args.repo_root)
+
+    overrides = {
+        "backend_app_name": args.backend_app,
+        "frontend_unit_dir": args.frontend_unit_dir,
+        "max_test_lines": args.max_test_lines,
+        "max_assertions_per_test": args.max_assertions,
+        "max_patches_per_test": args.max_patches,
+    }
+    overrides = {key: value for key, value in overrides.items() if value is not None}
+
+    return dataclasses.replace(config, **overrides) if overrides else config
 
 
 class QualityReport:
@@ -143,11 +191,19 @@ class QualityReport:
         normalized = file_path.replace("\\", "/")
         if normalized.startswith("backend/"):
             return "backend"
-        if normalized.startswith("frontend/test/"):
+        if any(normalized.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
             return "frontend_unit"
         if normalized.startswith("frontend/e2e/"):
             return "frontend_e2e"
         return None
+
+    def _frontend_unit_prefixes(self) -> tuple[str, ...]:
+        """Return accepted frontend-unit path prefixes (configured + legacy)."""
+        configured = f"frontend/{self.config.frontend_unit_dir.strip('/').replace('\\\\', '/')}/"
+        prefixes = [configured]
+        if configured != "frontend/test/":
+            prefixes.append("frontend/test/")
+        return tuple(dict.fromkeys(prefixes))
 
     def _collect_exception_markers(
         self,
@@ -545,7 +601,7 @@ class QualityReport:
         if normalized_file.startswith("frontend/e2e/"):
             self._find_or_create_file_result(e2e, normalized_file, "e2e").issues.append(issue)
             return
-        if normalized_file.startswith("frontend/test/"):
+        if any(normalized_file.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
             self._find_or_create_file_result(unit, normalized_file, "unit").issues.append(issue)
             return
 
@@ -754,6 +810,9 @@ class QualityReport:
         
         # Analyze frontend unit tests
         if self.suite is None or self.suite == "frontend-unit":
+            if self.verbose:
+                print(f"\n{Colors.BLUE}[Frontend Unit Tests]{Colors.RESET}")
+            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_unit_analyzer import FrontendUnitAnalyzer
@@ -773,6 +832,9 @@ class QualityReport:
         
         # Analyze frontend E2E tests
         if self.suite is None or self.suite == "frontend-e2e":
+            if self.verbose:
+                print(f"\n{Colors.BLUE}[Frontend E2E Tests]{Colors.RESET}")
+            
             suite_started = time.perf_counter()
             try:
                 from quality.frontend_e2e_analyzer import FrontendE2EAnalyzer
@@ -820,27 +882,7 @@ class QualityReport:
         self._dedupe_issues(backend, unit, e2e)
         self._apply_suite_findings(backend, unit, e2e, semantic_suppressed, active_exceptions)
         active_exceptions_summary = self._active_exceptions_summary(active_exceptions, invalid_markers)
-
-        # Print accurate per-suite summaries after all post-processing
-        if self.verbose:
-            for label, suite_result in (
-                ("Frontend Unit Tests", unit),
-                ("Frontend E2E Tests", e2e),
-            ):
-                if not suite_result.files:
-                    continue
-                kind = "unit" if "Unit" in label else "E2E"
-                print(f"\n{Colors.BLUE}[{label}]{Colors.RESET}")
-                print(f"  Found {suite_result.file_count} {kind} test files")
-                for fr in suite_result.files:
-                    if fr.issues:
-                        print(f"    {Path(fr.file).name}: {fr.issue_count} issues")
-                print(
-                    f"  Total: {suite_result.test_count} tests, "
-                    f"{suite_result.error_count} errors, "
-                    f"{suite_result.warning_count} warnings"
-                )
-
+        
         # Build summary
         all_issues = backend.all_issues + unit.all_issues + e2e.all_issues
         
@@ -989,10 +1031,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--report-path", type=Path,
                         default=Path("test-results/test-quality-report.json"),
                         help="JSON report output path")
-    parser.add_argument("--backend-app", default="gym_app",
-                        help="Django app name (default: gym_app)")
+    parser.add_argument("--backend-app", default=None,
+                        help="Django app name (overrides .testquality.yml)")
     parser.add_argument("--suite", choices=["backend", "frontend-unit", "frontend-e2e"],
                         help="Analyze specific suite only")
+    parser.add_argument("--frontend-unit-dir", default=None,
+                        help="Frontend unit test dir relative to frontend/ (overrides .testquality.yml)")
     parser.add_argument("--verbose", "-v", action="store_true",
                         help="Verbose output")
     parser.add_argument("--strict", action="store_true",
@@ -1034,7 +1078,7 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Include only this exact file path (repeatable). "
-            "Paths should be repo-relative (e.g., backend/gym_app/tests/models/test_x.py)."
+            "Paths should be repo-relative (e.g., backend/core_app/tests/models/test_x.py)."
         ),
     )
     parser.add_argument(
@@ -1044,14 +1088,28 @@ def parse_args() -> argparse.Namespace:
         default=[],
         help=(
             "Include files matching glob pattern (repeatable). "
-            "Example: 'backend/gym_app/tests/models/test_*.py'."
+            "Example: 'backend/core_app/tests/models/test_*.py'."
         ),
     )
     
     # Threshold overrides
-    parser.add_argument("--max-test-lines", type=int, default=50)
-    parser.add_argument("--max-assertions", type=int, default=7)
-    parser.add_argument("--max-patches", type=int, default=5)
+    parser.add_argument("--max-test-lines", type=int, default=None)
+    parser.add_argument("--max-assertions", type=int, default=None)
+    parser.add_argument("--max-patches", type=int, default=None)
+    parser.add_argument(
+        "--junk-severity", choices=["warning", "error"], default="warning",
+        help="Severity for junk-test findings not present in the baseline "
+             "(default: warning). Use 'error' to block new junk in CI.",
+    )
+    parser.add_argument(
+        "--junk-baseline", type=Path, default=Path(".junk-baseline.json"),
+        help="Findings recorded as pre-existing debt; these stay warnings even "
+             "with --junk-severity=error (default: .junk-baseline.json)",
+    )
+    parser.add_argument(
+        "--write-junk-baseline", action="store_true",
+        help="Record the current junk findings as the baseline and exit",
+    )
     
     return parser.parse_args()
 
@@ -1069,7 +1127,22 @@ def main() -> int:
     
     # Build config
     config = build_config(args)
-    
+
+    # Junk severity policy. Escalation applies only to findings absent from the
+    # baseline, so adopting --junk-severity=error blocks new junk without
+    # failing on debt that predates the rules.
+    baseline_path = args.junk_baseline
+    if not baseline_path.is_absolute():
+        baseline_path = repo_root / baseline_path
+    baseline: set[str] | None = None
+    if baseline_path.is_file():
+        try:
+            baseline = set(json.loads(baseline_path.read_text(encoding="utf-8")).get("findings", []))
+        except (OSError, json.JSONDecodeError):
+            print(f"Warning: could not read {baseline_path}; treating every finding as new",
+                  file=sys.stderr)
+    set_junk_policy(baseline, escalate=(args.junk_severity == "error") and not args.write_junk_baseline)
+
     # Build report
     try:
         builder = QualityReport(
@@ -1091,6 +1164,30 @@ def main() -> int:
         traceback.print_exc()
         return 2
     
+    # Record the current junk debt as the baseline and stop. Everything found
+    # from here on is new and, under --junk-severity=error, blocks the merge.
+    if args.write_junk_baseline:
+        keys = sorted({
+            f"{issue['file']}::{issue['rule_id']}::{issue.get('identifier') or ''}"
+            for issue in _iter_issues(report)
+            if issue.get("rule_id") in JUNK_RULE_IDS
+        })
+        baseline_path.parent.mkdir(parents=True, exist_ok=True)
+        baseline_path.write_text(
+            json.dumps({
+                "_comment": (
+                    "Junk-test findings that predate the rules. These stay warnings "
+                    "under --junk-severity=error so existing debt does not block "
+                    "merges; anything not listed here is a new finding and fails. "
+                    "This file should only ever shrink."
+                ),
+                "findings": keys,
+            }, indent=2),
+            encoding="utf-8",
+        )
+        print(f"Baseline written: {baseline_path} ({len(keys)} findings)")
+        return 0
+
     # Write JSON
     report_path = (repo_root / args.report_path).resolve()
     report_path.parent.mkdir(parents=True, exist_ok=True)
