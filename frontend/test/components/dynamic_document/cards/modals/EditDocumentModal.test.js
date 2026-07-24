@@ -67,7 +67,7 @@ describe("EditDocumentModal.vue", () => {
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
   });
 
   test("continue button is enabled when title has content", async () => {
@@ -88,7 +88,7 @@ describe("EditDocumentModal.vue", () => {
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("clicking overlay emits close event", async () => {
@@ -99,7 +99,7 @@ describe("EditDocumentModal.vue", () => {
     await wrapper.find(".fixed.inset-0").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("edit mode shows 'Actualizar nombre' button", async () => {
@@ -109,7 +109,7 @@ describe("EditDocumentModal.vue", () => {
     const updateBtn = wrapper.findAll("button").find(
       (b) => b.text().includes("Actualizar nombre")
     );
-    expect(updateBtn).toBeTruthy();
+    expect(updateBtn.text()).toBe("Actualizar nombre");
   });
 
   test("'Actualizar nombre' is disabled when title unchanged", async () => {
@@ -119,7 +119,7 @@ describe("EditDocumentModal.vue", () => {
     const updateBtn = wrapper.findAll("button").find(
       (b) => b.text().includes("Actualizar nombre")
     );
-    expect(updateBtn.attributes("disabled")).toBeDefined();
+    expect(updateBtn.attributes("disabled")).toBe("");
   });
 
   test("'Actualizar nombre' becomes enabled when title is changed", async () => {
@@ -156,7 +156,7 @@ describe("EditDocumentModal.vue", () => {
       "Nombre del documento actualizado exitosamente.",
       "success"
     );
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("updateDocumentName error shows error notification", async () => {

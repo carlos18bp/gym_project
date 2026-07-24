@@ -697,7 +697,7 @@ describe("SignaturesListTable.vue — selección, export y rechazo (coverage bat
     await wrapper.vm.$.setupState.handleRefresh();
 
     expect(mockDocumentStore.fetchDocumentsForTab).toHaveBeenCalledTimes(1);
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
   });
 
   test("visiblePages windows long paginations with ellipsis", async () => {

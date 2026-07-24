@@ -52,7 +52,7 @@ describe("UploadPaymentRecordModal.vue", () => {
     expect(wrapper.find('[data-testid="payment-file-error"]').text()).toContain(
       "Formato no permitido"
     );
-    expect(wrapper.find('[data-testid="payment-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="payment-submit"]').attributes("disabled")).toBe("");
   });
 
   test("rejects files above 20MB", async () => {
@@ -115,6 +115,6 @@ describe("UploadPaymentRecordModal.vue", () => {
     await wrapper.setProps({ isVisible: false });
     await wrapper.setProps({ isVisible: true });
 
-    expect(wrapper.find('[data-testid="payment-submit"]').attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="payment-submit"]').attributes("disabled")).toBe("");
   });
 });

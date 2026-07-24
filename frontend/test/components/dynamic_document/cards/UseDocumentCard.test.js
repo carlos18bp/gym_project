@@ -138,7 +138,7 @@ describe("UseDocumentCard.vue", () => {
 
     await wrapper.find("[data-test='card-click']").trigger("click");
 
-    expect(wrapper.emitted("click")).toBeTruthy();
+    expect(wrapper.emitted("click")).toHaveLength(1);
     expect(wrapper.find("[data-test='use-modal']").exists()).toBe(false);
   });
 
@@ -285,7 +285,7 @@ describe("UseDocumentCard.vue", () => {
     await wrapper.find("[data-test='card-click']").trigger("click");
     await wrapper.find("[data-test='close-modal']").trigger("click");
 
-    expect(wrapper.emitted("document-created")).toBeTruthy();
+    expect(wrapper.emitted("document-created")).toHaveLength(1);
     expect(wrapper.emitted("document-created")[0][0]).toEqual({ updatedDocId: 123 });
 
     jest.advanceTimersByTime(100);

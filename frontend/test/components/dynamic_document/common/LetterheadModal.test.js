@@ -116,7 +116,9 @@ describe("LetterheadModal.vue", () => {
     await flushPromises();
 
     expect(mockStore.uploadLetterheadImage).toHaveBeenCalledWith(1, file);
-    expect(wrapper.emitted().uploaded).toBeTruthy();
+    const uploadedEvents = wrapper.emitted("uploaded");
+    expect(uploadedEvents).toHaveLength(1);
+    expect(uploadedEvents[0][0]).toEqual({});
     expect(wrapper.vm.$.setupState.selectedFile).toBe(null);
   });
 
@@ -131,7 +133,7 @@ describe("LetterheadModal.vue", () => {
     await flushPromises();
 
     expect(mockStore.deleteLetterheadImage).toHaveBeenCalledWith(1);
-    expect(wrapper.emitted().deleted).toBeTruthy();
+    expect(wrapper.emitted("deleted")).toHaveLength(1);
     expect(wrapper.vm.$.setupState.currentImageUrl).toBe(null);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:current");
   });

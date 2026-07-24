@@ -134,8 +134,8 @@ describe("DocumentRelationshipsModal.vue", () => {
       documentId: 1,
       count: 2,
     });
-    expect(wrapper.emitted("refresh")).toBeTruthy();
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("warns when document is not completed", async () => {

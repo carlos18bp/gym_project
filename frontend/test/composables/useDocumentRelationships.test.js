@@ -188,9 +188,12 @@ describe("useDocumentRelationships", () => {
     const { loadAvailableDocuments, availableDocuments, isLoadingAvailable } =
       useDocumentRelationships(10);
 
-    await expect(loadAvailableDocuments()).rejects.toBeTruthy();
+    await expect(loadAvailableDocuments()).rejects.toThrow("fail");
 
-    expect(console.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading available documents:",
+      expect.any(Error)
+    );
     expect(availableDocuments.value).toEqual([]);
     expect(isLoadingAvailable.value).toBe(false);
   });
@@ -216,7 +219,7 @@ describe("useDocumentRelationships", () => {
     const { loadRelatedDocuments, relatedDocuments, isLoadingRelated } =
       useDocumentRelationships(22);
 
-    await expect(loadRelatedDocuments()).rejects.toBeTruthy();
+    await expect(loadRelatedDocuments()).rejects.toThrow("fail");
 
     expect(relatedDocuments.value).toEqual([]);
     expect(isLoadingRelated.value).toBe(false);
@@ -245,9 +248,12 @@ describe("useDocumentRelationships", () => {
     const { loadRelationships, relationships, isLoadingRelationships } =
       useDocumentRelationships(33);
 
-    await expect(loadRelationships()).rejects.toBeTruthy();
+    await expect(loadRelationships()).rejects.toThrow("fail");
 
-    expect(console.error).toHaveBeenCalled();
+    expect(console.error).toHaveBeenCalledWith(
+      "Error loading relationships:",
+      expect.any(Error)
+    );
     expect(relationships.value).toEqual([]);
     expect(isLoadingRelationships.value).toBe(false);
   });

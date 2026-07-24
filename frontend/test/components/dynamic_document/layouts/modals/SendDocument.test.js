@@ -78,7 +78,7 @@ describe("SendDocument.vue (layout modal)", () => {
     await flushPromises();
 
     const sendBtn = wrapper.find('button[type="submit"]');
-    expect(sendBtn.attributes("disabled")).toBeDefined();
+    expect(sendBtn.attributes("disabled")).toBe("");
   });
 
   test("send button is disabled when email is invalid", async () => {
@@ -89,7 +89,7 @@ describe("SendDocument.vue (layout modal)", () => {
     await flushPromises();
 
     const sendBtn = wrapper.find('button[type="submit"]');
-    expect(sendBtn.attributes("disabled")).toBeDefined();
+    expect(sendBtn.attributes("disabled")).toBe("");
   });
 
   test("send button is enabled when email is valid", async () => {
@@ -117,7 +117,7 @@ describe("SendDocument.vue (layout modal)", () => {
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("closeEmailModal")).toBeTruthy();
+    expect(wrapper.emitted("closeEmailModal")).toHaveLength(1);
   });
 
   test("file upload via input adds file to list", async () => {
@@ -180,7 +180,7 @@ describe("SendDocument.vue (layout modal)", () => {
       { documentId: 1 }
     );
 
-    expect(wrapper.emitted("closeEmailModal")).toBeTruthy();
+    expect(wrapper.emitted("closeEmailModal")).toHaveLength(1);
   });
 
   test("drag and drop adds valid files", async () => {

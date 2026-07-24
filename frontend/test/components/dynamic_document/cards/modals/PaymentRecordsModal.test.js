@@ -139,7 +139,7 @@ describe("PaymentRecordsModal.vue", () => {
 
     await wrapper.find('[data-testid="reject-payment-1"]').trigger("click");
     const confirmButton = wrapper.find('[data-testid="confirm-reject-payment"]');
-    expect(confirmButton.attributes("disabled")).toBeDefined();
+    expect(confirmButton.attributes("disabled")).toBe("");
 
     await wrapper.find('[data-testid="reject-reason-input"]').setValue("Ilegible");
     expect(confirmButton.attributes("disabled")).toBeUndefined();
@@ -149,7 +149,7 @@ describe("PaymentRecordsModal.vue", () => {
     await flushPromises();
 
     expect(mockReject).toHaveBeenCalledWith(7, 31, "Ilegible");
-    expect(wrapper.emitted("updated")).toBeTruthy();
+    expect(wrapper.emitted("updated")).toHaveLength(1);
   });
 
   test("shows the previous rejection hint on re-uploaded records", async () => {
@@ -214,7 +214,7 @@ describe("PaymentRecordsModal.vue", () => {
     await flushPromises();
 
     expect(mockAccept).toHaveBeenCalledWith(7, 31);
-    expect(wrapper.emitted("updated")).toBeTruthy();
+    expect(wrapper.emitted("updated")).toHaveLength(1);
   });
 
   test("download delegates to the store with the original filename", async () => {

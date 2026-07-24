@@ -164,7 +164,7 @@ describe("DocumentCard.vue", () => {
     await wrapper.find("[data-document-id='1']").trigger("click");
 
     const emittedClick = wrapper.emitted("click");
-    expect(emittedClick).toBeTruthy();
+    expect(emittedClick).toHaveLength(1);
     expect(emittedClick[0][0]).toEqual(doc);
     expect(emittedClick[0][1]).toEqual(expect.any(Object));
   });
@@ -186,7 +186,7 @@ describe("DocumentCard.vue", () => {
 
     expect(mockHandlePreviewDocument).toHaveBeenCalledWith(doc);
     expect(mockDeleteDocument).toHaveBeenCalledWith(doc);
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
   });
 
   test("does not emit click when clicking inside menu-container", async () => {
@@ -437,9 +437,9 @@ describe("DocumentCard.vue", () => {
     base.vm.$emit("navigation", { to: "/x" });
     base.vm.$emit("remove-from-folder", doc);
 
-    expect(wrapper.emitted("click")).toBeTruthy();
+    expect(wrapper.emitted("click")).toHaveLength(1);
     expect(wrapper.emitted("click")[0]).toEqual([doc, evt]);
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
     expect(wrapper.emitted("modal-open")[0]).toEqual([{ name: "edit" }]);
     expect(wrapper.emitted("navigation")[0]).toEqual([{ to: "/x" }]);
     expect(wrapper.emitted("remove-from-folder")[0]).toEqual([doc]);
