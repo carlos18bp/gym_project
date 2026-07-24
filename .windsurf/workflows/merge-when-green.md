@@ -1,6 +1,6 @@
 ---
+description: Integra la rama actual cuando el CI está en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (con fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Defaults seguros; flags para override.
 auto_execution_mode: 2
-description: "Integra la rama actual cuando el CI esta en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Opera sobre el repo del cwd."
 ---
 
 > **⚠️ How to invoke**:
@@ -32,6 +32,24 @@ description: "Integra la rama actual cuando el CI esta en verde. En repos de pro
 > - Confirma el run de CI en master post-push si hay `gh`. (`--no-ci-watch` lo salta.)
 > - Los flags de proyecto (`--merge-method`, `--no-create-pr`, `--autonomous`,
 >   `--fix-nontest`, `--max-iterations`) son **no-ops** en el toolkit.
+>
+> **Guards de coordenada de trabajo (Path A y C, siempre ON):** antes de tocar
+> nada se resuelve la coordenada del repo con `resolve-work-coordinate.sh`
+> (misma fuente que usa [[all-projects]]):
+> - **Rama release** (`pr_state=single`, el head del PR abierto) → se hace todo el
+>   flujo (commit + push + espera del CI + fix loop) pero **NO se mergea**: una
+>   release no se mergea hasta el lanzamiento. Override: `--allow-release-merge`.
+> - **Host equivocado** (`host_status=wrong-host`) → **aborta sin tocar nada**. El
+>   trabajo de ese proyecto vive en el clon de otro VPS; commitear en éste deja el
+>   fleet inconsistente.
+>
+> **Modo multi-repo (`--all-repos`, sólo desde `vps-ops-toolkit`) → Path C:**
+> recorre `LOCAL_PROJECTS` de este host + el toolkit en **dos fases** — primero
+> integra todos (commit + push, sin esperas), después espera los CI y mergea. Los
+> runs de GitHub corren en paralelo mientras sigue el barrido, así que el tiempo
+> total es ≈ el del CI más lento, no la suma. Invocarlo desde un repo de proyecto
+> es **error duro**. No existe eje `--all-vps`: no se mergea a ciegas en clones de
+> otros VPS.
 
 ## Phase 0 — Preflight + ruteo
 
@@ -41,6 +59,8 @@ ARGS_RAW="${ARGUMENTS:-}"
 MERGE_METHOD="squash"; CREATE_PR=1; AUTONOMOUS=0; FIX_NONTEST=0; MAX_ITER=5
 # Flags del toolkit (Path B: trunk flow):
 VERIFY=1; PROPAGATE=1; CI_WATCH=1
+# Multi-repo (Path C) + override del guard de release:
+ALL_REPOS=0; ALLOW_RELEASE_MERGE=0
 for tok in $ARGS_RAW; do
     case "$tok" in
         --merge-method=squash|--merge-method=merge|--merge-method=rebase) MERGE_METHOD="${tok#--merge-method=}" ;;
@@ -51,9 +71,17 @@ for tok in $ARGS_RAW; do
         --no-verify)        VERIFY=0 ;;
         --no-propagate)     PROPAGATE=0 ;;
         --no-ci-watch)      CI_WATCH=0 ;;
+        --all-repos)            ALL_REPOS=1 ;;
+        --allow-release-merge)  ALLOW_RELEASE_MERGE=1 ;;
+        --all|--all-vps)
+            echo "❌ ERROR: '$tok' no existe en merge-when-green."
+            echo "   ¿Todos los repos de ESTE host? → --all-repos (sólo desde vps-ops-toolkit)"
+            echo "   No hay eje fleet: no se mergea a ciegas en clones de otros VPS."
+            exit 2 ;;
         *) echo "❌ ERROR: argumento desconocido '$tok'."; exit 2 ;;
     esac
 done
+export ALL_REPOS ALLOW_RELEASE_MERGE
 
 # Resolver el repo del cwd (NO asumir el toolkit; ignorar el hook SessionStart).
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
@@ -63,8 +91,19 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 cd "$REPO_ROOT"
 REPO_NAME="$(basename "$REPO_ROOT")"
 
-# RUTEO: el toolkit commitea directo a master (sin PR) → Path B. Cualquier otro → Path A.
-if [ "$REPO_NAME" = "vps-ops-toolkit" ]; then
+# --all-repos es una acción de operador del fleet: el toolkit es su punto de
+# entrada. Desde un repo de proyecto no se permite — barrer los repos vecinos
+# desde adentro de uno de ellos es fácil de disparar sin querer.
+if (( ALL_REPOS == 1 )) && [ "$REPO_NAME" != "vps-ops-toolkit" ]; then
+    echo "❌ ERROR: --all-repos sólo se invoca desde vps-ops-toolkit."
+    echo "   Estás en '$REPO_NAME'. Para integrar SÓLO este repo: /merge-when-green (sin flags)."
+    exit 2
+fi
+
+# RUTEO: --all-repos → Path C. Toolkit sin flag → Path B. Cualquier otro → Path A.
+if (( ALL_REPOS == 1 )); then
+    echo "🎯 --all-repos desde el toolkit → Path C (multi-repo, dos fases)."
+elif [ "$REPO_NAME" = "vps-ops-toolkit" ]; then
     echo "🎯 vps-ops-toolkit → Path B (trunk flow). verify=$VERIFY propagate=$PROPAGATE ci-watch=$CI_WATCH"
     echo "   (flags de proyecto ignorados: este repo no usa PR/merge)"
 else
@@ -77,9 +116,10 @@ else
 fi
 ```
 
-**Ruteo:** si el repo es `vps-ops-toolkit`, ejecutá **sólo el Path B** (Phases T1–T4)
-y saltá las Phases 1–6. Para cualquier otro repo, ejecutá **Path A** (Phases 1–6) y
-saltá el Path B.
+**Ruteo:** con `--all-repos` ejecutá **sólo el Path C** (Phases C1–C2). Si no, y el
+repo es `vps-ops-toolkit`, ejecutá **sólo el Path B** (Phases T1–T4) y saltá las
+Phases 0.5–6. Para cualquier otro repo, ejecutá **Path A** (Phases 0.5–6) y saltá
+los Paths B y C.
 
 ---
 
@@ -91,6 +131,64 @@ saltá el Path B.
 tenés cambios para commitear, creá una rama nueva (`<prefijo>/<DDMMYYYY>-<desc>`,
 fecha con `date +%d%m%Y`) — ver el protocolo en el `CLAUDE.md` del proyecto. **No
 se mergea `main`/`master` sobre sí mismo.**
+
+## Phase 0.5 — Coordenada de trabajo (guards)
+
+Antes de tocar el working tree, resolvé dónde y sobre qué rama corresponde
+trabajar. La fuente es `resolve-work-coordinate.sh` — la misma que usa
+[[all-projects]] — que valida la rama contra los **PRs abiertos**, no contra el
+`projects.yml` estático.
+
+```bash
+COORD="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh" \
+         --check "$REPO_NAME" 2>/dev/null)"
+PR_STATE="$(sed -n 's/^pr_state=//p'   <<<"$COORD")"
+HOST_ST="$(sed -n 's/^host_status=//p' <<<"$COORD")"
+VPS_WORK="$(sed -n 's/^vps_work=//p'   <<<"$COORD")"
+OPEN_PR="$(sed -n 's/^open_pr=//p'     <<<"$COORD")"
+CURRENT="$(git rev-parse --abbrev-ref HEAD)"
+MERGE_ALLOWED=1; RELEASE_HOLD=0
+
+# Guard 1 — host equivocado. El trabajo de este proyecto vive en el clon de otro
+# VPS; commitear acá deja el fleet inconsistente (los scripts que filtran por
+# server: empiezan a saltarlo, y el commit aterriza en la rama equivocada).
+if [ "$HOST_ST" = "wrong-host" ]; then
+    echo "⏭️  $REPO_NAME trabaja en $VPS_WORK, no en este host — abortando sin tocar nada."
+    echo "    Continuá allá:  tailscale ssh ryzepeck@$VPS_WORK"
+    exit 0
+fi
+
+# Guard 2 — rama release. La condición NO es "hay un solo PR abierto" sino "la
+# rama que estás pisando es el head de un PR release". Con pr_state=ambiguous
+# (dos PRs release abiertos, caso real de vastago: release-may-2026-v2 +
+# release-may-2026) seguís parado sobre una release igual, y un guard que sólo
+# mirara `single` la mergearía.
+IS_RELEASE_BRANCH=0
+if [ -n "$OPEN_PR" ] && [ "$OPEN_PR" != "none" ]; then
+    while IFS= read -r head; do
+        [ "$head" = "$CURRENT" ] && IS_RELEASE_BRANCH=1
+    done < <(tr ',' '\n' <<<"$OPEN_PR")
+fi
+
+if (( IS_RELEASE_BRANCH == 1 )) && (( ALLOW_RELEASE_MERGE == 0 )); then
+    MERGE_ALLOWED=0; RELEASE_HOLD=1
+    echo "⏸️  '$CURRENT' es rama release (head de PR abierto; pr_state=$PR_STATE)."
+    echo "    Se integrará y se esperará el CI, pero NO se mergea."
+    echo "    Override: --allow-release-merge"
+fi
+
+# Sin coordenada resoluble (repo fuera de projects.yml, gh caído) no se puede
+# afirmar que NO es una release. Se continúa, pero decirlo — un guard que falla
+# en silencio es peor que no tenerlo.
+case "$PR_STATE" in
+    ""|gh-error|gh-unavailable|no-repo)
+        echo "ℹ️  coordenada no resoluble (pr_state='${PR_STATE:-vacío}') — el guard de"
+        echo "    release NO pudo evaluarse. Verificá la rama a mano antes de mergear." ;;
+esac
+```
+
+Reportá `PR_STATE`, `HOST_ST` y el valor final de `MERGE_ALLOWED` en la tabla de
+salida: el operador tiene que ver por qué se mergeó o por qué no.
 
 ## Phase 1 — Commit + push
 
@@ -174,6 +272,21 @@ Por cada check en `fail`, clasificalo:
 
 ## Phase 5 — Merge
 
+**Guard de release primero** (Phase 0.5). Si la rama es la del PR release, acá
+termina el flujo: el trabajo ya está integrado y el CI ya dio su veredicto, que
+es lo que se venía a saber.
+
+```bash
+if [ "${MERGE_ALLOWED:-1}" = "0" ]; then
+    echo "⏸️  Rama release ($CURRENT, PR #$PR_NUMBER) — commit y CI hechos, merge NO."
+    echo "    Una release no se mergea hasta el lanzamiento."
+    echo "    Para lanzarla igual:  /merge-when-green --allow-release-merge"
+    # Saltar Phase 6. El PR queda abierto a propósito.
+fi
+```
+
+Con `MERGE_ALLOWED=1`, seguí normalmente:
+
 ```bash
 # Confirmar que el PR es realmente mergeable antes de mergear (nunca forzar).
 gh pr view "$PR_NUMBER" --json mergeStateStatus,reviewDecision,mergeable \
@@ -188,6 +301,9 @@ gh pr view "$PR_NUMBER" --json mergeStateStatus,reviewDecision,mergeable \
   ```
 
 ## Phase 6 — Post-merge
+
+**No corras esta fase si `MERGE_ALLOWED=0`** — no hubo merge y la rama release
+sigue siendo la rama de trabajo del proyecto.
 
 ```bash
 git checkout "$DEFAULT_BRANCH" && git pull --ff-only origin "$DEFAULT_BRANCH"
@@ -333,6 +449,66 @@ fi
 
 ---
 
+# Path C — `--all-repos` (multi-repo de ESTE host, dos fases)
+
+Sólo alcanzable desde `vps-ops-toolkit` (gate en Phase 0). Recorre los repos del
+host — misma lista que `/git-commit --all-repos` — reusando los Paths A y B por
+repo, pero **separando la integración de la espera del CI**: si se hiciera repo
+por repo de punta a punta, el tiempo total sería la suma de todos los CI. Al
+pushear todo primero, los runs de GitHub corren en paralelo y el total es ≈ el
+del CI más lento.
+
+**No hay eje `--all-vps`**: no se mergea a ciegas en clones de otros VPS, que
+pueden estar sucios o parados en una rama de release.
+
+```bash
+OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
+source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
+PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
+REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
+echo "🔧 Path C — ${#REPOS[@]} repos en este host:"
+printf '   - %s\n' "${REPOS[@]}"
+```
+
+## Phase C1 — Integrar todos (rápido, sin esperas)
+
+Por cada repo en `REPOS`, con `cd "$HOME/webapps/<repo>"`:
+
+1. **Nada que hacer** — `git status --porcelain` vacío **y** sin commits sin
+   pushear (`git log @{u}..HEAD`) → ⏭️ `skipped:sin-cambios`. No generes mensaje
+   ni toques nada.
+2. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
+   `skipped:wrong-host:<vps_work>`; ese repo se trabaja en otro VPS.
+   `pr_state=single` → marcar `release-hold`.
+3. **Toolkit** → Path B completo (T1 green gate → T2 commit+push → T3
+   propagación). Un `GATE:RED` marca `failed:green-gate` para **ese** repo y
+   sigue con el resto.
+4. **Proyecto** → Path A Phases 1–2 (commit + push + asegurar PR). Sobre una
+   rama release **no se crea PR nuevo**: el del release ya existe y es el que
+   `gh pr view "$CURRENT"` encuentra.
+5. **Registrar** una fila: `repo · rama · PR# · clasificación`, con clasificación
+   en `mergeable` / `release-hold` / `skipped:<razón>` / `failed:<razón>`.
+
+Al cerrar C1, mostrá la tabla de integración antes de entrar a C2 — el operador
+tiene que poder cortar ahí si algo no le cierra.
+
+## Phase C2 — Esperar CI y mergear
+
+Sólo sobre los repos cuya clasificación es `mergeable` o `release-hold` (los
+`skipped` y `failed` no tienen nada corriendo). Por cada uno:
+
+1. Phase 3 (esperar el CI) → si rojo, Phase 4 (fix loop, con las mismas reglas:
+   pausa si hay que tocar código de producción salvo `--autonomous`).
+2. `mergeable` → Phase 5 (merge) + Phase 6 (post-merge).
+3. `release-hold` → reportá el veredicto del CI y **no mergees** (⏸️). Es el
+   caso normal, no un error.
+
+**Política de errores**: ningún fallo individual corta el barrido. Un repo que
+falla queda con su razón en la tabla y se sigue con el siguiente. El reporte
+final lista los N repos con su estado.
+
+---
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]].
@@ -345,6 +521,7 @@ Reportar siguiendo [[_output-protocol]].
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
+| Coordenada | ✅ | pr_state=<x> · host=<on-work-host> · merge permitido |
 | Commit + push | ✅ | <sha> en la rama <rama> |
 | PR | ✅ | #<n> — <url> |
 | CI checks | ✅ | N/N en verde (pytest, jest, playwright, gates) |
@@ -353,6 +530,13 @@ Reportar siguiendo [[_output-protocol]].
 ```
 
 Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps`:
+- **Rama release** (`pr_state=single`) → veredicto `⏸️ merge-when-green — release
+  integrada y verde, sin mergear`, fila `Merge` en ⏸️ con "rama release; se mergea
+  en el lanzamiento" y next step `/merge-when-green --allow-release-merge`.
+- **Host equivocado** (`host_status=wrong-host`) → `⏭️ merge-when-green — N/A`,
+  fila `Coordenada` en ⏭️ y next step `tailscale ssh ryzepeck@<vps_work>`.
+- **Coordenada no resoluble** → fila `Coordenada` en ℹ️ diciendo que el guard de
+  release no pudo evaluarse; nunca omitir la fila.
 - Fix loop que pausó por código de prod → ⏸️ + el cambio a aprobar.
 - Gate no-test rojo (sin `--fix-nontest`) → ❌ + el comando local para reproducirlo.
 - Merge bloqueado por review/ruleset → ❌ + `gh pr view <n> --web` para revisar.
@@ -377,3 +561,25 @@ Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps
 - Push falló → ❌ + causa (no upstream / conflicto remoto) + `/git-sync`.
 - Propagación con `CONFLICT_NEEDS_MANUAL_SYNC` → ⚠️ + los hosts que requieren `git-sync` manual.
 - CI rojo en master post-push → ⚠️ + el job fallido + `gh run view <id> --log-failed` (fix hacia adelante).
+
+**Path C — `--all-repos` (multi-repo):** una fila por repo, columna `Repo` antes
+de `Dimensión`. Es tabla grande (>15 filas con varios repos) → anteponer
+`### Resumen ejecutivo` con el conteo por clasificación.
+
+```markdown
+🟡 merge-when-green (--all-repos) OK con N warning(s) — 11 repos
+
+### Resumen ejecutivo
+mergeados: N · release-hold: N · sin cambios: N · wrong-host: N · fallidos: N
+
+| Repo | Rama | PR | CI | Resultado |
+|---|---|---|---|---|
+| projectapp | feat/… | #124 | ✅ verde | ✅ mergeado (squash) |
+| vastago_project_staging | release-may-2026-v2 | #12 | ✅ verde | ⏸️ release — no se mergea |
+| kore_project | — | — | — | ⏭️ wrong-host → vps-projectapp-staging |
+| mimittos_project | — | — | — | ⏭️ sin cambios |
+| vps-ops-toolkit | master | — | ✅ verde | ✅ push + fleet SYNCED |
+```
+
+`## Next steps` sólo con lo accionable: los `failed:*`, los `release-hold` que ya
+estén listos para lanzar, y los `wrong-host` con el `tailscale ssh` de destino.
