@@ -49,7 +49,7 @@ jobs:
 
       - name: Run test quality gate
         run: |
-          python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json --external-lint run --semantic-rules strict --verbose
+          python3 scripts/test_quality_gate.py --repo-root . --report-path test-results/test-quality-report.json --external-lint run --semantic-rules strict --verbose --junk-severity=error
 
       - name: Upload gate report
         if: always()
