@@ -238,7 +238,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='process-checkbox-10']").setValue(false);
     await flushPromises();
 
-    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBe("");
   });
 
   test("unchecking select-all processes clears the process selection", async () => {
@@ -251,7 +251,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='select-all-processes']").setValue(false);
     await flushPromises();
 
-    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBe("");
   });
 
   test("checking a document row enables the reassign button", async () => {
@@ -276,7 +276,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='document-checkbox-20']").setValue(false);
     await flushPromises();
 
-    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBe("");
   });
 
   test("unchecking select-all documents clears the document selection", async () => {
@@ -289,7 +289,7 @@ describe("DataReassignment.vue", () => {
     await wrapper.find("[data-testid='select-all-documents']").setValue(false);
     await flushPromises();
 
-    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("[data-testid='reassign-button']").attributes("disabled")).toBe("");
   });
 
   test("success message reports when the source lawyer was archived", async () => {

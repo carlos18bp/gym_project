@@ -62,8 +62,8 @@ describe("dynamic_documents_steps — step shape", () => {
 
   test("provides a Spanish title and description on every popover", () => {
     allSteps.forEach((step) => {
-      expect(step.popover.title).toBeTruthy();
-      expect(step.popover.description).toBeTruthy();
+      expect(step.popover.title).toMatch(/\S/);
+      expect(step.popover.description).toMatch(/\S/);
     });
   });
 

@@ -130,7 +130,7 @@ describe("ServiceRequestDetail.vue", () => {
     const downloadBtn = wrapper.findAll("button").find((b) =>
       b.text().includes("Descargar documento PDF")
     );
-    expect(downloadBtn).toBeTruthy();
+    expect(downloadBtn.text()).toContain("Descargar documento PDF");
   });
 
   test("hides download PDF button when no document", async () => {
@@ -293,7 +293,7 @@ describe("ServiceRequestDetail.vue", () => {
       await flushPromises();
 
       const highlightCall = setTimeoutSpy.mock.calls.find(([, delay]) => delay === 5000);
-      expect(highlightCall).toBeDefined();
+      expect(highlightCall[1]).toBe(5000);
       const timerId = setTimeoutSpy.mock.results[setTimeoutSpy.mock.calls.indexOf(highlightCall)].value;
 
       clearTimeoutSpy.mockClear();

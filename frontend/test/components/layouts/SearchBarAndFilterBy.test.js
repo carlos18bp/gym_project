@@ -35,8 +35,8 @@ describe("SearchBarAndFilterBy.vue", () => {
     await input.trigger("input");
     await flushPromises();
 
-    expect(wrapper.emitted("update:searchQuery")).toBeTruthy();
-    expect(wrapper.emitted("update:searchQuery")[0]).toEqual(["test query"]);
+    const emissions = wrapper.emitted("update:searchQuery");
+    expect(emissions[0]).toEqual(["test query"]);
   });
 
   test("search field starts empty", () => {

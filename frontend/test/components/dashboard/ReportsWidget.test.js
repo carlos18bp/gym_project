@@ -43,7 +43,7 @@ describe("ReportsWidget.vue", () => {
     });
 
     const button = wrapper.find("button");
-    expect(button.attributes("disabled")).toBeDefined();
+    expect(button.attributes("disabled")).toBe("");
 
     await wrapper.find('select[id="reportType"]').setValue("active_processes");
     await flushPromises();
@@ -57,13 +57,13 @@ describe("ReportsWidget.vue", () => {
     expect(wrapper.text()).toContain(
       "Si proporcionas una fecha, debes proporcionar ambas fechas."
     );
-    expect(wrapper.find("button").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("button").attributes("disabled")).toBe("");
 
     // Both dates but start > end => invalid
     await wrapper.find('input[id="endDate"]').setValue("2026-01-01");
     await flushPromises();
 
-    expect(wrapper.find("button").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("button").attributes("disabled")).toBe("");
 
     // Valid range => enabled
     await wrapper.find('input[id="endDate"]').setValue("2026-01-31");
@@ -197,7 +197,7 @@ describe("ReportsWidget.vue", () => {
       },
     });
 
-    expect(wrapper.find("button").attributes("disabled")).toBeDefined();
+    expect(wrapper.find("button").attributes("disabled")).toBe("");
 
     await wrapper.find("button").trigger("click");
     await flushPromises();

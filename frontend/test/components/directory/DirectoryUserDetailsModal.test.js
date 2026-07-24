@@ -159,7 +159,7 @@ describe("DirectoryUserDetailsModal.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Ver proceso"));
 
-    expect(detailButton).toBeTruthy();
+    expect(detailButton.text()).toContain("Ver proceso");
 
     await detailButton.trigger("click");
 
@@ -168,13 +168,13 @@ describe("DirectoryUserDetailsModal.vue", () => {
       params: { process_id: 5 },
     });
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
 
     const listButton = wrapper
       .findAll("button")
       .find((button) => (button.text() || "").includes("Ver todos en Procesos"));
 
-    expect(listButton).toBeTruthy();
+    expect(listButton.text()).toContain("Ver todos en Procesos");
 
     await listButton.trigger("click");
 
@@ -183,6 +183,6 @@ describe("DirectoryUserDetailsModal.vue", () => {
       params: { user_id: 10, display: "" },
     });
 
-    expect(wrapper.emitted("close").length).toBeGreaterThan(1);
+    expect(wrapper.emitted("close")).toHaveLength(2);
   });
 });

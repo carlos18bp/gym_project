@@ -126,19 +126,19 @@ describe("Router Guards (auth)", () => {
     expect(Array.isArray(routes)).toBe(true);
 
     const root = routes.find((r) => r.path === "/");
-    expect(root).toBeTruthy();
+    expect(root.path).toBe("/");
     expect(root.name).toBe("root");
     expect(root.meta.requiresAuth).toBe(false);
 
     const catchAll = routes.find((r) => r.path === "/:pathMatch(.*)*");
-    expect(catchAll).toBeTruthy();
+    expect(catchAll.path).toBe("/:pathMatch(.*)*");
     expect(catchAll.redirect({})).toEqual({ name: "sign_in" });
   });
 
   test("router options expose scrollBehavior that scrolls to top", async () => {
     await loadRouterModuleFresh();
 
-    expect(mockRouterOptions).toBeTruthy();
+    expect(typeof mockRouterOptions.scrollBehavior).toBe("function");
     expect(mockRouterOptions.scrollBehavior()).toEqual({ top: 0 });
   });
 
@@ -158,7 +158,7 @@ describe("Router Guards (auth)", () => {
 
     for (const loader of componentLoaders) {
       const mod = await loader();
-      expect(mod).toBeTruthy();
+      expect(mod).toHaveProperty("default");
     }
   });
 

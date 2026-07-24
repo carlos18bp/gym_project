@@ -100,7 +100,7 @@ describe("FacturationForm.vue", () => {
 
     const submitBtn = wrapper.find('button[type="submit"]');
     expect(submitBtn.exists()).toBe(true);
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
     expect(submitBtn.text()).toContain("Guardar");
   });
 
@@ -133,7 +133,7 @@ describe("FacturationForm.vue", () => {
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
   });
 
   test("save button stays disabled when paymentAmount is NaN", async () => {
@@ -149,7 +149,7 @@ describe("FacturationForm.vue", () => {
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
   });
 
   // quality: disable too_many_assertions (verifying complete submit flow: store call, notifications, navigation, form reset)
@@ -192,7 +192,7 @@ describe("FacturationForm.vue", () => {
       "¡Solicitud creada exitosamente!",
       "success"
     );
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
     expect(mockRouterPush).toHaveBeenCalledWith({ name: "dashboard" });
 
     // quality: allow-fragile-selector (stable DOM id defined in component template)
@@ -262,7 +262,7 @@ describe("FacturationForm.vue", () => {
     await closeIcon.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("file upload via input adds file to list", async () => {

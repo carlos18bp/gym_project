@@ -308,7 +308,7 @@ describe("Profile.vue", () => {
     const { wrapper } = mountProfile();
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.closeModal();
-    expect(wrapper.emitted("update:visible")).toBeTruthy();
+    expect(wrapper.emitted("update:visible")).toHaveLength(1);
     expect(wrapper.emitted("update:visible")[0]).toEqual([false]);
   });
 
