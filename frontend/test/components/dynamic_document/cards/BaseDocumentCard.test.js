@@ -260,7 +260,8 @@ describe("BaseDocumentCard.vue", () => {
 
     await wrapper.find("[data-document-id='1']").trigger("click");
 
-    expect(wrapper.emitted("click")).toBeTruthy();
+    expect(wrapper.emitted("click")).toHaveLength(1);
+    expect(wrapper.emitted("click")[0][0]).toMatchObject({ id: 1, title: "My Document" });
 
     const before = wrapper.emitted("click").length;
 
@@ -295,15 +296,15 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Eliminar");
 
-    expect(previewBtn).toBeTruthy();
-    expect(deleteBtn).toBeTruthy();
+    expect(previewBtn.text().trim()).toBe("Previsualizar");
+    expect(deleteBtn.text().trim()).toBe("Eliminar");
 
     await previewBtn.trigger("click");
     expect(mockHandlePreviewDocument).toHaveBeenCalledWith(doc);
 
     await deleteBtn.trigger("click");
     expect(mockDeleteDocument).toHaveBeenCalledWith(doc);
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
   });
 
   test("client Draft menu includes Completar and does not include Previsualizar", async () => {
@@ -366,10 +367,11 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Quitar de Carpeta");
 
-    expect(removeBtn).toBeTruthy();
+    expect(removeBtn.text().trim()).toBe("Quitar de Carpeta");
     await removeBtn.trigger("click");
 
-    expect(wrapper.emitted("remove-from-folder")).toBeTruthy();
+    expect(wrapper.emitted("remove-from-folder")).toHaveLength(1);
+    expect(wrapper.emitted("remove-from-folder")[0][0]).toMatchObject({ id: 2 });
   });
 
   test("client folder context includes relationships and remove-from-folder actions", async () => {
@@ -392,8 +394,8 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Quitar de Carpeta");
 
-    expect(relationshipsBtn).toBeTruthy();
-    expect(removeBtn).toBeTruthy();
+    expect(relationshipsBtn.text().trim()).toBe("Administrar Asociaciones");
+    expect(removeBtn.text().trim()).toBe("Quitar de Carpeta");
 
     await relationshipsBtn.trigger("click");
     expect(mockOpenModal).toHaveBeenCalledWith(
@@ -402,7 +404,8 @@ describe("BaseDocumentCard.vue", () => {
     );
 
     await removeBtn.trigger("click");
-    expect(wrapper.emitted("remove-from-folder")).toBeTruthy();
+    expect(wrapper.emitted("remove-from-folder")).toHaveLength(1);
+    expect(wrapper.emitted("remove-from-folder")[0][0]).toMatchObject({ id: 3 });
   });
 
   test("menuPosition uses promptDocuments responsive positioning", async () => {
@@ -475,9 +478,9 @@ describe("BaseDocumentCard.vue", () => {
     const pdfBtn = wrapperOverride
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Descargar PDF");
-    expect(pdfBtn).toBeTruthy();
+    expect(pdfBtn.text().trim()).toBe("Descargar PDF");
     await pdfBtn.trigger("click");
-    expect(mockDownloadPDFDocument).toHaveBeenCalled();
+    expect(mockDownloadPDFDocument).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
   });
 
   test("showMenuOptions=true returns empty menu when cardType is unknown", async () => {
@@ -517,8 +520,8 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Editar Documento");
 
-    expect(editFormBtn).toBeTruthy();
-    expect(editDocBtn).toBeTruthy();
+    expect(editFormBtn.text().trim()).toBe("Editar Formulario");
+    expect(editDocBtn.text().trim()).toBe("Editar Documento");
 
     await editFormBtn.trigger("click");
     expect(mockOpenModal).toHaveBeenCalledWith(
@@ -554,7 +557,7 @@ describe("BaseDocumentCard.vue", () => {
     const editBtnNav = menuNav
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Editar");
-    expect(editBtnNav).toBeTruthy();
+    expect(editBtnNav.text().trim()).toBe("Editar");
     await editBtnNav.trigger("click");
     expect(mockRouterPush).toHaveBeenCalledWith("/editor/7/My%20Doc");
 
@@ -577,7 +580,7 @@ describe("BaseDocumentCard.vue", () => {
     const editBtnModal = menuModal
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Editar");
-    expect(editBtnModal).toBeTruthy();
+    expect(editBtnModal.text().trim()).toBe("Editar");
     await editBtnModal.trigger("click");
 
     expect(mockOpenModal).toHaveBeenCalledWith(
@@ -611,8 +614,8 @@ describe("BaseDocumentCard.vue", () => {
     const publishBtnDisabled = menuDisabled
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Publicar");
-    expect(publishBtnDisabled).toBeTruthy();
-    expect(publishBtnDisabled.attributes("disabled")).toBeDefined();
+    expect(publishBtnDisabled.text().trim()).toBe("Publicar");
+    expect(publishBtnDisabled.attributes("disabled")).toBe("");
 
     const wrapperEnabled = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
@@ -634,7 +637,7 @@ describe("BaseDocumentCard.vue", () => {
     const publishBtnEnabled = menuEnabled
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Publicar");
-    expect(publishBtnEnabled).toBeTruthy();
+    expect(publishBtnEnabled.text().trim()).toBe("Publicar");
     expect(publishBtnEnabled.attributes("disabled")).toBeUndefined();
     await publishBtnEnabled.trigger("click");
     expect(mockPublishDocument).toHaveBeenCalledWith(expect.objectContaining({ id: 10 }));
@@ -669,8 +672,8 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Firmar documento");
 
-    expect(viewBtn).toBeTruthy();
-    expect(signBtn).toBeTruthy();
+    expect(viewBtn.text().trim()).toBe("Ver Firmas");
+    expect(signBtn.text().trim()).toBe("Firmar documento");
 
     await viewBtn.trigger("click");
     expect(mockOpenModal).toHaveBeenCalledWith(
@@ -794,7 +797,7 @@ describe("BaseDocumentCard.vue", () => {
 
     const click = async (t) => {
       const b = menu.findAll("button").find((x) => (x.text() || "").trim() === t);
-      expect(b).toBeTruthy();
+      expect(b.text().trim()).toBe(t);
       await b.trigger("click");
     };
 
@@ -840,7 +843,7 @@ describe("BaseDocumentCard.vue", () => {
     const publishBtn = menu
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Publicar");
-    expect(publishBtn).toBeTruthy();
+    expect(publishBtn.text().trim()).toBe("Publicar");
     await publishBtn.trigger("click");
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -922,7 +925,8 @@ describe("BaseDocumentCard.vue", () => {
       expect.any(Function)
     );
     expect(mockDownloadPDFDocument).toHaveBeenCalledWith(expect.objectContaining({ id: 20 }));
-    expect(wrapper.emitted("remove-from-folder")).toBeTruthy();
+    expect(wrapper.emitted("remove-from-folder")).toHaveLength(1);
+    expect(wrapper.emitted("remove-from-folder")[0][0]).toMatchObject({ id: 20 });
   });
 
   test("signatures cardType shows signed download action", async () => {
@@ -1069,9 +1073,10 @@ describe("BaseDocumentCard.vue", () => {
     const useBtn = wrapperDefault
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Usar Formato");
-    expect(useBtn).toBeTruthy();
+    expect(useBtn.text().trim()).toBe("Usar Formato");
     await useBtn.trigger("click");
-    expect(wrapperDefault.emitted("click")).toBeTruthy();
+    expect(wrapperDefault.emitted("click")).toHaveLength(1);
+    expect(wrapperDefault.emitted("click")[0][0]).toMatchObject({ id: 30 });
 
     const wrapperUse = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({
@@ -1090,7 +1095,7 @@ describe("BaseDocumentCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Use");
     await useActionBtn.trigger("click");
-    expect(wrapperUse.emitted("menuAction")).toBeTruthy();
+    expect(wrapperUse.emitted("menuAction")).toHaveLength(1);
     expect(wrapperUse.emitted("menuAction")[0]).toEqual(["use", doc]);
 
     const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -1149,17 +1154,17 @@ describe("BaseDocumentCard.vue", () => {
     await nextTick();
 
     await wrapper.find("[data-test='refresh-signatures']").trigger("click");
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
 
     await wrapper.find("[data-test='saved-permissions']").trigger("click");
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(2);
 
     await wrapper.find("[data-test='uploaded-letterhead']").trigger("click");
     await wrapper.find("[data-test='deleted-letterhead']").trigger("click");
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(4);
 
     await wrapper.find("[data-test='refresh-relationships']").trigger("click");
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(5);
   });
 
   test("modal wiring close actions call closeModal", async () => {
