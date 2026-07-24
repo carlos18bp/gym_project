@@ -71,7 +71,7 @@ describe("Corporate Requests Store", () => {
       organizations: [],
     });
 
-    await expect(store.getMyOrganizationsForRequests()).rejects.toBeTruthy();
+    await expect(store.getMyOrganizationsForRequests()).rejects.toThrow("Error fetching organizations for requests");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -81,7 +81,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/clients/my-organizations/").networkError();
 
-    await expect(store.getMyOrganizationsForRequests()).rejects.toBeTruthy();
+    await expect(store.getMyOrganizationsForRequests()).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -113,7 +113,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/clients/request-types/").reply(204, {});
 
-    await expect(store.getRequestTypes()).rejects.toBeTruthy();
+    await expect(store.getRequestTypes()).rejects.toThrow("Error fetching request types");
     expect(store.isLoadingTypes).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -125,7 +125,7 @@ describe("Corporate Requests Store", () => {
       .onGet("/api/corporate-requests/clients/request-types/")
       .networkError();
 
-    await expect(store.getRequestTypes()).rejects.toBeTruthy();
+    await expect(store.getRequestTypes()).rejects.toThrow("Network Error");
 
     expect(console.error).toHaveBeenCalledWith("Error details:", undefined);
     expect(store.isLoadingTypes).toBe(false);
@@ -138,7 +138,7 @@ describe("Corporate Requests Store", () => {
       .onGet("/api/corporate-requests/clients/request-types/")
       .reply(500, { detail: "boom" });
 
-    await expect(store.getRequestTypes()).rejects.toBeTruthy();
+    await expect(store.getRequestTypes()).rejects.toThrow("Request failed with status code 500");
 
     expect(console.error).toHaveBeenCalledWith("Error details:", { detail: "boom" });
     expect(store.isLoadingTypes).toBe(false);
@@ -166,7 +166,7 @@ describe("Corporate Requests Store", () => {
       corporate_request: { id: 1 },
     });
 
-    await expect(store.createCorporateRequest({ title: "x" })).rejects.toBeTruthy();
+    await expect(store.createCorporateRequest({ title: "x" })).rejects.toThrow("Error creating corporate request");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -178,7 +178,7 @@ describe("Corporate Requests Store", () => {
       .onPost("/api/corporate-requests/clients/create/")
       .networkError();
 
-    await expect(store.createCorporateRequest({ title: "x" })).rejects.toBeTruthy();
+    await expect(store.createCorporateRequest({ title: "x" })).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -242,7 +242,7 @@ describe("Corporate Requests Store", () => {
       .onGet(/\/api\/corporate-requests\/clients\/my-requests\/.*/)
       .reply(204, { results: [] });
 
-    await expect(store.getMyRequests()).rejects.toBeTruthy();
+    await expect(store.getMyRequests()).rejects.toThrow("Error fetching my requests");
     expect(store.isLoadingRequests).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -252,7 +252,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/clients/my-requests/").networkError();
 
-    await expect(store.getMyRequests()).rejects.toBeTruthy();
+    await expect(store.getMyRequests()).rejects.toThrow("Network Error");
     expect(store.isLoadingRequests).toBe(false);
   });
 
@@ -291,7 +291,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/clients/9/").reply(204, {});
 
-    await expect(store.getMyRequestDetail(9)).rejects.toBeTruthy();
+    await expect(store.getMyRequestDetail(9)).rejects.toThrow("Request not found");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -301,7 +301,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/clients/9/").networkError();
 
-    await expect(store.getMyRequestDetail(9)).rejects.toBeTruthy();
+    await expect(store.getMyRequestDetail(9)).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -361,7 +361,7 @@ describe("Corporate Requests Store", () => {
       response: { id: 2 },
     });
 
-    await expect(store.addResponseToMyRequest(9, "hello")).rejects.toBeTruthy();
+    await expect(store.addResponseToMyRequest(9, "hello")).rejects.toThrow("Error adding response");
     expect(store.isLoadingResponses).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -371,7 +371,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onPost("/api/corporate-requests/clients/9/responses/").networkError();
 
-    await expect(store.addResponseToMyRequest(9, "hello")).rejects.toBeTruthy();
+    await expect(store.addResponseToMyRequest(9, "hello")).rejects.toThrow("Network Error");
     expect(store.isLoadingResponses).toBe(false);
   });
 
@@ -441,7 +441,7 @@ describe("Corporate Requests Store", () => {
       .onGet(/\/api\/corporate-requests\/corporate\/received\/.*/)
       .reply(204, { results: [] });
 
-    await expect(store.getReceivedRequests()).rejects.toBeTruthy();
+    await expect(store.getReceivedRequests()).rejects.toThrow("Error fetching received requests");
     expect(store.isLoadingRequests).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -451,7 +451,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/corporate/received/").networkError();
 
-    await expect(store.getReceivedRequests()).rejects.toBeTruthy();
+    await expect(store.getReceivedRequests()).rejects.toThrow("Network Error");
     expect(store.isLoadingRequests).toBe(false);
   });
 
@@ -490,7 +490,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/corporate/9/").reply(204, {});
 
-    await expect(store.getReceivedRequestDetail(9)).rejects.toBeTruthy();
+    await expect(store.getReceivedRequestDetail(9)).rejects.toThrow("Request not found");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -500,7 +500,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/corporate/9/").networkError();
 
-    await expect(store.getReceivedRequestDetail(9)).rejects.toBeTruthy();
+    await expect(store.getReceivedRequestDetail(9)).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -569,7 +569,7 @@ describe("Corporate Requests Store", () => {
       response: { id: 2 },
     });
 
-    await expect(store.addResponseToReceivedRequest(9, "hello")).rejects.toBeTruthy();
+    await expect(store.addResponseToReceivedRequest(9, "hello")).rejects.toThrow("Error adding response");
     expect(store.isLoadingResponses).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -579,7 +579,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onPost("/api/corporate-requests/corporate/9/responses/").networkError();
 
-    await expect(store.addResponseToReceivedRequest(9, "hello")).rejects.toBeTruthy();
+    await expect(store.addResponseToReceivedRequest(9, "hello")).rejects.toThrow("Network Error");
     expect(store.isLoadingResponses).toBe(false);
   });
 
@@ -602,7 +602,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/corporate/dashboard-stats/").reply(204, {});
 
-    await expect(store.getDashboardStats()).rejects.toBeTruthy();
+    await expect(store.getDashboardStats()).rejects.toThrow("Error fetching dashboard stats");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -614,7 +614,7 @@ describe("Corporate Requests Store", () => {
       .onGet("/api/corporate-requests/corporate/dashboard-stats/")
       .networkError();
 
-    await expect(store.getDashboardStats()).rejects.toBeTruthy();
+    await expect(store.getDashboardStats()).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -637,7 +637,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/9/conversation/").reply(204, {});
 
-    await expect(store.getRequestConversation(9)).rejects.toBeTruthy();
+    await expect(store.getRequestConversation(9)).rejects.toThrow("Error fetching conversation");
     expect(store.isLoadingResponses).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -647,7 +647,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onGet("/api/corporate-requests/9/conversation/").networkError();
 
-    await expect(store.getRequestConversation(9)).rejects.toBeTruthy();
+    await expect(store.getRequestConversation(9)).rejects.toThrow("Network Error");
     expect(store.isLoadingResponses).toBe(false);
   });
 
@@ -675,7 +675,7 @@ describe("Corporate Requests Store", () => {
       .onPut("/api/corporate-requests/corporate/9/update/")
       .reply(204, { corporate_request: { id: 9, status: "RESOLVED" } });
 
-    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toBeTruthy();
+    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toThrow("Error updating request");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -687,7 +687,7 @@ describe("Corporate Requests Store", () => {
       .onPut("/api/corporate-requests/corporate/9/update/")
       .networkError();
 
-    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toBeTruthy();
+    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
   });
 
@@ -696,7 +696,7 @@ describe("Corporate Requests Store", () => {
 
     mock.onPut("/api/corporate-requests/corporate/9/update/").reply(500, { error: "x" });
 
-    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toBeTruthy();
+    await expect(store.updateReceivedRequest(9, { status: "RESOLVED" })).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
