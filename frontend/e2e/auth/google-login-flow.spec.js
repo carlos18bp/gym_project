@@ -186,7 +186,8 @@ async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("google login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives login via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real auth outcome: google_login POST payload, localStorage.token, userAuth and redirect to /dashboard)
   await installGoogleAuthMocks(page, { scenario: "existing_user_success" });
 
   await page.goto("/sign_in");
@@ -213,7 +214,8 @@ test("google login signs in existing user and redirects to dashboard", { tag: ['
     .toBe("/dashboard");
 });
 
-test("google login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives the rejected-credential path via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real outcome: error dialog text, null localStorage.token and staying on /sign_in)
   await installGoogleAuthMocks(page, { scenario: "login_failure" });
 
   await page.goto("/sign_in");
@@ -229,7 +231,8 @@ test("google login failure shows error and keeps user on sign in", { tag: ['@flo
   await expect(page).toHaveURL(/\/sign_in/);
 });
 
-test("google login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives new-user registration via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real outcome: localStorage.token, userAuth email/is_profile_completed and redirect to /dashboard)
   await installGoogleAuthMocks(page, { scenario: "new_user_success" });
 
   await page.goto("/sign_on");

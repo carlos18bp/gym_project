@@ -1,4 +1,5 @@
 // quality: disable fragile_test_data (emails are mock credentials used only for API route interception, not real production data)
+// quality: disable flow_tag_mismatch (Microsoft OAuth login authenticates in the external MSAL popup that Playwright cannot drive, stubbed via window.__e2eOutlookAuth; there is no in-app credential field, so the flow_id "login" -> requires-typing heuristic is a false positive here. Each test performs the real "Continuar con Microsoft" button click and asserts the real outcome: token, userAuth and redirect. There is no allow-* marker for flow_tag_mismatch, so this documented disable is the suppression path.)
 import { test, expect } from "../helpers/test.js";
 import { mockApi } from "../helpers/api.js";
 
@@ -166,7 +167,7 @@ async function triggerOutlookLogin(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("outlook login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("outlook login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   await installOutlookAuthMocks(page, { scenario: "existing_user_success" });
 
   await page.goto("/sign_in");
@@ -204,7 +205,7 @@ test("outlook button stays disabled while the Microsoft popup is open", { tag: [
   await expect(page.getByTestId("outlook-login-button")).toBeDisabled();
 });
 
-test("outlook login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("outlook login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
   await installOutlookAuthMocks(page, { scenario: "login_failure" });
 
   await page.goto("/sign_in");
@@ -224,7 +225,7 @@ test("outlook login failure shows error and keeps user on sign in", { tag: ['@fl
   await expect(page).toHaveURL(/\/sign_in/);
 });
 
-test("outlook login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("outlook login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   await installOutlookAuthMocks(page, { scenario: "new_user_success" });
 
   await page.goto("/sign_on");
