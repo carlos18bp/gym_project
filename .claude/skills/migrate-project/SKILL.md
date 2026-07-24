@@ -434,3 +434,29 @@ Sustituciones por modo/estado:
 - (otro VPS, origin) `ssh <origin> 'sudo systemctl disable <gunicorn_svc> <huey_svc>'` — deshabilitar services en origin tras validar
 - (manual, ≥7d) `rm -rf /home/ryzepeck/backups/vps/<UTC>` — borrar el snapshot pesado en origin
 - `git add projects.yml config/credentials/servers/<target>/mysql-users.env && git commit && git push` — commitear el flip de `server:` + cleanup de mysql-users.env
+
+---
+
+## Suspensión de proyecto (checklist manual, meta-review 2026-07 P1)
+
+La migración limpia certs huérfanos en origen (paso 20.10), pero la **suspensión**
+(status → `suspended`, offline-total) era ad-hoc y dejó 2 renewals huérfanos que
+rompieron `certbot renew` global (korehealths + mimittos, detectados 2026-07-06).
+Al suspender un proyecto, en ESTE orden:
+
+1. `sudo systemctl stop --now <gunicorn> <huey> [<frontend>]` + `disable` de los 3
+   (+ `.socket` si existe). Verificar `systemctl is-enabled` = disabled.
+2. nginx: `sudo rm /etc/nginx/sites-enabled/<site>` + `nginx -t` + reload
+   (el archivo queda en sites-available para reactivación).
+3. **Cert SSL — decidir explícitamente** (el paso que siempre se olvida):
+   - Reactivación improbable/lejana → `sudo certbot delete --cert-name <dominio>`
+     (re-emitir al reactivar toma segundos; un renewal huérfano con webroot/site
+     removido rompe el `certbot renew` de TODO el host cuando entra en ventana).
+   - Reactivación inminente (<30 días) → conservar, PERO anotar en projects.yml
+     `notes:` la fecha de expiry y quién lo vigila.
+4. Datos: dump pre-suspensión a `/var/backups/<proj>/pre-suspension-<ts>/`
+   (patrón xpandia 2026-06-27); sqlite + media quedan en el dir del proyecto.
+5. `projects.yml`: `status: suspended` + `notes:` con fecha, razón y qué se
+   preservó dónde (los reportes y el traffic report leen esas notes).
+6. Verificar: `sudo certbot renew --dry-run` limpio + `vps-healthcheck` sin
+   críticos + el proyecto aparece como ⏸️ en el próximo reporte.

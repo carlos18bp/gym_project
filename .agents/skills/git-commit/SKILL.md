@@ -1,9 +1,9 @@
 ---
 name: git-commit
-description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd); pass --all to iterate over LOCAL_PROJECTS + toolkit on this host."
+description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd); pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host. git-commit NO tiene modo fleet: --all-vps y --all son error; para el eje fleet usar /git-sync --all-vps."
 disable-model-invocation: true
 allowed-tools: Bash
-argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
+argument-hint: "[--all-repos (repos de este host)]"
 ---
 
 > **⚠️ How to invoke**:
@@ -12,7 +12,7 @@ argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
 >   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
 >   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
 >   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
-> - Con `--all`: `/git-commit --all` → itera sobre `LOCAL_PROJECTS` del
+> - Con `--all-repos`: itera sobre `LOCAL_PROJECTS` del
 >   host + `vps-ops-toolkit`. En cada repo: si está clean, SKIP; si tiene
 >   cambios, generar mensaje propio y commit+push independiente.
 >
@@ -30,7 +30,7 @@ case "$ARGS_RAW" in
         # Default: el repo del cwd (donde se lanzó Claude Code), no un hardcode.
         REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
             echo "❌ ERROR: el directorio actual no es un repo git."
-            echo "   Lanzá Claude Code desde el repo a commitear (o cd a él), o usá --all."
+            echo "   Lanzá Claude Code desde el repo a commitear (o cd a él), o usá --all-repos."
             exit 2
         }
         cd "$REPO_ROOT"                        # anclar el cwd al top del repo
@@ -38,15 +38,26 @@ case "$ARGS_RAW" in
         REPO_DIR_OVERRIDE="$REPO_ROOT"
         MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
         ;;
-    "--all")
+    "--all-repos")
         source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
         PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
         REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-        MODE_LABEL="--all (${#REPOS[@]} repos)"
+        MODE_LABEL="--all-repos (${#REPOS[@]} repos)"
+        ;;
+    "--all-vps")
+        echo "❌ ERROR: git-commit NO tiene modo fleet."
+        echo "   No se commitea a ciegas en clones de otros VPS (pueden estar dirty o"
+        echo "   en rama de release). Para el eje fleet: /git-sync --all-vps"
+        exit 2
+        ;;
+    "--all")
+        echo "❌ ERROR: --all es ambiguo y quedó retirado."
+        echo "   ¿Todos los repos de ESTE host? → --all-repos"
+        exit 2
         ;;
     *)
         echo "❌ ERROR: argumento desconocido '$ARGS_RAW'."
-        echo "   Válido: (vacío) → repo actual  |  --all → todos los locales."
+        echo "   Válido: (vacío) → repo actual  |  --all-repos → repos de este host."
         exit 2
         ;;
 esac

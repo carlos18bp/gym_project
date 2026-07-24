@@ -1,26 +1,48 @@
 ---
 name: git-sync
-description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Defaults to the current repo (cwd); pass --all para iterar LOCAL_PROJECTS + toolkit."
+description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Dos ejes ortogonales combinables: --all-repos (todos los repos de ESTE host) y --all-vps (el toolkit en TODOS los VPS). Sin flags: el repo del cwd. --all quedó retirado (error) por ambiguo."
 allowed-tools: Bash
-argument-hint: "[--all (opcional — itera todos los repos locales del host)]"
+argument-hint: "[--all-repos (todos los repos de este host)] [--all-vps (todos los VPS del fleet)]"
 ---
 
 # Git Sync
 
 Rebase the current branch onto its parent (`main` / `master`) so it picks up work that teammates have merged. Also pulls the current branch's own remote first, handles dirty working trees, and walks through any rebase conflicts.
 
-> **⚠️ How to invoke**:
-> - Sin argumento: `/git-sync` → opera sobre el repo git del **directorio
->   actual (cwd)** — el repo desde el que se lanzó Claude Code. Se resuelve
->   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
->   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
->   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
-> - Con `--all`: `/git-sync --all` → itera sobre `LOCAL_PROJECTS` del host
->   + `vps-ops-toolkit`. En un VPS reporta solo los proyectos cuyo `server:`
->   matchea el hostname; en dev, todos los `status: active`.
+> **⚠️ How to invoke** — dos ejes **ortogonales y combinables**: *qué repos* y
+> *en qué hosts*.
+>
+> | Invocación | Repos | Hosts |
+> |---|---|---|
+> | `/git-sync` | el repo del cwd | este host |
+> | `/git-sync --all-repos` | `LOCAL_PROJECTS` + toolkit | este host |
+> | `/git-sync --all-vps` | **sólo `vps-ops-toolkit`** | todos los VPS |
+> | `/git-sync --all-repos --all-vps` | toolkit + `LOCAL_PROJECTS` de cada host | todos los VPS |
+>
+> - **Sin argumento**: opera sobre el repo git del **cwd** — el repo desde el que
+>   se lanzó Claude Code. Se resuelve con `git rev-parse --show-toplevel`; **NO se
+>   asume `vps-ops-toolkit`**. ⚠️ **Ignorá el estado del hook `SessionStart`**
+>   (siempre reporta el toolkit) para decidir el target — lo manda el cwd.
+> - **`--all-repos`**: en un VPS son los proyectos cuyo `server:` matchea el
+>   hostname; en dev, todos los `status: active`.
+> - **`--all-vps`** solo, en cada VPS remoto opera sobre `vps-ops-toolkit`: es el
+>   único repo con el mismo path en todos los hosts.
+> - **`--all` quedó retirado** (error con guía): era ambiguo entre los dos ejes.
 >
 > No acepta nombres de proyecto individuales — para operar en un repo
 > específico, lanzá Claude Code desde ese repo (o `cd` a él antes de invocar).
+
+> **⚠️ Qué reciben los hosts REMOTOS (`--all-vps`)**: el **core no-interactivo**
+> (`git fetch` + `git rebase --autostash`), **sin** stash inspection, **sin**
+> retargeting PR-aware y **sin** resolución de conflictos — nada de eso se hace a
+> ciegas en un host remoto. Un conflicto ⇒ `git rebase --abort` + reporte, working
+> tree intacto; resolvelo con una sesión en ese host.
+>
+> Target del rebase remoto: el **toolkit** va contra `origin/master` (siempre vive
+> en master); un **repo de proyecto** va contra **su propio upstream (`@{u}`)**,
+> nunca cross-branch — hay clones legítimamente parados en ramas de release
+> (p.ej. `projectapp` en `feat/…` y `gym_project_staging` en `release-august-2026-c`),
+> y rebasarlos sobre master los rompería.
 
 ---
 
@@ -30,31 +52,53 @@ Rebase the current branch onto its parent (`main` / `master`) so it picks up wor
 ARGS_RAW="${ARGUMENTS:-}"
 OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
 
-case "$ARGS_RAW" in
-    "")
-        # Repo actual — el del cwd (donde se lanzó Claude Code)
-        REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-            echo "❌ ERROR: el directorio actual no es un repo git."
-            echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all."
+# Dos ejes ortogonales, combinables y en orden libre.
+ALL_REPOS=0
+ALL_VPS=0
+for tok in $ARGS_RAW; do
+    case "$tok" in
+        --all-repos) ALL_REPOS=1 ;;
+        --all-vps)   ALL_VPS=1 ;;
+        --all)
+            echo "❌ ERROR: --all es ambiguo y quedó retirado de git-sync."
+            echo "   ¿Todos los repos de ESTE host?   → /git-sync --all-repos"
+            echo "   ¿El toolkit en TODOS los VPS?    → /git-sync --all-vps"
+            echo "   ¿Ambos ejes?                     → /git-sync --all-repos --all-vps"
             exit 2
-        }
-        cd "$REPO_ROOT"                        # anclar el cwd al top del repo
-        REPOS=("$(basename "$REPO_ROOT")")
-        REPO_DIR_OVERRIDE="$REPO_ROOT"
-        MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
-        ;;
-    "--all")
-        source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
-        PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
-        REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-        MODE_LABEL="--all (${#REPOS[@]} repos)"
-        ;;
-    *)
-        echo "❌ ERROR: argumento desconocido '$ARGS_RAW'."
-        echo "   Válido: (vacío) → repo actual  |  --all → todos los locales."
+            ;;
+        *)
+            echo "❌ ERROR: argumento desconocido '$tok'."
+            echo "   Válidos: --all-repos (repos de este host) | --all-vps (todos los VPS). Combinables."
+            exit 2
+            ;;
+    esac
+done
+
+if (( ALL_REPOS == 1 )); then
+    source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
+    PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
+    REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
+    MODE_LABEL="--all-repos (${#REPOS[@]} repos)"
+elif (( ALL_VPS == 1 )); then
+    # --all-vps solo: el repo con el mismo path en todo el fleet es el toolkit.
+    cd "$OPS_ROOT"
+    REPOS=("vps-ops-toolkit")
+    REPO_DIR_OVERRIDE="$OPS_ROOT"
+    MODE_LABEL="--all-vps (toolkit, local + fleet)"
+else
+    # Repo actual — el del cwd (donde se lanzó Claude Code)
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+        echo "❌ ERROR: el directorio actual no es un repo git."
+        echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all-repos."
         exit 2
-        ;;
-esac
+    }
+    cd "$REPO_ROOT"                        # anclar el cwd al top del repo
+    REPOS=("$(basename "$REPO_ROOT")")
+    REPO_DIR_OVERRIDE="$REPO_ROOT"
+    MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
+fi
+(( ALL_VPS == 1 )) && MODE_LABEL+=" | fleet: ON (Phase 8)"
+export ALL_REPOS ALL_VPS
 
 if [ -n "${REPO_DIR_OVERRIDE:-}" ]; then
     # Modo default: el repo actual ya fue validado por git rev-parse
@@ -469,6 +513,40 @@ Report:
 - Number of conflicts resolved (if any)
 - Whether the skill's own stash was restored (if Phase 1 stashed)
 - Current working tree status
+
+---
+
+---
+
+## Phase 8 — Fleet (`--all-vps`)
+
+**Skip esta fase** si `ALL_VPS=0`. Corre **después** de que el/los repo(s)
+local(es) quedaron sincronizados (Phases 1-7): así el fleet se alinea contra un
+local ya sano.
+
+Delega en el orquestador multi-host, que conecta por Tailscale y corre el core
+no-interactivo en cada VPS remoto (+ la dev si está online):
+
+```bash
+REPOS_FLAG="--repos=toolkit"
+(( ALL_REPOS == 1 )) && REPOS_FLAG="--repos=all"
+
+bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --check "$REPOS_FLAG"   # dry-run: behind por host/repo
+bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --apply "$REPOS_FLAG"
+```
+
+**Sentinel `exit 75` = pausa de auth de Tailscale**, NO es un fallo: el script
+imprime el link de login. Mostráselo al operador tal cual, esperá a que autorice
+(una sola autorización habilita todos los VPS) y **re-corré el mismo comando** —
+es idempotente.
+
+**Precondición**: para que el fleet reciba tus commits, el local debe estar
+**pusheado**. Si `git status -sb` muestra `ahead`, avisá: los hosts remotos se
+rebasan contra el remoto, no contra tu working copy.
+
+Resultados por host: `SYNCED` · `CONFLICT_NEEDS_MANUAL_SYNC` (working tree intacto;
+resolver con una sesión en ese host) · `UNREACHABLE`. Por repo de proyecto:
+`REPO_SYNCED` · `REPO_CONFLICT` · `REPO_SKIP` (sin upstream/clon) · `REPO_FAIL`.
 
 ---
 
