@@ -787,6 +787,40 @@ def analyze_unit_source(source: str, file: str, spec_path: Path | None = None) -
     return findings
 
 
+# ---------------------------------------------------------------------------
+# Severity policy (the ratchet)
+# ---------------------------------------------------------------------------
+#
+# Promoting these rules straight to ERROR would have turned CI red in all eleven
+# fleet projects at once — 1152 findings — blocking every merge until a cleanup
+# that takes weeks. Freezing development is not a quality improvement.
+#
+# So severity is decided per finding against a baseline of the debt that already
+# exists: known findings stay warnings, anything new is an error. New junk cannot
+# merge, existing junk stays visible and gets cleaned deliberately. The baseline
+# only ever shrinks — a finding removed from the code is removed from the file.
+
+_BASELINE: set[str] | None = None
+_ESCALATE = False
+
+
+def finding_key(finding: "Finding") -> str:
+    """
+    Identity of a finding, stable across edits elsewhere in the file.
+
+    Deliberately excludes the line number: inserting a test above another one
+    must not make the second look new.
+    """
+    return f"{finding.file}::{finding.rule_id}::{finding.identifier or ''}"
+
+
+def set_junk_policy(baseline: set[str] | None, escalate: bool) -> None:
+    """Configure how junk findings map to severities for this run."""
+    global _BASELINE, _ESCALATE
+    _BASELINE = baseline
+    _ESCALATE = escalate
+
+
 def findings_to_issues(findings: list[Finding], severity=None) -> list:
     """
     Convert detector findings into the gate's Issue type.
@@ -796,9 +830,17 @@ def findings_to_issues(findings: list[Finding], severity=None) -> list:
     """
     from .base import Issue, IssueCategory, JUNK_RULE_CATEGORIES, Severity
 
-    level = severity or Severity.WARNING
     issues = []
     for finding in findings:
+        if severity is not None:
+            level = severity
+        elif not _ESCALATE:
+            level = Severity.WARNING
+        elif _BASELINE is not None and finding_key(finding) in _BASELINE:
+            level = Severity.WARNING
+        else:
+            level = Severity.ERROR
+
         category_name = JUNK_RULE_CATEGORIES.get(finding.rule_id)
         category = getattr(IssueCategory, category_name) if category_name else IssueCategory.VAGUE_ASSERTION
         issues.append(Issue(
