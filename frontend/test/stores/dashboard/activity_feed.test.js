@@ -290,7 +290,9 @@ describe("Activity Feed Store", () => {
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     mock.onPost("/api/create-activity/").reply(500, { detail: "fail" });
-    await expect(store.registerActivity("create", "x")).rejects.toBeTruthy();
+    await expect(store.registerActivity("create", "x")).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleErrorSpy.mockRestore();
   });

@@ -36,7 +36,7 @@ describe("User Guide Store", () => {
 
     store.initializeGuideContent();
     expect(store.initialized).toBe(true);
-    expect(store.guideContent.dashboard).toBeTruthy();
+    expect(store.guideContent.dashboard.name).toBe("Inicio (Dashboard)");
 
     const prev = store.guideContent;
     store.initializeGuideContent();
@@ -62,8 +62,8 @@ describe("User Guide Store", () => {
     const store = useUserGuideStore();
     store.initializeGuideContent();
 
-    expect(store.guideContent.secop).toBeTruthy();
-    expect(store.guideContent.services).toBeTruthy();
+    expect(store.guideContent.secop.name).toBe("SECOP — Contratación Estatal");
+    expect(store.guideContent.services.name).toBe("Servicios y Trámites");
 
     const secopLawyer = store.getModuleContent("secop", "lawyer");
     expect(secopLawyer.sections.length).toBeGreaterThan(0);
@@ -88,11 +88,11 @@ describe("User Guide Store", () => {
     store.initializeGuideContent();
 
     const directoryForClient = store.getModuleContent("directory", "client");
-    expect(directoryForClient).toBeTruthy();
+    expect(directoryForClient.name).toBe("Directorio");
     expect(directoryForClient.sections).toEqual([]);
 
     const directoryForLawyer = store.getModuleContent("directory", "lawyer");
-    expect(directoryForLawyer).toBeTruthy();
+    expect(directoryForLawyer.name).toBe("Directorio");
     expect(Array.isArray(directoryForLawyer.sections)).toBe(true);
     expect(directoryForLawyer.sections.length).toBeGreaterThan(0);
   });
@@ -252,7 +252,7 @@ describe("User Guide Store", () => {
     const results = store.searchGuideContent("descripcion");
     const sectionMatch = results.find((result) => result.section === "Seccion Simple");
 
-    expect(sectionMatch).toBeTruthy();
+    expect(sectionMatch.moduleId).toBe("noFeatures");
     expect(sectionMatch.snippet).toBe("Descripcion simple");
   });
 
@@ -277,16 +277,16 @@ describe("User Guide Store", () => {
     };
 
     const moduleMatch = store.searchGuideContent("fallback").find((result) => result.section === "General");
-    expect(moduleMatch).toBeTruthy();
+    expect(moduleMatch.moduleId).toBe("fallback");
     expect(moduleMatch.icon).toBe(DocumentTextIcon);
 
     const sectionMatch = store.searchGuideContent("contenido").find((result) => result.section === "Seccion");
-    expect(sectionMatch).toBeTruthy();
+    expect(sectionMatch.moduleId).toBe("fallback");
     expect(sectionMatch.snippet).toBe(sectionContent.substring(0, 150));
     expect(sectionMatch.icon).toBe(DocumentTextIcon);
 
     const featureMatch = store.searchGuideContent("feature fallback").find((result) => result.title === "Feature Fallback");
-    expect(featureMatch).toBeTruthy();
+    expect(featureMatch.snippet).toBe("Funcionalidad: Feature Fallback");
     expect(featureMatch.icon).toBe(DocumentTextIcon);
   });
 
@@ -312,20 +312,20 @@ describe("User Guide Store", () => {
     };
 
     const moduleMatch = store.searchGuideContent("custom").find((result) => result.section === "General");
-    expect(moduleMatch).toBeTruthy();
+    expect(moduleMatch.moduleId).toBe("custom");
     expect(moduleMatch.icon).toEqual(customIcon);
 
     const sectionMatch = store
       .searchGuideContent("descripcion")
       .find((result) => result.section === "Seccion Custom");
-    expect(sectionMatch).toBeTruthy();
+    expect(sectionMatch.moduleId).toBe("custom");
     expect(sectionMatch.snippet).toBe("Descripcion de seccion");
     expect(sectionMatch.icon).toEqual(customIcon);
 
     const featureMatch = store
       .searchGuideContent("feature especial")
       .find((result) => result.title === "Feature Especial");
-    expect(featureMatch).toBeTruthy();
+    expect(featureMatch.snippet).toBe("Funcionalidad: Feature Especial");
     expect(featureMatch.icon).toEqual(customIcon);
   });
 });

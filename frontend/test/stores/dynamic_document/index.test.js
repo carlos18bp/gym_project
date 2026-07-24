@@ -234,7 +234,9 @@ describe("Dynamic Document Store", () => {
 
     mock.onGet(/\/api\/dynamic-documents\/\?.*/).reply(500, { detail: "error" });
 
-    await expect(store.fetchDocuments({ page: 1, forceRefresh: true })).rejects.toBeTruthy();
+    await expect(store.fetchDocuments({ page: 1, forceRefresh: true })).rejects.toThrow(
+      "Request failed with status code 500"
+    );
     expect(store.documents).toEqual([]);
 
     consoleSpy.mockRestore();
@@ -249,7 +251,9 @@ describe("Dynamic Document Store", () => {
 
     mock.onGet(/\/api\/dynamic-documents\/\?.*/).reply(500, { detail: "error" });
 
-    await expect(store.fetchDocuments({ page: 2, forceRefresh: true })).rejects.toBeTruthy();
+    await expect(store.fetchDocuments({ page: 2, forceRefresh: true })).rejects.toThrow(
+      "Request failed with status code 500"
+    );
     expect(store.documents).toEqual([{ id: 1 }]);
 
     consoleSpy.mockRestore();

@@ -29,7 +29,9 @@ describe("Dynamic Document - Relationships actions", () => {
 
     mock.onGet("/api/dynamic-documents/12/relationships/").reply(500, { detail: "error" });
 
-    await expect(documentRelationshipsActions.getDocumentRelationships(12)).rejects.toBeTruthy();
+    await expect(documentRelationshipsActions.getDocumentRelationships(12)).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
@@ -50,7 +52,9 @@ describe("Dynamic Document - Relationships actions", () => {
   test("getRelatedDocuments throws on error", async () => {
     mock.onGet("/api/dynamic-documents/13/related-documents/").reply(500, { detail: "error" });
 
-    await expect(documentRelationshipsActions.getRelatedDocuments(13)).rejects.toBeTruthy();
+    await expect(documentRelationshipsActions.getRelatedDocuments(13)).rejects.toThrow(
+      "Request failed with status code 500"
+    );
   });
 
   test("getAvailableDocumentsForRelationship returns response data (or empty array)", async () => {
@@ -93,7 +97,7 @@ describe("Dynamic Document - Relationships actions", () => {
 
     await expect(
       documentRelationshipsActions.getAvailableDocumentsForRelationship(10)
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -190,7 +194,7 @@ describe("Dynamic Document - Relationships actions", () => {
         source_document: 10,
         target_document: 20,
       })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -259,7 +263,7 @@ describe("Dynamic Document - Relationships actions", () => {
 
     await expect(
       documentRelationshipsActions.deleteDocumentRelationship(8)
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Network Error");
 
     consoleSpy.mockRestore();
   });

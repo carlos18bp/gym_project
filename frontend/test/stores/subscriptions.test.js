@@ -94,7 +94,7 @@ describe("Subscription Store", () => {
 
     mock.onGet("/api/subscriptions/current/").reply(500, { detail: "err" });
 
-    await expect(store.fetchCurrentSubscription()).rejects.toBeTruthy();
+    await expect(store.fetchCurrentSubscription()).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -119,7 +119,7 @@ describe("Subscription Store", () => {
 
     mock.onGet("/api/subscriptions/history/").reply(500, { detail: "err" });
 
-    await expect(store.fetchSubscriptionHistory()).rejects.toBeTruthy();
+    await expect(store.fetchSubscriptionHistory()).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -142,7 +142,7 @@ describe("Subscription Store", () => {
 
     mock.onPost("/api/subscriptions/generate-signature/").reply(500, { detail: "err" });
 
-    await expect(store.generateWompiSignature({ amount_in_cents: 1000, currency: "COP", reference: "x" })).rejects.toBeTruthy();
+    await expect(store.generateWompiSignature({ amount_in_cents: 1000, currency: "COP", reference: "x" })).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -165,7 +165,7 @@ describe("Subscription Store", () => {
 
     mock.onGet("/api/subscriptions/wompi-config/").reply(500, { detail: "err" });
 
-    await expect(store.fetchWompiPublicKey()).rejects.toBeTruthy();
+    await expect(store.fetchWompiPublicKey()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -189,7 +189,7 @@ describe("Subscription Store", () => {
 
     mock.onPost("/api/subscriptions/create/").reply(500, { detail: "err" });
 
-    await expect(store.createSubscription({ plan_type: "cliente", payment_source_id: "ps" })).rejects.toBeTruthy();
+    await expect(store.createSubscription({ plan_type: "cliente", payment_source_id: "ps" })).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -214,7 +214,7 @@ describe("Subscription Store", () => {
 
     mock.onPatch("/api/subscriptions/cancel/").reply(500, { detail: "err" });
 
-    await expect(store.cancelSubscription()).rejects.toBeTruthy();
+    await expect(store.cancelSubscription()).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -239,7 +239,7 @@ describe("Subscription Store", () => {
 
     mock.onPatch("/api/subscriptions/reactivate/").reply(500, { detail: "err" });
 
-    await expect(store.reactivateSubscription()).rejects.toBeTruthy();
+    await expect(store.reactivateSubscription()).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -266,7 +266,7 @@ describe("Subscription Store", () => {
 
     mock.onPatch("/api/subscriptions/update-payment-method/").reply(500, { detail: "err" });
 
-    await expect(store.updatePaymentMethod("new")).rejects.toBeTruthy();
+    await expect(store.updatePaymentMethod("new")).rejects.toThrow("Request failed with status code 500");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -319,7 +319,7 @@ describe("Subscription Store", () => {
 
     mock.onGet("/api/subscriptions/payments/").reply(500, { detail: "err" });
 
-    await expect(store.fetchPaymentHistory()).rejects.toBeTruthy();
+    await expect(store.fetchPaymentHistory()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });

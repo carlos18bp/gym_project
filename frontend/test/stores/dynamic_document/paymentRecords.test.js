@@ -45,7 +45,9 @@ describe("Dynamic Document Store - paymentRecords module", () => {
     mock.onGet("/api/dynamic-documents/7/payment-records/").reply(500);
     const store = useDynamicDocumentStore();
 
-    await expect(store.fetchPaymentRecords(7)).rejects.toBeTruthy();
+    await expect(store.fetchPaymentRecords(7)).rejects.toThrow(
+      "Request failed with status code 500"
+    );
   });
 
   test("uploadPaymentRecord posts multipart form data with optional fields", async () => {

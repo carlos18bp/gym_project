@@ -203,7 +203,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/create/").reply(200, {});
 
-    await expect(store.createPost(1, { title: "A" })).rejects.toBeTruthy();
+    await expect(store.createPost(1, { title: "A" })).rejects.toThrow("Error creating post");
 
     consoleSpy.mockRestore();
   });
@@ -215,7 +215,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/create/").networkError();
 
-    await expect(store.createPost(1, { title: "A" })).rejects.toBeTruthy();
+    await expect(store.createPost(1, { title: "A" })).rejects.toThrow("Network Error");
     expect(store.isCreatingPost).toBe(false);
 
     consoleSpy.mockRestore();
@@ -296,7 +296,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/?search=x").reply(204, {});
 
-    await expect(store.getManagementPosts(1, { search: "x" })).rejects.toBeTruthy();
+    await expect(store.getManagementPosts(1, { search: "x" })).rejects.toThrow("Error fetching management posts");
     expect(store.isLoadingPosts).toBe(false);
 
     consoleSpy.mockRestore();
@@ -309,7 +309,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/").networkError();
 
-    await expect(store.getManagementPosts(1)).rejects.toBeTruthy();
+    await expect(store.getManagementPosts(1)).rejects.toThrow("Network Error");
     expect(store.isLoadingPosts).toBe(false);
 
     consoleSpy.mockRestore();
@@ -385,7 +385,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/public/?search=x").reply(204, {});
 
-    await expect(store.getPublicPosts(1, { search: "x" })).rejects.toBeTruthy();
+    await expect(store.getPublicPosts(1, { search: "x" })).rejects.toThrow("Error fetching public posts");
     expect(store.isLoadingPosts).toBe(false);
 
     consoleSpy.mockRestore();
@@ -398,7 +398,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/public/").networkError();
 
-    await expect(store.getPublicPosts(1)).rejects.toBeTruthy();
+    await expect(store.getPublicPosts(1)).rejects.toThrow("Network Error");
     expect(store.isLoadingPosts).toBe(false);
 
     consoleSpy.mockRestore();
@@ -450,7 +450,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/10/").reply(204, {});
 
-    await expect(store.getPostDetail(1, 10)).rejects.toBeTruthy();
+    await expect(store.getPostDetail(1, 10)).rejects.toThrow("Error fetching post detail");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -463,7 +463,7 @@ describe("Organization Posts Store", () => {
 
     mock.onGet("/api/organizations/1/posts/10/").networkError();
 
-    await expect(store.getPostDetail(1, 10)).rejects.toBeTruthy();
+    await expect(store.getPostDetail(1, 10)).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -528,7 +528,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPut("/api/organizations/1/posts/7/update/").reply(204, {});
 
-    await expect(store.updatePost(1, 7, { title: "Updated" })).rejects.toBeTruthy();
+    await expect(store.updatePost(1, 7, { title: "Updated" })).rejects.toThrow("Error updating post");
     expect(store.isUpdatingPost).toBe(false);
 
     consoleSpy.mockRestore();
@@ -541,7 +541,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPut("/api/organizations/1/posts/7/update/").networkError();
 
-    await expect(store.updatePost(1, 7, { title: "Updated" })).rejects.toBeTruthy();
+    await expect(store.updatePost(1, 7, { title: "Updated" })).rejects.toThrow("Network Error");
     expect(store.isUpdatingPost).toBe(false);
 
     consoleSpy.mockRestore();
@@ -596,7 +596,7 @@ describe("Organization Posts Store", () => {
 
     mock.onDelete("/api/organizations/1/posts/3/delete/").reply(400, {});
 
-    await expect(store.deletePost(1, 3)).rejects.toBeTruthy();
+    await expect(store.deletePost(1, 3)).rejects.toThrow("Request failed with status code 400");
     expect(store.isDeletingPost).toBe(false);
 
     consoleSpy.mockRestore();
@@ -660,7 +660,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/1/toggle-pin/").reply(204, {});
 
-    await expect(store.togglePinPost(1, 1)).rejects.toBeTruthy();
+    await expect(store.togglePinPost(1, 1)).rejects.toThrow("Error toggling post pin status");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -673,7 +673,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/1/toggle-pin/").networkError();
 
-    await expect(store.togglePinPost(1, 1)).rejects.toBeTruthy();
+    await expect(store.togglePinPost(1, 1)).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -721,7 +721,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/2/toggle-status/").reply(204, {});
 
-    await expect(store.togglePostStatus(1, 2)).rejects.toBeTruthy();
+    await expect(store.togglePostStatus(1, 2)).rejects.toThrow("Error toggling post status");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();
@@ -734,7 +734,7 @@ describe("Organization Posts Store", () => {
 
     mock.onPost("/api/organizations/1/posts/2/toggle-status/").networkError();
 
-    await expect(store.togglePostStatus(1, 2)).rejects.toBeTruthy();
+    await expect(store.togglePostStatus(1, 2)).rejects.toThrow("Network Error");
     expect(store.isLoading).toBe(false);
 
     consoleSpy.mockRestore();

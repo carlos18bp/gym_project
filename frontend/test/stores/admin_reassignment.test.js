@@ -37,7 +37,7 @@ describe("Admin Reassignment Store", () => {
     });
     const store = useAdminReassignmentStore();
 
-    await expect(store.fetchSummary(9)).rejects.toBeTruthy();
+    await expect(store.fetchSummary(9)).rejects.toThrow("Request failed with status code 404");
     expect(store.error).toBe("Abogado no encontrado.");
   });
 
@@ -45,7 +45,7 @@ describe("Admin Reassignment Store", () => {
     mock.onGet("/api/admin/reassignment/summary/?lawyer_id=9").networkError();
     const store = useAdminReassignmentStore();
 
-    await expect(store.fetchSummary(9)).rejects.toBeTruthy();
+    await expect(store.fetchSummary(9)).rejects.toThrow("Network Error");
     expect(store.error).toBe("No se pudo cargar el resumen.");
   });
 
@@ -87,7 +87,7 @@ describe("Admin Reassignment Store", () => {
         documentIds: [20],
         archiveSource: false,
       })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 400");
 
     expect(store.error).toBe("El abogado destino está archivado.");
     expect(store.executing).toBe(false);
@@ -105,7 +105,7 @@ describe("Admin Reassignment Store", () => {
         documentIds: [],
         archiveSource: false,
       })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Network Error");
 
     expect(store.error).toBe("No se pudo completar la reasignación.");
   });

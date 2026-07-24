@@ -70,7 +70,7 @@ describe("Reports Store", () => {
         reportData,
         { responseType: "blob" }
       );
-      expect(result).toBeTruthy();
+      expect(result).toBeInstanceOf(Blob);
       expect([store.isGenerating, store.error]).toEqual([false, null]);
       expect([store.lastGeneratedReport.type, store.lastGeneratedReport.filename]).toEqual([
         "processes",
@@ -160,7 +160,7 @@ describe("Reports Store", () => {
 
     await expect(
       store.generateExcelReport({ reportType: "x", startDate: "2026-01-01", endDate: "2026-01-31", userId: null })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("boom");
 
     expect(store.isGenerating).toBe(false);
     expect(store.error).toBe("boom");
@@ -182,7 +182,7 @@ describe("Reports Store", () => {
         endDate: "2026-01-31",
         userId: null,
       })
-    ).rejects.toBeTruthy();
+    ).rejects.toEqual({});
 
     expect(store.isGenerating).toBe(false);
     expect(store.error).toBe("Error al generar el reporte");
@@ -206,7 +206,7 @@ describe("Reports Store", () => {
         endDate: "2026-01-31",
         userId: null,
       })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("sync");
 
     expect(store.isGenerating).toBe(false);
     expect(store.error).toBe("sync");

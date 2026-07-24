@@ -87,7 +87,9 @@ describe("Dynamic Document Store - Tags", () => {
 
     mock.onGet("/api/dynamic-documents/tags/").reply(500, { detail: "error" });
 
-    await expect(store.fetchTags(true)).rejects.toBeTruthy();
+    await expect(store.fetchTags(true)).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     expect(store.tags).toEqual([]);
     expect(store.isLoadingTags).toBe(false);
@@ -141,7 +143,9 @@ describe("Dynamic Document Store - Tags", () => {
 
     mock.onPost("/api/dynamic-documents/tags/create/").reply(500, { detail: "error" });
 
-    await expect(store.createTag({ name: "Fail", color_id: 1 })).rejects.toBeTruthy();
+    await expect(store.createTag({ name: "Fail", color_id: 1 })).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
@@ -210,7 +214,9 @@ describe("Dynamic Document Store - Tags", () => {
 
     mock.onPut("/api/dynamic-documents/tags/1/update/").reply(500, { detail: "error" });
 
-    await expect(store.updateTag(1, { name: "Updated" })).rejects.toBeTruthy();
+    await expect(store.updateTag(1, { name: "Updated" })).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
