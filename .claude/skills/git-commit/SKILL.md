@@ -1,9 +1,9 @@
 ---
 name: git-commit
-description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd). Cuando el repo del cwd es vps-ops-toolkit, tras un push exitoso propaga el commit al resto del fleet (otros VPS + dev si está prendida) vía Tailscale (ON por defecto, --no-propagate para saltar); un repo de proyecto nunca se propaga. Pass --all to iterate over LOCAL_PROJECTS + toolkit on this host."
+description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd). Cuando el repo del cwd es vps-ops-toolkit, tras un push exitoso propaga el commit al resto del fleet (otros VPS + dev si está prendida) vía Tailscale (ON por defecto, --no-propagate para saltar); un repo de proyecto nunca se propaga. Pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host. git-commit NO tiene modo fleet: --all-vps y --all son error (no se commitea a ciegas en clones de otros VPS); para el eje fleet usar /git-sync --all-vps."
 disable-model-invocation: true
 allowed-tools: Bash
-argument-hint: "[--all (itera repos locales del host)] [--no-propagate (no sincroniza el toolkit al fleet)]"
+argument-hint: "[--all-repos (todos los repos de este host)] [--no-propagate (no sincroniza el toolkit al fleet)]"
 ---
 
 > **⚠️ How to invoke**:
@@ -12,11 +12,15 @@ argument-hint: "[--all (itera repos locales del host)] [--no-propagate (no sincr
 >   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
 >   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
 >   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
-> - Con `--all`: `/git-commit --all` → itera sobre `LOCAL_PROJECTS` del
->   host + `vps-ops-toolkit`. En cada repo: si está clean, SKIP; si tiene
->   cambios, generar mensaje propio y commit+push independiente.
+> - Con `--all-repos`: `/git-commit --all-repos` → itera sobre `LOCAL_PROJECTS`
+>   del host + `vps-ops-toolkit`. En cada repo: si está clean, SKIP; si tiene
+>   cambios, generar mensaje propio y commit+push independiente. **Convención del
+>   fleet: `--all` = todos los VPS** (full-audit/git-status-report); git-commit
+>   NO tiene modo fleet (no se commitea a ciegas en clones de otros VPS), por eso
+>   el multi-repo-local es `--all-repos`. `--all` sigue funcionando como **alias
+>   deprecado** de `--all-repos` (con warning).
 > - Con `--no-propagate`: salta la propagación del toolkit al fleet (útil
->   offline / sin Tailscale). Combinable con `--all`.
+>   offline / sin Tailscale). Combinable con `--all-repos`.
 >
 > No acepta nombres de proyecto individuales — para operar en un repo
 > específico, lanzá Claude Code desde ese repo (o `cd` a él antes de invocar).
@@ -39,11 +43,28 @@ ALL=0
 PROPAGATE=1   # ON por defecto; --no-propagate lo apaga.
 for tok in $ARGS_RAW; do
     case "$tok" in
-        --all)          ALL=1 ;;
+        --all-repos)    ALL=1 ;;
         --no-propagate) PROPAGATE=0 ;;
+        --all-vps)
+            echo "❌ ERROR: git-commit NO tiene modo fleet."
+            echo "   No se commitea a ciegas en clones de otros VPS: pueden estar dirty o"
+            echo "   parados en una rama de release, y el mensaje se redactaría sobre diffs"
+            echo "   que nunca viste."
+            echo "   ¿Los repos de ESTE host?              → /git-commit --all-repos"
+            echo "   ¿Sincronizar el toolkit en el fleet?  → ya ocurre solo tras el push"
+            echo "                                           (o: /git-sync --all-vps)"
+            echo "   ¿Rebasar todos los repos del fleet?   → /git-sync --all-repos --all-vps"
+            exit 2
+            ;;
+        --all)
+            echo "❌ ERROR: --all es ambiguo y quedó retirado de git-commit."
+            echo "   ¿Todos los repos de ESTE host? → /git-commit --all-repos"
+            echo "   (git-commit no acepta --all-vps: ver /git-sync para el eje fleet.)"
+            exit 2
+            ;;
         *)
             echo "❌ ERROR: argumento desconocido '$tok'."
-            echo "   Válidos: --all (todos los locales) | --no-propagate (no sincroniza el toolkit al fleet)."
+            echo "   Válidos: --all-repos (todos los repos del host) | --no-propagate (no sincroniza el toolkit al fleet)."
             exit 2
             ;;
     esac
@@ -53,12 +74,12 @@ if (( ALL == 1 )); then
     source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
     PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
     REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-    MODE_LABEL="--all (${#REPOS[@]} repos)"
+    MODE_LABEL="--all-repos (${#REPOS[@]} repos)"
 else
     # Default: el repo del cwd (donde se lanzó Claude Code), no un hardcode.
     REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
         echo "❌ ERROR: el directorio actual no es un repo git."
-        echo "   Lanzá Claude Code desde el repo a commitear (o cd a él), o usá --all."
+        echo "   Lanzá Claude Code desde el repo a commitear (o cd a él), o usá --all-repos."
         exit 2
     }
     cd "$REPO_ROOT"                        # anclar el cwd al top del repo
