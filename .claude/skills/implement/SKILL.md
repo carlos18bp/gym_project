@@ -6,7 +6,26 @@ argument-hint: "[description of what to implement]"
 
 Before starting, ALWAYS do 2 things:
 a. Read and understand the documentation in `docs/` and `tasks/`
-b. Get required code context from `backend/` and `frontend/`
+b. Get required code context from `backend/` and `frontend/` — o el layout que
+   exista en el repo (ver [[methodology-setup]])
+
+---
+
+## Preflight (obligatorio)
+
+Si el repo actual es un proyecto del fleet (aparece en
+`~/webapps/vps-ops-toolkit/projects.yml`), ANTES de escribir:
+
+```bash
+bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <proyecto>
+```
+
+- Commitear **SÓLO** en `resolved_branch` (la coordenada validada contra los
+  PRs abiertos — nunca adivinar la rama).
+- `host_status=wrong-host` → **STOP**: el trabajo de este proyecto vive en el
+  clon de `vps_work`, no en este host.
+- Proyecto `production+active` (`is_protected_project`) y el cambio toca
+  runtime → pedir confirmación explícita del operador antes de escribir.
 
 ---
 
@@ -46,7 +65,8 @@ b. Get required code context from `backend/` and `frontend/`
 
 ### Step 3: Make Changes
 
-1. Document current state in memory files
+1. Document current state in the memory files — los 7 canónicos de
+   [[methodology-setup]]; `tasks/active_context.md` siempre
 2. Plan single logical change at a time:
    - One logical feature at a time
    - Fully resolve by accommodating changes in other parts
@@ -57,10 +77,11 @@ b. Get required code context from `backend/` and `frontend/`
 
 ### Step 4: Test
 
-- Create unit tests for new functionality
-- Run tests to confirm existing behavior is preserved
-- Write test logic in separate files
-- Think of exhaustive test plans covering edge cases
+- Slice mínimo de verificación: el/los tests del comportamiento tocado (crear
+  o correr sólo esos, en archivos separados) + confirmar que la regresión
+  inmediata no se rompe.
+- La cobertura completa (edge cases, casos negativos, gate) la cierra [[qa]]
+  en el Cierre — no dupliques su trabajo acá.
 
 ### Step 5: Loop Steps 1-4
 
@@ -74,7 +95,12 @@ Optimize the implemented code after all changes are tested and verified.
 
 After every implementation, ALWAYS do 2 things:
 a. Update other possibly affected codes in `backend/` and `frontend/`
-b. Update the documentation in `docs/` and `tasks/`
+b. Update the memory files afectados por el cambio — los 7 canónicos de
+   [[methodology-setup]]: `docs/methodology/product_requirement_docs.md`,
+   `docs/methodology/technical.md`, `docs/methodology/architecture.md`,
+   `docs/methodology/error-documentation.md`,
+   `docs/methodology/lessons-learned.md`, `tasks/tasks_plan.md` y
+   `tasks/active_context.md` (este último siempre)
 
 ---
 
@@ -84,6 +110,19 @@ Al terminar la implementación (feature funcionalmente completa), la forma
 canónica de cerrar la cobertura es invocar **[[qa]]**: audita el flow-map,
 escribe los tests faltantes al DoD de 3 puntos (casos negativos incluidos),
 corre el gate y purga junk — sin mergear. Sugerilo siempre en el cierre.
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y sin flags explícitos (reglas de
+gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| /qa (Recommended) | dry-run, no mergea; cierra la cobertura de lo implementado | `/qa` |
+| /git-commit | add+commit+push de lo implementado | `/git-commit` |
+
+**NUNCA** ofrecer `/deploy-and-check` (manual-only por política — sólo como
+texto en `## Next steps` si aplica).
 
 ## Output final
 

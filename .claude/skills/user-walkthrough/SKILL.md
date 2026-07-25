@@ -48,17 +48,10 @@ Señales visibles de éxito: un mensaje de confirmación, un cambio en pantalla,
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Recap liviano al cierre de la guía (sin jerga, mismo tono amigable):
+Excepción output-es-el-producto de [[_output-protocol]]: la guía ES el entregable (para un usuario final no técnico). El cierre técnico se separa de la guía con la línea `— fin de la guía —` y se reduce a SÓLO la línea de veredicto, sin tabla de dimensiones ni Next steps técnicos:
 
-🟢 user-walkthrough OK   (🟡 si quedaron dudas o no se pudo identificar bien la funcionalidad)
+— fin de la guía —
 
-| Dimensión | Estado | Detalle |
-|---|---|---|
-| Recorrido cubierto | ✅ | los 5 bloques: qué es, antes, paso a paso, éxito, problemas |
-| Pantallas mostradas | ✅ | cada paso describe una acción visible en pantalla |
-| Variantes por rol | ✅ | separadas si aplican (admin/cliente, logueado/invitado) |
-| Dudas abiertas | ✅ | ninguna, o listadas para el equipo técnico |
+🟢 user-walkthrough OK   (🟡 si quedaron dudas abiertas listadas o no se pudo identificar bien la funcionalidad — con dudas abiertas el veredicto NUNCA es 🟢)
 
-## Next steps
-- (usuario) seguir el "Paso a paso" y confirmar las señales de "Cómo sabes que funcionó"
-- (si algo falla) avisar al equipo técnico con una captura de pantalla
+Los next steps de esta skill son para el usuario final (sin comandos): viven dentro de la guía misma ("Paso a paso", "Cómo sabes que funcionó", "Si algo no sale como esperabas").

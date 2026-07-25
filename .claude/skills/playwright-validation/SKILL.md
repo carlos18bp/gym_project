@@ -382,6 +382,11 @@ Flujo:
 
 ## 9. Handoff validate-pending (desde /qa)
 
+> **Como fase del conductor:** desde 2026-07-25 [[qa]] ejecuta esta sección
+> automáticamente como su **Fase 5b** cuando el preflight detecta app viva
+> (`app_reachable=local:*|staging:*` — prod jamás). Invocada suelta, esta
+> sección sigue siendo el camino manual idéntico.
+
 Cuando la Fase 4 de [[qa]] dejó specs en DRAFT (`blocked: validate-pending` —
 la app no corría durante el authoring), esta skill es el paso que los valida:
 

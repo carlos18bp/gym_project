@@ -177,11 +177,25 @@ From that moment the Stop hook makes it impossible to end the turn until the gat
 passes over those files; Phase 5's `--verify` clears the marker on a clean pass.
 Never delete the marker by hand to "unblock" — fix the findings.
 
-**E2E needs the running app.** In a headless run the e2e subagent **drafts** specs
-(tagged `@flow`/`@outcome`, acts + asserts) but cannot execute them → returns
-`blocked: validate-pending`; the run degrades to 🟡 and never claims `covered`
-without a passing run. Next step routes the operator to `dev-up` +
-`playwright-validation` (staging), then re-`/qa`.
+**E2E needs the running app.** The preflight probes it: `app_reachable=local:<port>
+| staging:<url> | no` (production is NEVER probed nor validated — read-only by
+contract). Pass the value to the e2e engineer: with an app it EXECUTES its specs;
+without one it **drafts** (tagged `@flow`/`@outcome`, acts + asserts) and returns
+`blocked: validate-pending`.
+
+## Phase 5b — Live e2e validation (conditional — playwright-validation as a phase)
+
+Runs ONLY when the e2e engineer returned `validate-pending` AND `app_reachable≠no`:
+
+1. Follow `playwright-validation` §9 (Handoff validate-pending) inline: for each
+   draft spec, `cd frontend && npx playwright test e2e/<spec>`; collect pass/fail.
+2. Green → `qa-agent.sh --verify <proj> --files=<specs>` (clears the marker);
+   the run upgrades 🟡→🟢 for the e2e dimension.
+3. Failures → dispatch **`qa-healer`** (≤3 attempts per spec).
+4. Mutating drafts run only against `local:`/`staging:` targets — which is all
+   the probe can return; if `app_reachable=no`, this phase is skipped and the
+   manual handoff (Next steps → `dev-up` + `playwright-validation`, re-`/qa`)
+   stays exactly as before.
 
 ## Phase 5 — Gate / verify (Verifier → Healer)
 
@@ -235,6 +249,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 | Backend (subagente) | ✅ | N tests, valor concreto + "qué bug atrapa"; DJANGO_ENV=production |
 | Frontend-unit (subagente) | ✅ | N tests, sin weak/tautological/duplicate |
 | E2E (subagente) | ⚠️ | N specs @flow/@outcome; 2 draft — app no corriendo (validate-pending) |
+| Validación e2e en vivo (fase 5b) | ⏭️ | app_reachable=no → handoff manual · ✅ N drafts validados en <local/staging> |
 | Quality gate (batch) | ✅ | cero hallazgos junk en archivos tocados (severidad CI) |
 | Mutation gate (si hay tooling) | ⏭️ | diff-scoped · survivors=N (o ⏭️ sin tooling) |
 | Healer | ⏭️ | N tests reparados (≤3 intentos c/u) · 0 cambios a código prod |

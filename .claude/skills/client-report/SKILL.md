@@ -1,6 +1,6 @@
 ---
 name: client-report
-description: "Gestiona los reportes de cambios del proyecto para el cliente (docs/reports/). Default: crea un reporte en español, no técnico, de lo hecho en la sesión actual (contexto + git log). --list tabula los reportes existentes; --find <descripción> busca reportes por tema. Tras crear el .md local, si el conector \"Gestor de Documentos\" (MCP) está disponible, valida la carpeta del proyecto y publica/actualiza el reporte allí (pregunta antes de crear, confirma antes de actualizar)."
+description: "Reportes de cambios para el cliente (docs/reports/): crea uno en español, no técnico, de lo hecho en la sesión. --list tabula; --find busca por tema. Publica al Gestor de Documentos (MCP) si está disponible, confirmando antes de crear/actualizar."
 argument-hint: "[--list | --find <descripción> | <instrucciones libres>]"
 ---
 
@@ -14,7 +14,9 @@ y los busca.
 
 **Convención de almacenamiento (fleet-wide):**
 - Carpeta: `docs/reports/` — **versionada en git** (a diferencia de `docs/tmp/`,
-  que es para borradores efímeros y está gitignorada).
+  que es para borradores efímeros y está gitignorada). Nota: en
+  `vps-ops-toolkit` los reportes viven en `reports/` y `docs/audits/` — esta
+  convención es para repos de proyecto.
 - Nombre: `<Tema_En_Snake_Case>_DDMMYYYY.md` — la fecha SIEMPRE como **postfijo**
   y SIEMPRE obtenida de `date +%d%m%Y`, nunca asumida.
   Ej.: `Reporte_Respuestas_Reunion_22062026.md`.
@@ -149,7 +151,10 @@ resultados".
    **Cómo obtener las URLs reales (no las inventes):**
 
    ```bash
-   # URL base del ambiente de pruebas (el staging del fleet suele ser *.projectapp.co):
+   # URL base del ambiente de pruebas — fuentes no circulares primero:
+   grep -h 'domain:' ~/webapps/vps-ops-toolkit/projects.yml 2>/dev/null        # projects.yml del fleet (campo domain:)
+   grep -h 'ALLOWED_HOSTS' backend/.env .env 2>/dev/null                       # hosts reales del ambiente
+   # Reportes anteriores (fuente circular — sólo como último recurso):
    grep -rhoE 'https?://[a-z0-9.-]+\.(projectapp\.co|com)[^ )`"]*' docs/reports/ 2>/dev/null | sort -u
    # Ruta exacta de cada vista/módulo (Vue router / Django urls):
    grep -rnE "path:[[:space:]]*[\"']" frontend/src/router/ 2>/dev/null   # SPA Vue
@@ -179,9 +184,10 @@ Documentos** (MCP `Gestor de Documentos`), que lo versiona y genera el PDF con m
 El `.md` en `docs/reports/` sigue siendo la fuente; este paso lo sincroniza al gestor.
 
 **Precondición — disponibilidad del conector.** Este paso requiere las tools del
-conector "Gestor de Documentos" en la sesión (`list_folders`, `list_documents`,
-`read_document`, `create_folder`, `create_document`, `update_document`) — un conector
-claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
+conector "Gestor de Documentos" en la sesión — nombre MCP completo:
+`mcp__claude_ai_Gestor_de_Documentos__list_folders`, y con el mismo prefijo
+`…__list_documents`, `…__read_document`, `…__create_folder`, `…__create_document`,
+`…__update_document` — un conector claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
 sin acceso, etc.), **SALTAR** el paso: dejar constancia en el output (`Gestor de
 Documentos: n/a en esta sesión`) y terminar con el reporte local. **Nunca falles por
 esto.**
@@ -302,7 +308,7 @@ AskUserQuestion:
 |---|---|---|
 | Listar reportes existentes | tabla concisa de `docs/reports/` (read-only) | `/client-report --list` |
 | Buscar por tema | busca en qué reportes se tocó un tema | `/client-report --find <tema>` |
-| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | Phase 4: `list_folders` → `create/update_document` |
+| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | `/client-report publicá en el Gestor el reporte recién creado` |
 | Commitear el reporte | add+commit+push del reporte recién creado | `/git-commit` |
 
 ---

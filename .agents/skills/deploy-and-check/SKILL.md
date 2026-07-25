@@ -1,6 +1,6 @@
 ---
 name: deploy-and-check
-description: "Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
+description: "VPS-only — Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
 disable-model-invocation: true
 allowed-tools: Bash
 argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
@@ -13,10 +13,14 @@ argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 **Verificación obligatoria ANTES de cualquier otro paso**:
 
 ```bash
-if [[ -d /home/dev-env/webapps || -d /home/dev_env/webapps ]]; then
+# canon: is_dev_machine() (bootstrap-common.sh) — cubre los dir-candidates de dev
+# Y el override FLEET_ENV=dev|vps; no hand-rollear el check de paths acá.
+export OPS_ROOT="$HOME/webapps/vps-ops-toolkit" MODE=--check
+source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
+if is_dev_machine; then
   echo "❌ Esta skill no se puede ejecutar desde la dev machine."
   echo "   SSH primero al VPS destino:"
-  echo "     ssh vps-projectapp-staging   (o vps-gym)"
+  echo "     ssh vps-projectapp-staging · vps-projectapp-prod · vps-gym"
   echo "     cd ~/webapps/<proyecto> && claude → /deploy-and-check"
   exit 2
 fi
@@ -119,9 +123,11 @@ EOF
 bash $HOME/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
 ```
 
-2. Working tree limpio:
+2. Working tree limpio (abortar si está sucio — el checkout de Phase 2 pisaría
+   o arrastraría cambios locales):
 ```bash
 cd "$PROJECT_DIR" && git status
+git diff --quiet && git diff --cached --quiet || { echo "❌ tree sucio — commitear/stashear antes de deployar"; exit 1; }
 ```
 
 3. Branch existe en remote:
@@ -210,7 +216,9 @@ fi
 
 8. Reiniciar gunicorn + huey + frontend:
 ```bash
-sudo systemctl restart "$GUNICORN_SVC" && sudo systemctl restart "$HUEY_SVC"
+sudo systemctl restart "$GUNICORN_SVC"
+# HUEY_SVC puede venir vacío (proyecto sin Huey): restart "" falla y cortaría el paso
+[ -z "$HUEY_SVC" ] || sudo systemctl restart "$HUEY_SVC"
 # FRONTEND_SVC: mismo lookup que el paso 6 (frontend_service: del yml, fallback legacy)
 FRONTEND_SVC=$(awk -v p="$PROJECT_NAME" '
     /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
@@ -228,12 +236,20 @@ fi
 
 9. Estado servicios:
 ```bash
-systemctl is-active "$GUNICORN_SVC" && systemctl is-active "$HUEY_SVC"
+systemctl is-active "$GUNICORN_SVC"
+[ -z "$HUEY_SVC" ] || systemctl is-active "$HUEY_SVC"   # sin Huey: saltar
 ```
 
 10. Health endpoint:
 ```bash
-curl -s "https://$DOMAIN/api/health/" | python3 -m json.tool
+HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://$DOMAIN/api/health/")
+if [ "$HTTP_CODE" = "404" ]; then
+    # 404 = ⚠️, no ❌: endpoint no estándar en este proyecto (algunos SSR no lo exponen)
+    echo "⚠️ /api/health/ → 404 — endpoint no estándar en este proyecto; verificar el sitio a mano"
+else
+    echo "HTTP $HTTP_CODE"
+    curl -s "https://$DOMAIN/api/health/" | python3 -m json.tool
+fi
 ```
 
 11. Confirmar branch:

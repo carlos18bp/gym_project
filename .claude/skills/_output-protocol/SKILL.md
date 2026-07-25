@@ -38,6 +38,16 @@ Un solo emoji + frase corta. Umbrales **derivados de la tabla** (sección 2):
 | `🚫 <skill> — REFUSED (<razón>)` | Safety gate intencional rechazó la operación (prod detectada, intent peligroso) — **no es error**, es decisión segura |
 | `⏭️ <skill> — N/A o saltado` | No aplica al contexto (skip-flag pasado, ya en estado correcto) |
 
+Cuando TODAS las celdas son ✅ (veredicto 🟢) y no queda ningún pendiente,
+puede añadirse debajo del veredicto la línea opcional — convención ya en uso
+amplio en el catálogo:
+
+```markdown
+✨ Todo en orden — no hay acciones pendientes.
+```
+
+En ese caso la sección `## Next steps` se omite (§3).
+
 ### 2. Tabla de dimensiones
 
 ```markdown
@@ -69,6 +79,14 @@ Si la skill corrió en múltiples hosts/proyectos, agregar columna `host` o
 ENTRE el veredicto y la tabla — listando los 3 items más críticos con su
 comando exacto. El operador lee el Top 3 primero; la tabla queda como detalle
 profundizable.
+
+### Excepción: skills cuyo output ES el producto
+
+Skills donde la respuesta misma es el entregable para un humano — a veces no
+técnico — (hoy: `human`, `user-walkthrough`): una tabla de dimensiones al
+final sólo mete ruido sobre el producto. Estas skills cierran SÓLO con la
+línea de veredicto (§1), sin tabla §2 ni Next steps técnicos, y deben
+declarar la excepción en su propio `## Output final`.
 
 ### 3. Pendientes / next steps (omitir si no aplica)
 
@@ -146,6 +164,8 @@ alias heredan el menú de su skill base (regla de `## Skills alias`).
   "correr el script de foo en modo apply" no.
 - **No repetir info** que ya está en la tabla. Next steps son acciones, no
   resúmenes.
+- **Máx. 3 comandos de verificación por ciclo** — nunca una suite completa
+  como verificación de un cambio puntual.
 
 ## Ejemplo (skill /init-fleet, modo apply, dev)
 
