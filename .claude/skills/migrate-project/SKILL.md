@@ -2,7 +2,7 @@
 name: migrate-project
 description: "Migra un proyecto Django entre VPS del fleet (20 pasos: git clone, creds, snapshot, systemd+nginx deploy, SSL emit, cutover). Per-project, no whole-VPS. v1.3 con deploy automático de systemd units (paso 16) + nginx site (paso 17) + SSL cert chicken-and-egg handler (paso 19) + auto-cleanup mysql-users.env post-cutover (paso 20.9). Reducción ~30 min de manual work por migración."
 argument-hint: "<project_name> <target_vps_alias> [--check|--apply|--cutover --confirm-downtime|--rollback]"
-allowed-tools: Bash, Read, Edit
+allowed-tools: Bash, Read, Edit, AskUserQuestion
 ---
 
 ## Qué hace esta skill
@@ -395,6 +395,29 @@ Esperado: 0 errores. Warnings esperados:
 Caso más simple del set analizado: sin twin staging, sin `extra_paths`, sólo `extra_packages: [ffmpeg]`. DB pequeña (37 KB gz), media chica (2.7 MB gz).
 
 ---
+
+## Acciones disponibles
+
+Menú **position-aware**: acá el operador siempre pasó argumentos (proyecto +
+target + modo), así que el gating de [[_output-protocol]] §4 aplica al PASO
+SIGUIENTE — tras el reporte, si la sesión es interactiva, ofrecer vía
+AskUserQuestion la continuación según el modo que acaba de correr.
+
+Tras un `--check` exitoso:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Ejecutar --apply (Recommended) | snapshot + transfer + warm spare en target; origin sigue vivo, idempotente, sin downtime | `bash scripts/maintenance/migrate-project.sh --apply <proj> <target>` |
+
+Tras un `--apply`:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Mostrar el comando exacto de cutover | el cutover NO es clickeable — exige tipear `--confirm-downtime` con la ventana acordada; esta opción sólo MUESTRA el texto, NO lo ejecuta | `bash scripts/maintenance/migrate-project.sh --cutover --confirm-downtime <proj> <target>` |
+| --rollback | si algo salió mal: restart de services en origin, target queda en warm spare | `bash scripts/maintenance/migrate-project.sh --rollback <proj> <target>` |
+
+El `--cutover` está en la blocklist del protocolo: nunca se ejecuta desde un
+click — el operador lo tipea con su `--confirm-downtime`.
 
 ## Output final
 

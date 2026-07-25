@@ -1,7 +1,7 @@
 ---
 name: git-sync
 description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Dos ejes ortogonales combinables: --all-repos (todos los repos de ESTE host) y --all-vps (el toolkit en TODOS los VPS). Sin flags: el repo del cwd. --all quedó retirado (error) por ambiguo."
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 argument-hint: "[--all-repos (todos los repos de este host)] [--all-vps (todos los VPS del fleet)]"
 ---
 
@@ -562,6 +562,22 @@ resolver con una sesión en ese host) · `UNREACHABLE`. Por repo de proyecto:
   operativo. Si hay >2, emitir warning destacado pero NO bloquear el sync.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| --all-repos (este host) | rebasa LOCAL_PROJECTS + toolkit de ESTE host | `/git-sync --all-repos` |
+| --all-vps (toolkit en el fleet) | core no-interactivo en cada VPS vía Tailscale; conflicto ⇒ abort + reporte | `/git-sync --all-vps` |
+| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet | `/git-sync --all-repos --all-vps` |
+| Drop de stash OBSOLETO/VIEJO | SÓLO los que ESTE run clasificó así, uno por uno y con su evidencia | `git stash drop stash@{N}` |
+
+Blocklist ([[_output-protocol]] §4): nunca ofrecer drops masivos de stashes ni
+`git reset --hard` — el drop es per-stash, sólo con la clasificación
+OBSOLETO/VIEJO de esta corrida como evidencia visible.
 
 ## Output final
 

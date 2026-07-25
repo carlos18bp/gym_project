@@ -97,6 +97,21 @@ Scan the repository for files that should be deleted, updated, or added to `.git
 - Verify dead code claims: a file is only "unused" if it has zero imports AND is not referenced in URL configs, management commands, or template tags.
 - When recommending `.gitignore` updates, show the exact lines to add.
 
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Aplicar lote HIGH (con la lista y evidencia mostradas) | ejecuta el `git rm` del lote HIGH tal cual quedó listado arriba, nada más | `git rm <paths del lote HIGH mostrado>` |
+| Aplicar patch .gitignore | agrega al `.gitignore` las líneas exactas mostradas en el reporte | `cat >> .gitignore  # líneas del patch mostrado` |
+| Aplicar TODO lo propuesto (HIGH+MEDIUM, re-mostrando evidencia) | borra ambos lotes; re-muestra lista + evidencia de MEDIUM antes de tocar | `git rm <lotes HIGH+MEDIUM>` + patch `.gitignore` |
+| Nada — sólo el reporte | cierra sin ejecutar nada | — |
+
+Los lotes MEDIUM/LOW jamás se aplican sin re-mostrar la evidencia; respeta los
+carve-outs de la skill (migrations, `__init__.py`, systemd/cron activos).
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill

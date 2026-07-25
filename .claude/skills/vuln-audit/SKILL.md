@@ -1,7 +1,7 @@
 ---
 name: vuln-audit
-description: "Audita vulnerabilidades y dependencias en backend (Python) y frontend (npm), aplica updates patch+minor respetando pins, verifica con checks mínimos y deja 3 commits limpios (frontend deps, backend deps, audit-report.md)."
-argument-hint: "[backend|frontend]  # vacío = ambas superficies"
+description: "Audita vulnerabilidades y dependencias en backend (Python) y frontend (npm). Default report-first: escanea (pip-audit + npm audit + outdated) y arma el plan de bumps SIN escribir nada. Con --apply (o vía el menú post-reporte) aplica los updates patch+minor del plan respetando pins, verifica con checks mínimos y deja 3 commits limpios (frontend deps, backend deps, audit-report.md)."
+argument-hint: "[backend|frontend] [--apply (aplica patch+minor del plan)]  # vacío = ambas superficies, solo auditoría"
 ---
 
 ## Cuándo usar cuál (familia de auditoría)
@@ -10,7 +10,7 @@ argument-hint: "[backend|frontend]  # vacío = ambas superficies"
 |---|---|---|
 | `/full-audit` | Veredicto integral 🟢/🟡/🔴 del VPS o del fleet (`--all`): configs, drift, envs, timers, health, email — 12 fases automatizadas, ~4 min | Post-cambio grande, post-incidente, trimestral |
 | `/server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
-| `/vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm), con updates aplicados | Por proyecto, mensual o ante CVE |
+| `/vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm): default arma el plan sin tocar nada; los bumps se aplican con `--apply` | Por proyecto, mensual o ante CVE |
 
 No se orquestan entre sí (cada una es independiente); full-audit NO corre a las otras dos.
 
@@ -18,19 +18,24 @@ No se orquestan entre sí (cada una es independiente); full-audit NO corre a las
 # vuln-audit — Vulnerability & Dependency Audit (multi-stack)
 
 ## Goal
-Replicar de forma automática el flujo manual de auditoría que vive en `audit-report.md` de los proyectos del repo: escanear vulns + outdated, planear bumps **patch+minor** dentro del major actual respetando pins existentes, aplicar, verificar con checks mínimos y dejar **3 commits separados** en la rama actual (frontend deps → backend deps → reporte).
+Replicar de forma automática el flujo manual de auditoría que vive en `audit-report.md` de los proyectos del repo, en dos niveles:
+
+- **Default (report-first, read-only):** escanear vulns + outdated y construir el **plan de bumps** como tabla (paquete · versión actual → propuesta · severidad · tipo patch/minor/major · riesgo), **sin escribir NADA** — ni archivos, ni installs sobre el proyecto, ni commits.
+- **`--apply` (o selección en el menú post-reporte):** aplicar los bumps **patch+minor** del plan dentro del major actual respetando pins existentes, verificar con checks mínimos y dejar **3 commits separados** en la rama de trabajo (frontend deps → backend deps → reporte).
 
 ## Inputs
-- `$ARGUMENTS` (opcional). Valores aceptados:
+- `$ARGUMENTS` (opcional). Valores aceptados (combinables):
   - vacío → auditar `backend/` **y** `frontend/`.
   - `backend` → solo Python.
   - `frontend` → solo npm.
-- Cualquier otro valor: abortar con mensaje pidiendo uno de los tres.
+  - `--apply` → además de auditar, aplicar los bumps del plan (fase de escritura). Sin él, la corrida es **solo auditoría**.
+- Cualquier otro valor: abortar con mensaje pidiendo uno de los aceptados.
 
 ## Constraints (no negociables)
-- **Branching:** sigue el `git-branch-protocol` del `CLAUDE.md` base del proyecto. Si la rama actual es `main`/`master`, busca rama feature activa y haz checkout; si no hay ninguna, crea `chore/<DDMMYYYY>-vuln-audit` (prefijo `chore` porque son dep bumps). Si ya estás en rama feature válida, continúa ahí. Detalle operativo en la Fase 0.
+- **Default read-only.** Sin `--apply`, la skill NO modifica nada: ni `package.json`/`package-lock.json`, ni `requirements.txt`, ni `audit-report.md`, ni commits, ni ramas. Solo snapshots a `/tmp` y el plan en la respuesta.
+- **Branching (solo `--apply`):** sigue el `git-branch-protocol` del `CLAUDE.md` base del proyecto. Si la rama actual es `main`/`master`, busca rama feature activa y haz checkout; si no hay ninguna, crea `chore/<DDMMYYYY>-vuln-audit` (prefijo `chore` porque son dep bumps). Si ya estás en rama feature válida, continúa ahí. Detalle operativo en la Fase 0.
 - **No `git push`.** Los 1–3 commits quedan locales; el operador empuja cuando decida y reporta el `PR URL` siguiendo la sección 9 del `git-branch-protocol`.
-- **Working tree debe estar limpio** antes de empezar (`git status` sin cambios). Si no lo está, abortar.
+- **Working tree debe estar limpio** antes de aplicar (`git status` sin cambios). Si no lo está, abortar el `--apply`; la auditoría read-only puede correr igual (no toca el tree).
 - **Solo patch + minor** dentro del major actual. **Nunca** `npm audit fix --force`, **nunca** un bump que cruce major (incluye `0.x → 0.y` con `y > x`).
 - **Respetar pins** del proyecto (`requirements.txt` con `<X.Y` o `>=A,<B`; constraints documentados en `CLAUDE.md`/`AGENTS.md`).
 - **Nunca correr la suite completa** de tests. Solo `pytest --collect-only` + 1 slice mínimo (regla "never run the full suite" de los `CLAUDE.md`).
@@ -39,8 +44,9 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 - Si un pre-commit hook falla, investigar y arreglar la causa raíz; no bypass.
 
 ## Detección de entorno (Fase 0)
-1. `git status --porcelain` → si imprime cualquier línea, abortar con: "Working tree no está limpio. Commitea o stashea antes de correr vuln-audit."
-2. **Aplicar `git-branch-protocol` del `CLAUDE.md` base** (resolver rama de trabajo antes de cualquier commit):
+0. Parsear `$ARGUMENTS`: superficie (vacío/`backend`/`frontend`) y `APPLY=true` si trae `--apply`. Sin `--apply` la corrida es **solo auditoría**: los pasos marcados "(solo `--apply`)" en todas las fases se saltan.
+1. (solo `--apply`) `git status --porcelain` → si imprime cualquier línea, abortar con: "Working tree no está limpio. Commitea o stashea antes de correr vuln-audit --apply."
+2. (solo `--apply`) **Aplicar `git-branch-protocol` del `CLAUDE.md` base** (resolver rama de trabajo antes de cualquier commit):
    - `CURRENT=$(git rev-parse --abbrev-ref HEAD)`.
    - Guardar `WORK_BRANCH_CREATED=false` (se pondrá `true` si la skill crea rama nueva).
    - Si `CURRENT` ∈ {`main`, `master`}:
@@ -56,7 +62,7 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 3. Detectar superficies:
    - Frontend: `[ -f frontend/package.json ]`.
    - Backend: `[ -f backend/requirements.txt ]`.
-4. Si `$ARGUMENTS == "backend"` y no hay backend → abortar. Idem para frontend.
+4. Si la superficie pedida es `backend` y no hay backend → abortar. Idem para frontend.
 5. Detectar venv (en orden, usar el primero que exista):
    - `backend/.venv/bin/activate`
    - `backend/venv/bin/activate`
@@ -70,7 +76,8 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 9. Definir `PROJ = $(basename $(pwd))` para nombrar archivos en `/tmp`.
 
 ## Fase 1 — Frontend
-Ejecutar solo si `$ARGUMENTS` ∈ {"", "frontend"} y `frontend/package.json` existe.
+Ejecutar solo si la superficie ∈ {ambas, `frontend`} y `frontend/package.json` existe.
+Los pasos 1–2 son la auditoría (siempre); del 3 en adelante es la aplicación (solo `--apply`).
 
 1. **Snapshot inicial:**
    ```bash
@@ -84,21 +91,25 @@ Ejecutar solo si `$ARGUMENTS` ∈ {"", "frontend"} y `frontend/package.json` exi
    - De `npm-audit.json`: lista de paquetes con `{package, severity, notes}` y totales `{critical, high, moderate, low}`.
    - De `npm-outdated.json`: por cada paquete `{current, wanted, latest}`. Marcar `skip_major = true` si `latest` cruza el major de `current` (incluye `0.x → 0.y` con `y > x`, o `0.x → 1.x`).
 
-3. **Aplicar updates:**
+   **Corte report-first:** sin `--apply`, la fase termina acá — lo parseado
+   alimenta la tabla del plan (Fase 3) y no se toca `package.json` ni se corre
+   ningún install.
+
+3. (solo `--apply`) **Aplicar updates:**
    ```bash
    npm audit fix          # SIN --force
    npx --yes npm-check-updates -u --target minor
    npm install
    ```
 
-4. **Manejo de ERESOLVE:** si `npm install` falla con `ERESOLVE`:
+4. (solo `--apply`) **Manejo de ERESOLVE:** si `npm install` falla con `ERESOLVE`:
    - Identificar el paquete ofensor del mensaje de error.
    - Editar `package.json` para revertir ese paquete a la última versión que respete las peer deps actuales (típicamente, retroceder 1 minor o quedarse en la versión previa al `ncu`).
    - `npm install` de nuevo.
    - Registrar el caso en la sección `Rollbacks` del reporte.
    - Si el reintento falla otra vez, abortar con error claro.
 
-5. **Verificar:**
+5. (solo `--apply`) **Verificar:**
    ```bash
    npm audit               # capturar totales
    npm run build
@@ -107,17 +118,18 @@ Ejecutar solo si `$ARGUMENTS` ∈ {"", "frontend"} y `frontend/package.json` exi
    - Si ya se hizo commit, `git reset --soft HEAD~1`.
    - Reportar el error y abortar.
 
-6. **Commit (sin Co-Authored-By, sin footers de IA):**
+6. (solo `--apply`) **Commit (sin Co-Authored-By, sin footers de IA):**
    ```bash
    git add frontend/package.json frontend/package-lock.json
    git commit -m "deps(frontend): apply patch+minor updates"
    ```
    Si `npm install` no produjo cambios en `package.json`/`package-lock.json`, **no commitear**; registrar en el reporte que no había updates aplicables.
 
-7. **Capturar el snapshot final** (`npm audit --json` post-update) para la sección `Updates Applied` del reporte.
+7. (solo `--apply`) **Capturar el snapshot final** (`npm audit --json` post-update) para la sección `Updates Applied` del reporte.
 
 ## Fase 2 — Backend
-Ejecutar solo si `$ARGUMENTS` ∈ {"", "backend"} y `backend/requirements.txt` existe.
+Ejecutar solo si la superficie ∈ {ambas, `backend`} y `backend/requirements.txt` existe.
+Los pasos 1–4 son la auditoría (siempre); del 5 en adelante es la aplicación (solo `--apply`).
 
 1. **Activar venv** (el detectado en Fase 0):
    ```bash
@@ -144,13 +156,17 @@ Ejecutar solo si `$ARGUMENTS` ∈ {"", "backend"} y `backend/requirements.txt` e
      - Si `target == current`, no hay update aplicable → marcar como skip.
    - Para cada paquete con vulns que solo se arreglan en majors saltados o fuera del pin: marcarlo como **remaining** en el reporte (no intentar el bump).
 
-5. **Aplicar:** editar `requirements.txt` con las nuevas versiones (mantener el operador del pin: si era `==`, sigue `==<nuevo>`; si era rango, ajustar el floor sin tocar el techo). Luego:
+   **Corte report-first:** sin `--apply`, la fase termina acá — el plan
+   alimenta la tabla de Fase 3 y no se edita `requirements.txt` ni se
+   instala nada en el venv (más allá del propio `pip-audit`).
+
+5. (solo `--apply`) **Aplicar:** editar `requirements.txt` con las nuevas versiones (mantener el operador del pin: si era `==`, sigue `==<nuevo>`; si era rango, ajustar el floor sin tocar el techo). Luego:
    ```bash
    pip install -r requirements.txt
    pip-audit --format json > /tmp/${PROJ}-pip-audit-final.json || true
    ```
 
-6. **Verificar (regla "minimal CLAUDE.md"):**
+6. (solo `--apply`) **Verificar (regla "minimal CLAUDE.md"):**
    ```bash
    python manage.py check                  # debe imprimir "0 issues"
    pytest --collect-only -q                # debe colectar sin errores
@@ -164,15 +180,32 @@ Ejecutar solo si `$ARGUMENTS` ∈ {"", "backend"} y `backend/requirements.txt` e
    - Si ya se hizo commit, `git reset --soft HEAD~1`.
    - Reportar el comando que falló y abortar.
 
-7. **Commit:**
+7. (solo `--apply`) **Commit:**
    ```bash
    git add backend/requirements.txt
    git commit -m "deps(backend): apply patch+minor updates"
    ```
    Si `requirements.txt` no cambió, no commitear.
 
-## Fase 3 — Reporte y commit final
-Siempre se ejecuta (incluso si una fase no produjo updates: el reporte lo refleja).
+## Fase 3 — Plan / Reporte
+
+### Modo default (sin `--apply`) — el plan en la respuesta, nada escrito
+
+Consolidar lo parseado en Fases 1–2 en **la tabla del plan de bumps** (esto ES
+el entregable de la corrida default; se muestra en la respuesta, no se escribe
+ningún archivo ni commit):
+
+| Paquete | Superficie | Actual → Propuesta | Severidad (vulns) | Tipo | Riesgo |
+|---|---|---|---|---|---|
+| ... | frontend/backend | `X.Y.Z` → `X.Y.W` | critical/high/moderate/low/— | patch / minor / **major (skip)** | breve: pin techo, peer deps, breaking changes conocidos |
+
+- Los **majors se listan igual**, marcados `major (skip)` — no se aplican nunca
+  en esta skill, pero el operador debe verlos para evaluarlos aparte.
+- `Riesgo`: una frase por paquete (qué podría romper el bump o por qué se saltea).
+- La aplicación queda para `--apply` o para la selección en el menú post-reporte.
+
+### Modo `--apply` — reporte y commit final
+Se ejecuta siempre que hubo `--apply` (incluso si una fase no produjo updates: el reporte lo refleja).
 
 1. **Generar `audit-report.md`** en la raíz del proyecto, sobrescribiendo si existe. Plantilla:
 
@@ -271,21 +304,53 @@ Siempre se ejecuta (incluso si una fase no produjo updates: el reporte lo reflej
    - **Sin `git push`** (queda al operador, según el `git-branch-protocol`).
 
 ## Idempotencia
-Si al correr el skill no hay vulns ni outdated relevantes:
-- No hacer commits de deps.
-- Generar igual el `audit-report.md` indicando "No updates applicable" en cada sección.
-- Hacer el commit del reporte solo si su contenido cambió respecto al existente.
+- Corrida default: siempre re-escanea y re-muestra el plan; como no escribe nada, repetirla es gratis.
+- En `--apply`, si no hay vulns ni outdated relevantes:
+  - No hacer commits de deps.
+  - Generar igual el `audit-report.md` indicando "No updates applicable" en cada sección.
+  - Hacer el commit del reporte solo si su contenido cambió respecto al existente.
 
 ## Ejemplos de invocación
-- `/vuln-audit` — auditar y aplicar en backend + frontend.
-- `/vuln-audit frontend` — solo npm.
-- `/vuln-audit backend` — solo pip.
+- `/vuln-audit` — auditar backend + frontend y mostrar el plan (read-only).
+- `/vuln-audit frontend` — solo npm, solo plan.
+- `/vuln-audit backend` — solo pip, solo plan.
+- `/vuln-audit --apply` — aplicar patch+minor del plan en ambas superficies (commits separados).
+- `/vuln-audit backend --apply` — aplicar solo en Python.
 
 ---
 
+## Acciones disponibles
+
+Tras el reporte del plan (corrida default, sin `--apply`), si la sesión es
+interactiva y NO hubo flags explícitos (reglas de gating de
+[[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Aplicar patch+minor del plan (commits separados) (Recommended) | aplica los bumps del plan respetando pins, verifica (build / check / collect-only) y deja 1–3 commits locales — sin push | `/vuln-audit --apply` |
+| Sólo backend / sólo frontend | re-corre la auditoría acotada a una superficie | `/vuln-audit backend` · `/vuln-audit frontend` |
+| Evaluar los majors saltados (plan detallado por paquete) | analiza breaking changes, esfuerzo y orden sugerido de cada major — no aplica nada | análisis en la respuesta (read-only) |
+| Push + PR de los commits | sólo tras un `--apply`: empuja la rama y abre el PR | `git push -u origin <rama> && gh pr create` |
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/vuln-audit`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/vuln-audit`.
+
+**Corrida default (report-first):** el veredicto acompaña a la tabla del plan
+de Fase 3 (que es el cuerpo del reporte):
+
+```markdown
+🟢 vuln-audit OK — plan de bumps listo (read-only, nada escrito)
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| Frontend — npm audit | ✅ | C/H/M/L: <totales>, N outdated |
+| Backend — pip-audit | ✅ | N vulns en M paquetes, K outdated |
+| Plan de bumps | ✅ | X patch+minor aplicables, Y majors saltados |
+| Escrituras | ✅ | ninguna (default report-first) |
+```
+
+**Corrida `--apply`:**
 
 ```markdown
 🟢 vuln-audit OK

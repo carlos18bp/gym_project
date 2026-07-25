@@ -292,6 +292,21 @@ esto.**
 
 ---
 
+## Acciones disponibles
+
+Tras el reporte (modo create), si la sesión es interactiva y NO hubo flags
+explícitos (reglas de gating de [[_output-protocol]] §4), ofrecer vía
+AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Listar reportes existentes | tabla concisa de `docs/reports/` (read-only) | `/client-report --list` |
+| Buscar por tema | busca en qué reportes se tocó un tema | `/client-report --find <tema>` |
+| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | Phase 4: `list_folders` → `create/update_document` |
+| Commitear el reporte | add+commit+push del reporte recién creado | `/git-commit` |
+
+---
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica:

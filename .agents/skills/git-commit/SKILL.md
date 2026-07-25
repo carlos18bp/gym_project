@@ -2,7 +2,7 @@
 name: git-commit
 description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd). Cuando el repo del cwd es vps-ops-toolkit, tras un push exitoso propaga el commit al resto del fleet (otros VPS + dev si está prendida) vía Tailscale (ON por defecto, --no-propagate para saltar); un repo de proyecto nunca se propaga. Pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host. git-commit NO tiene modo fleet: --all-vps y --all son error (no se commitea a ciegas en clones de otros VPS); para el eje fleet usar /git-sync --all-vps."
 disable-model-invocation: true
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 argument-hint: "[--all-repos (todos los repos de este host)] [--no-propagate (no sincroniza el toolkit al fleet)]"
 ---
 
@@ -242,6 +242,20 @@ se revierte por una falla de propagación.
 En modo `--no-propagate`, omití esta fase por completo y decílo en el resumen.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| --all-repos | un commit por cada repo dirty de ESTE host (mensaje propio por repo) | `/git-commit --all-repos` |
+| Re-run sin propagar | commit+push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `/git-commit --no-propagate` |
+| Integrar con CI verde | espera el CI y mergea/pushea según el repo (Path A/B) | `/merge-when-green` |
+
+NO ofrecer `--all-vps` ni `--all`: son error-by-design en git-commit (no se
+commitea a ciegas en clones de otros VPS) — el eje fleet es `/git-sync --all-vps`.
 
 ## Output final
 

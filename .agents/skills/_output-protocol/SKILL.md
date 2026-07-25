@@ -82,6 +82,56 @@ profundizable.
 Cada bullet debe ser **accionable sin interpretación**: comando exacto + dónde
 correrlo + qué actor lo hace.
 
+### 4. Acciones disponibles (menú interactivo — opcional por skill)
+
+Dos posiciones, un mismo esquema:
+
+- **Pre-run (gating):** skills cuyo primer paso ES elegir modo
+  (`--check|--apply|--validate`…). Patrón ya canónico en `init-fleet`,
+  `bootstrap-ssh-fleet`, `bootstrap-tailscale-fleet`, `sync-ai-ecosystems` —
+  no cambiarlo.
+- **Post-run (escalaciones):** skills con default mínimo/read-only. DESPUÉS del
+  reporte (§1-§3), UNA sola `AskUserQuestion` que ofrezca las demás acciones de
+  la skill, para que el operador descubra capacidades sin memorizar flags.
+
+**Gating obligatorio (ambas posiciones):**
+
+1. El operador pasó flags/argumentos explícitos → ejecutar directo, **sin menú**.
+2. La intención es clara por el contexto de la sesión → proponer el comando en
+   texto y esperar confirmación, sin picker.
+3. Sin argumentos / intención difusa → disparar la pregunta.
+4. **Nunca** en modo fleet/headless/cron ni dentro de un barrido — sólo en
+   sesión interactiva single-target.
+5. Máx **4 opciones** ("Other" ya existe siempre); lo que no entra se nombra en
+   `## Next steps`.
+
+**Esquema de fila:** `label` corto (sufijo `(Recommended)` sólo si la acción es
+segura y reversible) · `description` de 1 línea que incluya costo/efecto real
+("envía email real, cooldown 1h") · `preview` = **el comando exacto** que se
+ejecutaría.
+
+**Blocklist — filas que NINGUNA skill puede ofrecer como opción clickeable:**
+
+- `/deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
+  como texto en Next steps).
+- Merge de una rama release (`--allow-release-merge` se tipea, no se clickea).
+- `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
+  es una confirmación de downtime).
+- Cualquier acción sobre un proyecto `production+active` protegido
+  (`is_protected_project`) — el override `--project=<X>` se tipea.
+- `--include-projects` de bootstrap/init-fleet como Recommended (es
+  deploy-equivalente).
+- Git destructivo: `reset --hard`, `push --force`, `stash drop` masivo
+  (per-stash sólo si la skill lo clasificó OBSOLETO/VIEJO, con evidencia).
+- Revocaciones que commitean (`--revoke=<id>`) sin su fila `--dry-run` previa.
+- Flags retirados o error-by-design (`git-sync --all`, `git-commit --all-vps`).
+- Restarts/acciones de servicio antes de leer el journal (regla de incident).
+- Deletes no evidenciados: siempre por lote, con lista y evidencia visibles.
+
+**Cómo lo declara una skill:** una sección `## Acciones disponibles` con su
+tabla de filas (label · description · preview) ANTES del `## Output final`. Los
+alias heredan el menú de su skill base (regla de `## Skills alias`).
+
 ## Reglas
 
 - **Idioma:** español. Términos técnicos en inglés cuando son canónicos
@@ -140,6 +190,19 @@ fix-broken-tests) conservan su estructura — solo se aseguran de:
 1. Usar el set canónico de emojis (✅⚠️❌⏭️ℹ️🚫⏸️ + 🟢🟡🔴 solo para veredicto).
 2. Cerrar con veredicto en una línea.
 3. Listar next steps con comando exacto.
+
+Si la skill ofrece menú interactivo (§4), lo declara así (antes del Output final):
+
+```markdown
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| ... (Recommended) | ... | `bash …` |
+```
 
 ## Skills alias
 

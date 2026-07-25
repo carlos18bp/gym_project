@@ -2,7 +2,7 @@
 name: merge-when-green
 description: "Integra la rama actual cuando el CI está en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (con fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Defaults seguros; flags para override."
 disable-model-invocation: true
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] [--allow-release-merge] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
 
@@ -511,6 +511,21 @@ falla queda con su razón en la tabla y se sigue con el siguiente. El reporte
 final lista los N repos con su estado.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| --merge-method=merge\|rebase | mergear el PR sin squash (conserva los commits de la rama) | `/merge-when-green --merge-method=merge` |
+| --fix-nontest | deja que el fix loop arregle también código no-test (lint/gates rojos) | `/merge-when-green --fix-nontest` |
+| --no-ci-watch | toolkit: push sin esperar acá el run de CI en master | `/merge-when-green --no-ci-watch` |
+| Ver el PR en el browser | abrir el PR para review manual | `gh pr view <n> --web` |
+
+NUNCA ofrecer `--allow-release-merge`, `--autonomous` ni `--no-verify` como
+opciones — se tipean deliberadamente (guards de release/prod).
 
 ## Output final
 
