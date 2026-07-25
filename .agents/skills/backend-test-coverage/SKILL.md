@@ -21,16 +21,26 @@ fail if that behavior broke.**
 
 ## Definition of done — per test, all three required
 
-If you cannot write the third line, **do not write the test.**
+1. **Ejecuta el comportamiento real** (la unidad con entrada real, mock sólo en
+   fronteras).
+2. **Asserta un resultado observable con VALOR CONCRETO** — nunca
+   visibilidad/existencia/truthiness.
+3. **Nombra el bug que atraparía** — en el docstring. Si no podés escribir esa
+   línea, el test no se escribe.
 
-1. **It exercises the real unit** with real input — not a mock standing in for
-   the thing under test. Mock at boundaries (network, clock, third-party SDKs)
-   only.
-2. **It asserts an observable outcome with a concrete value** — the returned
-   object, the persisted row, the response body, the raised exception. Asserting
-   only that a patched function was called tests the mock, not the code.
-3. **It names the bug it would catch.** One line in the test's docstring:
-   *"fails if the serializer stops rejecting a negative amount."*
+Ejemplo que cumple los tres puntos:
+
+```python
+def test_payment_serializer_rejects_negative_amount(self):
+    """Falla si el serializer deja de rechazar montos negativos."""
+    user = UserFactory()
+    self.client.force_authenticate(user=user)
+
+    resp = self.client.post("/api/payments/", {"amount": -100}, format="json")
+
+    assert resp.status_code == 400
+    assert "amount" in resp.json()
+```
 
 ## Before writing: check for an existing test
 
@@ -40,8 +50,9 @@ grep -rn "<the function or endpoint you plan to test>" backend/<app>/tests/
 ```
 
 If the behavior is already covered, **extend that test** rather than adding a
-near-copy. Structurally identical tests are reported as `duplicate_coverage` and
-will come back as audit findings.
+near-copy. Duplicate test NAMES in the same scope are reported by the backend
+analyzer; same shape with different values is **not** a duplicate — make it a
+`pytest.mark.parametrize` table.
 
 ## Prioritization — by risk, not by percentage
 
@@ -54,6 +65,39 @@ will come back as audit findings.
 
 A file at 40% whose uncovered lines are error handling matters more than a file
 at 90% whose gap is a `__repr__`.
+
+### Matriz de permisos DRF (obligatoria por vista)
+
+| Caso | Esperado |
+|---|---|
+| anónimo | 401 |
+| autenticado sin permiso | 403 |
+| dueño | 200 |
+| otro tenant | 404 (si el queryset filtra por tenant) |
+
+Autenticar con `force_authenticate()` (o `APIClient` + login); un caso por fila,
+cada uno assertando el status code exacto.
+
+### Recetas de casos negativos (4xx)
+
+- Validación de serializer → `assert resp.status_code == 400` **y** el campo
+  exacto en el body (`assert "amount" in resp.json()`).
+- Permiso → autenticar el rol equivocado y `assert resp.status_code == 403`.
+- No-existe → pk inexistente y `assert resp.status_code == 404`.
+- Conflicto de estado → repetir la acción ya aplicada y assertar 409 (o 400,
+  según el contrato de la API).
+
+### Datos: factory vs fixture
+
+Factory para payloads variados por-test; fixture para setup compartido caro
+(tenant, catálogo). `@pytest.mark.django_db` es el default; `transaction=True`
+SÓLO si el test verifica commit/rollback real.
+
+### Tasks (Huey/Celery)
+
+Testear la **función** de la task directo, con entrada real y assert del efecto
+(la fila creada, el mail encolado). Mockear sólo `.delay`/`.schedule` en la
+vista que la encola — nunca la lógica interna de la task.
 
 ## Abstention is a valid outcome
 
@@ -68,21 +112,31 @@ declared abstention **is not a failure**.
 - No conditionals or loops in the body (use `pytest.mark.parametrize`)
 - Assertions verify observable outcomes, not internal calls
 - Deterministic: no real clock, no network, no ordering assumptions
-  (`freeze_time` at class level is supported by the gate)
+  (`freeze_time` at class level is supported by the gate):
+
+  ```python
+  @freeze_time("2026-01-15")
+  def test_report_uses_the_frozen_business_date(self): ...
+  ```
 - Isolated: no dependence on another test having run
 - Mocks have explicit `return_value` / `side_effect`
 - AAA: Arrange → Act → Assert
 
 ## Execution rules
 
-1. Activate the virtualenv: `source venv/bin/activate`
-2. Run only the files you touched: `pytest path/to/test_file.py -v`
-3. **Quality ceiling beats volume:** if the gate reports a junk finding on your
-   batch, stop and fix it before writing another test.
+1. Work from the backend: `cd backend && source venv/bin/activate`
+2. Run only the files you touched, from `backend/`, with the production selector
+   so the engine matches (rule 4): `DJANGO_ENV=production pytest path/to/test_file.py -v`
+3. **Quality ceiling beats volume:** if the gate reports a backend finding on
+   your batch — `nondeterministic`, `network_dependency`,
+   `mock_call_contract_only`, `inline_payload`, `global_state_mutation` — stop
+   and fix it before writing another test.
 4. **Engine check before any DB work.** `projects.yml` declares the engine in
-   `db:`. For a `db: mysql` project run `manage.py` with `DJANGO_ENV=production`
-   from the project's `backend/`, so Django connects to MySQL and not the sqlite
-   fallback.
+   `db:`. For a `db: mysql` project run `manage.py` and `pytest` with
+   `DJANGO_ENV=production` from the project's `backend/`, so Django connects to
+   MySQL and not the sqlite fallback.
+5. Bajo `/qa --apply`: dejar los tests **staged, sin commitear** (el conductor
+   commitea una vez). En dry-run: describir el diff sin escribir.
 
 ## Workflow
 
@@ -92,12 +146,18 @@ declared abstention **is not a failure**.
 2. Pick by risk (table above), not by lowest percentage. Use the coverage report
    only as a *secondary readout* — to confirm which enumerated behavior has no line
    hit; a covered line with a weak assertion is still an untested behavior.
-3. Consult `docs/TESTING_QUALITY_STANDARDS.md`.
+3. Consult `docs/TESTING_QUALITY_STANDARDS.md` — especially §Behavior-First
+   Assertions and §Deterministic Tests.
 4. Search for an existing test to extend.
 5. Implement, satisfying the three-part definition of done.
 6. Run only the new or modified files.
 7. Validate:
-   `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --files <file>`
+
+   ```bash
+   bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proyecto> --files=<archivo1,archivo2>
+   # equivalente crudo (fallback): python3 scripts/test_quality_gate.py --repo-root . \
+   #   --suite backend --semantic-rules strict --junk-severity=error --include-file <archivo>
+   ```
 
 ---
 
@@ -117,7 +177,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 | Tests agregados | ✅ | N tests con assert de valor concreto |
 | Definition of done | ✅ | unidad real + outcome observable + "qué bug atrapa" |
 | Abstenciones declaradas | ℹ️ | N archivos sin comportamiento testeable, con razón |
-| Quality gate | ✅ | cero hallazgos junk en los archivos tocados |
+| Quality gate | ✅ | cero nondeterministic / network_dependency / mock_call_contract_only / inline_payload / global_state_mutation |
 ```
 
 Cobertura no alcanzada por **abstención declarada** se marca ⏭️ con la razón —

@@ -114,7 +114,7 @@ abstention **is not a failure**. Fabricating a test to close the number is.
 5. Implement, satisfying the three-part definition of done.
 6. Run only the new or modified specs.
 7. Validate:
-   `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --files <spec>`
+   `python3 scripts/test_quality_gate.py --repo-root . --suite frontend-e2e --semantic-rules strict --junk-severity=error --include-file <spec>`
 8. Re-audit and confirm the flow moved to `covered`.
 
 ---

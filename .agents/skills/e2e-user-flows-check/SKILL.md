@@ -64,7 +64,11 @@ python3 scripts/propose_flow_definitions.py --repo-root . --mode migrate-outcome
 ```
 
 Review the `.proposed.json` output — this skill is the REVIEWER that applies it;
-the proposer never writes the map in place. Then collect the rest of the
+the proposer never writes the map in place. Useful flags: `--emit-diff` prints
+the per-flow `expectedSpecs`→`outcomes` mapping, `--out` overrides the default
+`<map>.proposed.json`, and in repos that ship a strict
+`flow-definitions.schema.json` (kore's case) the proposer also emits a
+`<schema>.proposed.json`. Then collect the rest of the
 evidence: UI routes, view/page components, forms and their validation, backend
 endpoints (including their error responses), product docs, existing specs.
 Endpoint error responses are the best source for the `failure` class.
@@ -90,9 +94,10 @@ Run the audit, which grants credit only to qualifying tests:
 python3 scripts/flow_coverage_audit.py --repo-root . --json test-results/flow-audit.json
 ```
 
-Map each interaction to `covered` / `partial` / **`junk-only`** / `missing`.
-`junk-only` means tests exist but none exercise the flow — treat it as worse than
-`missing`, because it reports green today.
+Map each interaction to `covered` / `partial` / **`junk-only`** / `missing` /
+`exempt`. `junk-only` means tests exist but none exercise the flow — treat it as
+worse than `missing`, because it reports green today. `exempt` means the flow
+declares `expectedSpecs: 0`: a deliberate exemption, not a gap.
 
 ### Phase 5 — Gaps and risks
 Report, in this order: `junk-only` flows, missing P1/P2, missing `error` and
@@ -101,7 +106,9 @@ Report, in this order: `junk-only` flows, missing P1/P2, missing `error` and
 ### Phase 6 — Register
 Write the map to **both**:
 
-1. `docs/USER_FLOW_MAP.md` — the narrative map, one section per view
+1. `docs/USER_FLOW_MAP.md` — the narrative map. Mandatory sections: a Roles
+   header, Conventions, one section **per role** (not per view), and the E2E
+   Coverage Index.
 2. `frontend/e2e/flow-definitions.json` — the machine-readable inventory, using
    the outcomes schema:
 
@@ -116,9 +123,28 @@ Write the map to **both**:
 }
 ```
 
-`outcomes` replaces the old `expectedSpecs`. Under the old field a flow counted
-as covered once any single tagged test passed; under `outcomes` each declared
-class needs its own qualifying test.
+`outcomes` replaces the old `expectedSpecs` (migration status, honestly:
+**0/4 projects migrated today** — the audit tolerates both schemas, and legacy
+flows without `outcomes` require only `success`). Under the old field a flow
+counted as covered once any single tagged test passed; under `outcomes` each
+declared class needs its own qualifying test.
+
+`expectedSpecs: 0` is a different case: the legacy sentinel for "intentionally
+uncovered". The audit reports it as `exempt` — do **NOT** migrate it to
+`outcomes` (projectapp carries 37 of them). It is not a gap.
+
+`roles: [...]` is documentation only — the audit does not validate it. The
+practical rule it encodes: if two roles see different things in the same view,
+those are distinct flows.
+
+For a spec to earn credit, tag it in the canonical Playwright form:
+
+```js
+test('user updates the profile name', { tag: ['@flow:profile-update', '@outcome:success'] }, async ({ page }) => { … });
+```
+
+Without both tags the spec does not earn its credit: no `@flow:` tag grants
+nothing at all, and a spec without `@outcome:` credits only `success`.
 
 ### Phase 7 — Output
 1. The per-view interaction matrix
@@ -140,7 +166,6 @@ Reportar siguiendo [[_output-protocol]]. Una fila por vista/módulo auditado:
 | Login / registro | ⚠️ | success ✅ · error ❌ falta · failure ❌ falta · display n/a |
 | Blog admin | ⚠️ | delete es junk-only (test no interactúa) |
 | Facturación | ✅ | 4 clases cubiertas con tests calificados |
-| ... (una fila por vista, con el estado de las 4 clases) | | |
 ```
 
 Cerrar con el conteo agregado (interacciones totales / cubiertas / junk-only /

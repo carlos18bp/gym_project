@@ -57,18 +57,20 @@ DISABLE_MARKER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+from quality.junk_detectors import ALLOW_MARKERS as JUNK_ALLOW_MARKERS  # noqa: E402
+
 ALLOW_MARKER_RULE_IDS: dict[str, str] = {
     "allow-call-contract": "mock_call_contract_only",
     "allow-fragile-selector": "fragile_locator",
     "allow-serial": "serial_dependency",
     "allow-multi-render": "multi_render",
-    # Junk-test rules. Each opt-out must carry a reason in parentheses; the
-    # report lists active exceptions so they stay visible instead of quietly
-    # becoming the norm.
-    "allow-no-interaction": "no_user_interaction",
-    "allow-deep-link": "deep_link_entry",
-    "allow-render-only": "no_data_assertion",
-    "allow-duplicate": "duplicate_coverage",
+    # Junk-test markers come from the single registry in quality.junk_detectors.
+    # A hardcoded copy here silently missed allow-mock-only / allow-reimpl when
+    # the 2026-07 rules landed: the detector honored the marker but the gate
+    # never listed the exception in active_exceptions nor validated its reason
+    # — an invisible, unaudited opt-out. Each opt-out must carry a reason in
+    # parentheses; the report lists active exceptions so they stay visible.
+    **JUNK_ALLOW_MARKERS,
 }
 
 ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {

@@ -21,14 +21,27 @@ a line-coverage target while verifying nothing. An audit of one suite found
 
 ## Definition of done — per test, all three required
 
-If you cannot write the third line, **do not write the test.**
+1. **Ejecuta el comportamiento real** (llamar la action / montar con props /
+   disparar el evento).
+2. **Asserta un resultado observable con VALOR CONCRETO** — nunca
+   visibilidad/existencia/truthiness.
+3. **Nombra el bug que atraparía** — en un comentario sobre el test. Si no podés
+   escribir esa línea, el test no se escribe.
 
-1. **It exercises the unit** with real input: call the action, mount with the
-   props, trigger the event.
-2. **It asserts a concrete expected value** — the exact rendered text, the emitted
-   payload, the resulting state. Not that something merely exists.
-3. **It names the bug it would catch.** *"fails if the badge stops translating an
-   unknown status."*
+Ejemplo que cumple los tres puntos:
+
+```js
+// Falla si addItem deja de acumular el total.
+it('addItem accumulates the running total', () => {
+  setActivePinia(createPinia());
+  const store = useCartStore();
+
+  store.addItem({ id: 1, price: 100 });
+  store.addItem({ id: 2, price: 50 });
+
+  expect(store.total).toBe(150);
+});
+```
 
 ### Assertions that do not qualify
 
@@ -37,16 +50,23 @@ If you cannot write the third line, **do not write the test.**
 | `expect(wrapper.find('.x').exists()).toBe(true)` | matches incidental markup | assert the rendered text or `data-testid` |
 | `expect(items.length).toBeGreaterThanOrEqual(n)` | any surplus passes | assert the exact count |
 | `expect(x).toBeTruthy()` / `toBeDefined()` | almost anything is truthy | assert the value |
-| `expect(spy).toHaveBeenCalled()` alone | tests the mock, not the code | assert the resulting state or payload |
+| `expect(spy).toHaveBeenCalled()` alone | tests the mock, not the code — reported as `mock_only_assertion` | assert the resulting state, or pin it: `toHaveBeenCalledWith(payload)` / `toHaveBeenCalledTimes(n)` |
+| `expect(sum(a, b)).toBe(a + b)` | re-derives the result with the SUT's own operator — reported as `reimplements_sut` | a hand-verified literal (`toBe(7)`) |
 
 Counting matches of a CSS-class selector with a `>=` matcher is reported as
 `tautological_selector`; the class list can change without the assertion ever
 failing.
 
+Excepción genuina: `// quality: allow-mock-only (razón)` /
+`// quality: allow-reimpl (razón)` — DENTRO del bloque del test, razón
+obligatoria.
+
 ## Before writing: check for an existing test
 
 ```bash
-grep -rn "<component or store name>" frontend/test/
+# buscá en el dir de unit del proyecto (`.testquality.yml: frontend_unit_dir`)
+# o en los `**/__tests__/` colocados (Next)
+grep -rn "<component or store name>" frontend/ --include='*.test.*' --include='*.spec.*'
 ```
 
 If a test already covers the behavior, **extend it**. Tests whose bodies are
@@ -76,8 +96,27 @@ it where it is used instead.
 - Selectors use `data-testid` or roles, never CSS classes
 - One mount per test
 - Mocks have explicit return values
-- `jest.useFakeTimers()` restored with `jest.useRealTimers()`
+- Pinia: `setActivePinia(createPinia())` en `beforeEach` — la fuga #1 de estado
+  entre tests
+- Tras un trigger async: `await flushPromises()` (o `nextTick`) antes de
+  assertar
+- Fake timers restaurados al final — `vi.useFakeTimers()`/`jest.useFakeTimers()`
+  con su `useRealTimers()` de cierre
 - localStorage cleaned in `afterEach`
+
+### Emits
+
+Assert el payload exacto, y el caso negativo:
+
+```js
+expect(wrapper.emitted('submit')[0][0]).toEqual({ id: 7 });
+expect(wrapper.emitted('submit')).toBeUndefined(); // cuando NO debe emitir
+```
+
+### Mock del cliente HTTP
+
+Mockear el módulo API (`vi.mock('@/lib/api')`) con retorno explícito y con la
+forma real de la respuesta — nunca el fetch global sin forma.
 
 ## Abstention is a valid outcome
 
@@ -87,7 +126,7 @@ abstention **is not a failure**.
 
 ## Execution rules
 
-1. Run only the files you touched: `npm test -- path/to/file.spec.ts`
+1. Run only the files you touched: `cd frontend && npm test -- path/to/file.spec.ts`
 2. **Quality ceiling beats volume:** if the gate reports a junk finding on your
    batch, stop and fix it before writing another test.
 
@@ -105,7 +144,12 @@ abstention **is not a failure**.
 5. Implement, satisfying the three-part definition of done.
 6. Run only the new or modified files.
 7. Validate:
-   `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --files <file>`
+
+   ```bash
+   bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proyecto> --files=<archivo1,archivo2>
+   # equivalente crudo (fallback): python3 scripts/test_quality_gate.py --repo-root . \
+   #   --suite frontend-unit --semantic-rules strict --junk-severity=error --include-file <archivo>
+   ```
 
 ---
 
@@ -125,5 +169,5 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 | Tests agregados | ✅ | N tests con valor esperado concreto |
 | Definition of done | ✅ | unidad real + valor concreto + "qué bug atrapa" |
 | Abstenciones declaradas | ℹ️ | N archivos sin comportamiento testeable, con razón |
-| Quality gate | ✅ | cero weak_assertion / tautological_selector / duplicate |
+| Quality gate | ✅ | cero weak_assertion / tautological_selector / mock_only_assertion / reimplements_sut / duplicate_coverage |
 ```

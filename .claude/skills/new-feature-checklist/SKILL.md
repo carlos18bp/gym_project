@@ -5,7 +5,7 @@ description: "Checklist for new features — ensures fake data creation follows 
 
 # New Feature Checklist
 
-> **La forma canónica de ejecutar los pasos 2 y 3 es invocar [[qa]]** — el
+> **La forma canónica de ejecutar los pasos 1-3 es invocar [[qa]]** — el
 > conductor corre flow-map → cobertura (backend/unit/e2e) → gate → test-audit
 > como fases ordenadas con las guardas de producción ya cableadas (y salta
 > fake-data en prod solo). Esta checklist queda como la vía granular manual.
@@ -57,15 +57,15 @@ Per-test: ONE behavior, no conditionals, observable assertions, deterministic, i
 
 ### Frontend Unit Tests
 Cover: happy paths, edge cases, error handling, all branches.
-Per-test: ONE behavior, no `wrapper.vm.*`, stable selectors, one mount, timers restored.
+Per-test: ONE behavior, sin acceder a internals del componente (`wrapper.vm.*` en Vue, instancias internas en React), stable selectors, one mount, timers restored.
 
 ### Frontend E2E Tests
 Cover: happy paths, error states, edge cases, contract validation.
-Per-test: `@flow:` tag, role-based selectors, no `waitForTimeout()`, real user interactions only.
+Per-test: `@flow:` + `@outcome:<success|error|failure|display>` tags (un spec sin ambos tags no gana crédito de cobertura), role-based selectors, no `waitForTimeout()`, real user interactions only.
 
 ## 3. Update User Flow Map
 
-Update `docs/USER_FLOW_MAP.md` if new user flows are created.
+Update `docs/USER_FLOW_MAP.md` **and** `frontend/e2e/flow-definitions.json` if new user flows are created — o invocar [[e2e-user-flows-check]], que mantiene ambos.
 
 ## Execution Order
 
@@ -75,7 +75,7 @@ Update `docs/USER_FLOW_MAP.md` if new user flows are created.
 
 ### Limits
 - Frontend E2E: max 20 tests per batch, 3 commands per cycle
-- Backend: activate venv first (`source venv/bin/activate`)
+- Backend: activate venv first (`source venv/bin/activate`); for `db: mysql` projects run tests with `DJANGO_ENV=production`
 
 ---
 
@@ -94,7 +94,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 | 1.b Fake data — refresh post-impl | ✅ | fake-data-refresh corrido si tocó modelos/FK |
 | 2.a Backend tests | ✅ | unit + integration + contract + edge |
 | 2.b Frontend unit tests | ✅ | happy + edge + branches, selectores estables |
-| 2.c Frontend E2E tests | ✅ | @flow:<id>, real-user interactions, sin shortcuts |
+| 2.c Frontend E2E tests | ✅ | @flow:<id> + @outcome:<clase>, real-user interactions, sin shortcuts |
 | 3 USER_FLOW_MAP.md | ✅ | nuevos flows registrados (si aplica) |
 | Suite no completa | ✅ | solo nuevos + regresión, batch ≤20, ciclos ≤3 |
 ```

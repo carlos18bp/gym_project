@@ -21,39 +21,39 @@ mkdir -p tasks/rfc
 
 ## Step 2: Deep-Dive Codebase
 
-Run verification commands to get exact counts:
+Run verification commands to get exact counts (stack-agnostic — works on Vue/Nuxt and React/Next layouts):
 
 ```bash
 # Models
 find backend/ -name "*.py" -path "*/models*" ! -name "__init__.py" -not -path "*/venv/*" | wc -l
 
-# Components
-find frontend/components/ -name "*.vue" | wc -l
+# Components (Vue or React/Next)
+find frontend/components frontend/app frontend/src -type f \( -name '*.vue' -o -name '*.tsx' -o -name '*.jsx' \) 2>/dev/null | grep -v node_modules | wc -l
 
-# Pages
-find frontend/pages/ -name "*.vue" | wc -l
+# Pages / routes (pages/ = Vue/Nuxt · app/ = Next App Router — count whichever exists)
+[ -d frontend/pages ] && find frontend/pages -name '*.vue' | wc -l
+[ -d frontend/app ] && find frontend/app -name 'page.*' -not -path '*/node_modules/*' | wc -l
 
-# Stores
-find frontend/stores/ -name "*.js" ! -path "*/services/*" | wc -l
+# State / stores
+[ -d frontend/stores ] && find frontend/stores -name '*.js' -o -name '*.ts' | wc -l || echo "0 (sin stores/ — estado colocado o context)"
 
-# Composables
-find frontend/composables/ -name "*.js" | wc -l
+# Composables / hooks (composables/ = Vue · lib/hooks/ = Next)
+{ [ -d frontend/composables ] || [ -d frontend/lib/hooks ]; } && find frontend/composables frontend/lib/hooks -type f \( -name '*.js' -o -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | wc -l || echo "0 (sin composables/ ni hooks/)"
 
 # Backend tests
 find backend/ -name "test_*.py" -not -path "*/venv/*" | wc -l
 
-# Frontend unit tests
-find frontend/test/ -name "*.spec.*" -o -name "*.test.*" | wc -l
+# Frontend unit tests (recursive — same pattern as qa-agent.sh)
+find frontend -type f \( -name '*.test.*' -o -name '*.spec.*' \) -not -path '*/node_modules/*' -not -path '*/e2e/*' | wc -l
 
 # E2E tests
-find frontend/e2e/ -name "*.spec.*" | wc -l
+[ -d frontend/e2e ] && find frontend/e2e -name '*.spec.*' | wc -l || echo 0
 
-# URL patterns
-grep -c "path(" backend/content/urls.py
-grep -c "path(" backend/accounts/urls.py 2>/dev/null
+# URL patterns (every urls.py, no hardcoded app names)
+for u in $(find backend -name urls.py -not -path "*/venv/*"); do echo "$u: $(grep -c 'path(' "$u")"; done
 
-# Service file sizes
-ls -la backend/content/services/
+# Service layer (if present)
+find backend -maxdepth 3 -type d -name services -not -path "*/venv/*" -exec ls -la {} \;
 ```
 
 ## Step 3: Create / Refresh Memory Files
@@ -95,7 +95,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 | Dimensión | Estado | Detalle |
 |---|---|---|
 | Estructura de directorios | ✅ | docs/methodology, docs/literature, tasks/rfc creados |
-| Deep-dive codebase (conteos) | ✅ | counts exactos: models, componentes, pages, stores, tests |
+| Deep-dive codebase (conteos) | ✅ | counts exactos: models, componentes, pages, estado (stores/hooks según stack), tests |
 | 7 memory files creados/refrescados | ✅ | PRD, technical, architecture, tasks_plan, active_context… |
 | Cross-reference vs código | ✅ | claims verificados con find/grep, discrepancias corregidas |
 ```

@@ -89,7 +89,7 @@ declared abstention **is not a failure**.
 5. Implement, satisfying the three-part definition of done.
 6. Run only the new or modified files.
 7. Validate:
-   `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --files <file>`
+   `python3 scripts/test_quality_gate.py --repo-root . --suite backend --semantic-rules strict --junk-severity=error --include-file <file>`
 
 ---
 

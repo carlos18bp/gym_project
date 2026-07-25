@@ -27,11 +27,14 @@ reimplement it.
   `fake_data_allowed`, abstain decision, and the work coordinate.
 - `qa-agent.sh --check <proj>` → coverage audit + quality gate → worklist counts,
   verdict, and a `docs/audits/<date>-<proj>-qa.md` report.
-- `qa-agent.sh --verify <proj> --files=a,b` → re-run the gate on touched files.
-  A gate that scans ZERO files is a false-clean and exits 2 — never a pass.
+- `qa-agent.sh --verify <proj> --files=a,b` → re-run the gate on touched files,
+  **with `--junk-severity=error` (CI parity)**. A gate that scans ZERO files is a
+  false-clean and exits 2 — never a pass. On a clean pass it clears the marker.
 - `qa-agent.sh --gate-hook` → the deterministic Stop-hook backstop (wired in this
   skill's frontmatter). While `<repo>/.qa-gate-pending` exists, ending the turn is
   BLOCKED (exit 2) until the gate passes over the files it lists.
+- `qa-agent.sh --all-repos` / `--all-vps` → fleet sweep, analysis-only (see Fleet
+  mode). `--report` is an alias of `--check`.
 
 ## Roles — dedicated subagents (dispatch by `subagent_type`)
 
@@ -56,10 +59,10 @@ read-only. One role, one agent.
 
 Spawn them with the Agent tool (`subagent_type: qa-…`); synthesize their fixed-format
 returns and take the **worst** result as the run verdict. **The hard gate is not a
-subagent verdict** (that is model judgment) — it is the CI exit code
-(`--junk-severity=error` against `.junk-baseline.json`, already enforced per project).
-`qa-verifier` is the in-loop check that feeds it; the CI gate is what actually blocks a
-merge.
+subagent verdict** (that is model judgment) — it is an exit code, enforced twice with
+the same severity: locally by `--verify`/`--gate-hook` and in CI
+(`--junk-severity=error` against `.junk-baseline.json` in both). `qa-verifier` is the
+in-loop check that feeds it; the CI gate is what actually blocks a merge.
 
 ## Routing — decide first
 
@@ -100,16 +103,19 @@ no-op, never a write.
 
 ## Phase 1 — Understand + flow map (Analyst)
 
-- If `docs/methodology/` is missing or stale, run **methodology-setup** to build
-  the Memory Bank (product understanding). Safe anywhere.
-- If `frontend/e2e/flow-definitions.json` is missing or older than recent
-  `frontend/` changes, run **e2e-user-flows-check** to (re)generate the flow map —
-  the four outcome classes (success/error/failure/display), **negative cases
-  included**. Otherwise skip `⏭️`.
+- If `docs/methodology/` is missing or stale, run **methodology-setup** (conductor
+  work — no dedicated agent) to build the Memory Bank. Safe anywhere.
+- Flow map: the preflight emits `flow_map_fresh=yes|no`; **if the key is ABSENT,
+  the map does not exist** — same action as `no`: dispatch **`qa-analyst`** (it
+  preloads `e2e-user-flows-check`) to (re)generate `frontend/e2e/flow-definitions.json`
+  + `docs/USER_FLOW_MAP.md` — the four outcome classes (success/error/failure/display),
+  **negative cases included**. If `yes`, skip `⏭️`.
 
 ## Phase 2 — Coverage audit + worklist (Analyst → Architect)
 
-`qa-agent.sh --check <proj>`. Build the ordered work list:
+`qa-agent.sh --check <proj>`; then dispatch **`qa-architect`** with the counts to
+produce the per-layer plan. Build the ordered work list (priority scale = the
+flow-map's own `priority: P1–P4`; `exempt` flows are NOT gaps — skip them):
 
 1. **junk-only flows first** — a false green is worse than an honest gap.
 2. missing P1/P2 flows.
@@ -122,17 +128,29 @@ Assert the **selector convention** (`data-testid`/role). If the app lacks it, sa
 so and bound the e2e work until it exists — an auditor with nothing consistent to
 audit is theater.
 
-## Phase 3 — Fresh data (guarded)
+## Phase 3 — Fresh data (guarded, interactive)
 
-Only if the work needs fresh fixtures AND `fake_data_allowed=yes`: run
-**fake-data-refresh**. On production (`fake_data_allowed=no`) SKIP.
+Decision table — the production guard always wins and the operator decides the rest:
+
+| Preflight says | Behavior |
+|---|---|
+| `fake_data_allowed=no` (production) | **Silent skip — never ask.** The double inverse gate rules. |
+| `=yes` + dry-run (`--check`) | Don't ask; report `⏭️ se preguntaría en --apply`. |
+| `=yes` + `--apply` + a freshness signal | **Ask the operator** (AskUserQuestion): *"¿Refresco fake data en <proyecto>? (delete + create — el gate de prod ya pasó)"* with a recommendation based on the signal. On yes → run **fake-data-refresh**. |
+| `=yes` + `--apply` + no signal | Skip with a note — don't nag when data looks healthy. |
+| Fleet / headless mode | Never ask (analysis-only). |
+
+**Freshness signals** (any one suffices): the worklist has e2e/`display` work; model
+counts at 0 or incoherent; the operator's request mentions data/fixtures/seeding.
 
 ## Phase 4 — Per-layer fan-out (Engineer ×3)
 
 Spawn up to 3 dedicated subagents in ONE message via the Agent tool
 (`subagent_type: qa-engineer-backend | qa-engineer-unit | qa-engineer-e2e`) — the
-layers own **disjoint directories** (`backend/<app>/tests/`, `frontend/<unit dir>/`,
-`frontend/e2e/`), so they never collide. Only for present layers with non-empty work.
+layers own **disjoint file sets**: backend = `backend/**/tests/`; unit = every
+`*.test.*`/`*.spec.*` under `frontend/` OUTSIDE `e2e/` (Next/Nuxt colocate them in
+`**/__tests__/` at arbitrary depth — there is no single "unit dir"); e2e =
+`frontend/e2e/`. They never collide. Only for present layers with non-empty work.
 Each engineer:
 
 - Follows its coverage skill verbatim: backend → `backend-test-coverage`,
@@ -145,8 +163,10 @@ Each engineer:
   (quality ceiling beats volume); under `--apply` author and **leave staged — do
   not commit** (the conductor commits once); under dry-run, describe the diffs and
   write nothing.
-- Returns a fenced block: `layer, tests_authored, flows_closed, abstentions,
-  gate_on_batch, tests_run, files_touched, blocked`.
+- Returns its fixed-format block (the agents' own contract): `STATUS
+  (AUTHORED|DRAFTED|ABSTAINED|BLOCKED), tests_authored, flows_closed, abstentions,
+  gate_on_batch, tests_run, files_touched, blocked`. The engineer's identity tells
+  you the layer — do not expect a `layer` field.
 
 Assert the `files_touched` sets are pairwise disjoint (they must be, by directory).
 A non-disjoint result is a bug → stop and report.
@@ -165,18 +185,21 @@ without a passing run. Next step routes the operator to `dev-up` +
 
 ## Phase 5 — Gate / verify (Verifier → Healer)
 
-`qa-agent.sh --verify <proj> --files=<union of files_touched>` — zero new junk on
-the batch, and run only the touched tests. A failing authored test → bounded
-**fix-broken-tests** (a few iterations); flag any production-code change ⚠️ for
-operator approval.
+Dispatch **`qa-verifier`**: it runs `qa-agent.sh --verify <proj>
+--files=<union of files_touched>` (CI-parity severity; zero junk on the batch),
+runs only the touched tests, and — where mutation tooling is configured — the
+diff-scoped mutation gate. A failing or flaky test → dispatch **`qa-healer`**
+(preloads `fix-broken-tests`; hard cap **≤3 attempts per test**); it flags any
+production-code change ⚠️ and STOPS for operator approval before applying it.
 
 ## Phase 6 — Junk purge (Auditor)
 
-**test-audit** `--since <branch-base>` to catch junk the authoring introduced AND
-pre-existing junk-only. DELETE only with per-batch operator approval (test-audit's
-own guardrail). Dry-run unless `--apply`.
+Dispatch **`qa-auditor`** (preloads `test-audit`) scoped `--since=<branch-base>`
+(mechanically: `git diff --name-only <base>` → repeated `--include-file`) to catch
+junk the authoring introduced AND pre-existing junk-only. DELETE only with
+per-batch operator approval (test-audit's own guardrail). Dry-run unless `--apply`.
 
-## Phase 7 — Land + report (Scribe)
+## Phase 7 — Land + report (conductor)
 
 - Under `--apply`: commit the authored tests on `resolved_branch` (Conventional
   Commits, English). **Do not merge.** Do not write to a production clone without an
@@ -205,17 +228,21 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 | Dimensión | Estado | Detalle |
 |---|---|---|
 | Preflight + coordenada | ✅ | layers=[…] · db=… · rama=<resolved_branch> · on-work-host |
+| Methodology (fase 1) | ⏭️ | docs/methodology fresco (✅ si se regeneró) |
 | Flow-map | ✅ | flow-definitions.json fresco (⏭️ si no aplica) |
-| Auditoría cobertura | ⚠️ | junk-only: N · missing P1/P2: N · clases error/failure faltantes: N |
+| Fake data (fase 3) | ⏭️ | prod: skip silencioso · staging: preguntado/skip-sin-señal |
+| Auditoría cobertura | ⚠️ | junk-only: N · missing P1/P2: N · clases error/failure faltantes: N · exempt: N (no son gaps) |
 | Backend (subagente) | ✅ | N tests, valor concreto + "qué bug atrapa"; DJANGO_ENV=production |
 | Frontend-unit (subagente) | ✅ | N tests, sin weak/tautological/duplicate |
 | E2E (subagente) | ⚠️ | N specs @flow/@outcome; 2 draft — app no corriendo (validate-pending) |
-| Quality gate (batch) | ✅ | cero hallazgos junk en archivos tocados |
+| Quality gate (batch) | ✅ | cero hallazgos junk en archivos tocados (severidad CI) |
+| Mutation gate (si hay tooling) | ⏭️ | diff-scoped · survivors=N (o ⏭️ sin tooling) |
+| Healer | ⏭️ | N tests reparados (≤3 intentos c/u) · 0 cambios a código prod |
 | Junk purge (test-audit) | ⏭️ | dry-run: N candidatos DELETE/MERGE, sin aplicar |
 | Land | ✅ | commit en <resolved_branch>; sin merge (queda para merge-when-green) |
 
 ## Next steps
-- `bash scripts/qa/qa-agent.sh --verify <proj> --files=<spec>` — reconfirmar el gate
+- `bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proj> --files=<spec>` — reconfirmar el gate
 - (operador) `dev-up` + re-`/qa --apply` para VALIDAR los e2e en draft
 - (operador) `/merge-when-green` — integrar cuando el CI esté verde (QA nunca mergea)
 - (operador, opcional) `/deploy-and-check` — desplegar (sugerencia, nunca auto)

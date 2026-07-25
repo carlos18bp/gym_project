@@ -15,6 +15,7 @@ Recibir una lista de tests rotos, entender por qué fallan, arreglarlos y verifi
 2. **No modificar código de producción** salvo que sea estrictamente necesario para que el test sea válido.
 3. **No agregar comentarios** al código salvo que el usuario lo pida explícitamente.
 4. **Respetar los estándares de calidad**: consultar `docs/TESTING_QUALITY_STANDARDS.md` antes de tocar cualquier test.
+5. **≤ 3 intentos por test.** Si tras 3 intentos sigue rojo, STOP y reportar con la hipótesis y lo probado (mismo límite que el qa-healer).
 
 ## Referencia de Estándares
 
@@ -26,6 +27,8 @@ Antes de modificar cualquier test, leer: `docs/TESTING_QUALITY_STANDARDS.md`
 ```bash
 cd backend && source venv/bin/activate
 pytest path/to/test_file.py::TestClass::test_name -v
+# Proyectos con `db: mysql` en projects.yml (engine check de [[backend-test-coverage]]):
+DJANGO_ENV=production pytest path/to/test_file.py::TestClass::test_name -v
 ```
 
 ### Frontend Unit (Jest)
@@ -38,12 +41,16 @@ cd frontend && npm test -- path/to/test_file.spec.ts
 cd frontend && npx playwright test path/to/spec.spec.ts
 # Si el servidor ya está corriendo:
 cd frontend && E2E_REUSE_SERVER=1 npx playwright test path/to/spec.spec.ts
+# Nota: sólo kore honra E2E_REUSE_SERVER en su playwright.config; en el resto
+# es no-op (reuseExistingServer ya es true en local fuera de CI).
 ```
 
 ## Flujo de Trabajo
 
 ### Paso 1 — Correr los tests rotos para capturar el error
 Ejecutar cada test fallido y guardar el output completo (mensaje de error, traceback, línea exacta).
+
+Si el fallo NO reproduce al re-correr → es **flaky**: clasificar la causa (timing / orden de ejecución / estado compartido) y hacer el test determinista — ese es el fix, no reintentar hasta que pase.
 
 ### Paso 2 — Leer y entender el test + el código que prueba
 Leer el archivo del test y el código de producción relacionado. Identificar:
@@ -94,6 +101,7 @@ vecinos, reemplazar el ✅ correspondiente por ❌, omitir la línea ✨ y agreg
 `## Next steps` con el test pendiente, la hipótesis para el siguiente
 intento, y el comando exacto a correr.
 
-Si para arreglar el test fue necesario modificar código de producción,
-reportarlo explícitamente en una fila adicional con ⚠️ — esa modificación
-necesita aprobación del operador antes de commitear.
+Si arreglar el test requiere tocar código de producción: **detenerse y pedir
+aprobación ANTES de aplicar cualquier cambio a código de producción**
+(alineado con qa-healer). Una vez aprobado y aplicado, reportarlo
+explícitamente en una fila adicional con ⚠️.

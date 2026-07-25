@@ -1196,6 +1196,23 @@ def test_validation_error_messages():
 await page.locator('.external-datepicker .day-15').click();
 ```
 
+### Junk-rule allow markers (2026-07)
+
+The junk detectors have their own opt-out markers. Each one silences exactly one
+rule, must live **inside the block of the test it exempts** (the detectors read
+the test's source slice, not the file header), and the reason in parentheses is
+**mandatory**. Active markers appear in the gate report's `active_exceptions`
+and are audited like any other exception.
+
+| Marker | Rule silenced | Legitimate when |
+|--------|---------------|-----------------|
+| `// quality: allow-no-interaction (reason)` | `no_user_interaction` | the flow genuinely has no interactable step (e.g. a redirect/guard whose whole behavior is navigation) |
+| `// quality: allow-deep-link (reason)` | `deep_link_entry` | the URL itself is the documented entry point of the display flow (e.g. an emailed permalink) |
+| `// quality: allow-render-only (reason)` | `no_data_assertion` | the view under test is deliberately static and its content is pinned by another test |
+| `// quality: allow-duplicate (reason)` | `duplicate_coverage` | the same body must run twice by design (e.g. a per-role or per-viewport contract) |
+| `// quality: allow-mock-only (reason)` | `mock_only_assertion` | the outbound call IS the contract (e.g. telemetry/analytics emission with no observable state) |
+| `// quality: allow-reimpl (reason)` | `reimplements_sut` | recomputing is the spec itself (e.g. a property/identity the test intentionally re-states) |
+
 ### Exception Tracking
 
 All exceptions are tracked and reported:

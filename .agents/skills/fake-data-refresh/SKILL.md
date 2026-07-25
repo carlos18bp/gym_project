@@ -30,11 +30,31 @@ No invocar:
 
 ---
 
-## 2. Pre-flight: gate inverso de producción (BLOQUEANTE)
+## 2. Ejecución completa — UN SOLO bloque bash (obligatorio)
+
+> **Por qué un solo bloque:** entre bloques bash de una skill SÓLO persiste el
+> cwd — las variables mueren (gotcha conocido del repo; con `set -u` la versión
+> multi-bloque moría con `unbound variable` en §3). Todo el flujo — parser de
+> flags, gate, detección, delete, create, verificación — corre acá.
 
 ```bash
 set -uo pipefail
-PROJ_PATH="${1:-$(pwd)}"
+
+# ---- Parser de $ARGUMENTS (los flags documentados SE PARSEAN acá) ----
+PROJ_PATH=""
+RECORDS=50
+SKIP_DELETE=false
+DRY_RUN=false
+for tok in $ARGUMENTS; do
+  case "$tok" in
+    --records=*)  RECORDS="${tok#*=}" ;;
+    --skip-delete) SKIP_DELETE=true ;;
+    --dry-run)     DRY_RUN=true ;;
+    --*)           echo "FATAL: flag desconocida $tok"; exit 2 ;;
+    *)             PROJ_PATH="$tok" ;;
+  esac
+done
+[ -n "$PROJ_PATH" ] || PROJ_PATH="$(pwd)"
 [ -d "$PROJ_PATH" ] || { echo "FATAL: $PROJ_PATH no existe"; exit 2; }
 PROJ_NAME="$(basename "$PROJ_PATH")"
 
@@ -49,8 +69,8 @@ IN_FLEET=false
 # - Si el proyecto aparece en projects.yml → IN_FLEET=true.
 # - Si is_staging() devuelve true → permitido (no Signal A).
 # - En cualquier otro caso (production explícita, sin field environment, etc.) → Signal A.
-# Esto cubre el caso de proyectos production sin field `environment:` (ej. kore_project),
-# donde el helper devuelve default=production por convención.
+# Esto cubre el caso de proyectos production que no declaran `environment:`
+# (el helper devuelve default=production por convención).
 OPS_ROOT=/home/ryzepeck/webapps/vps-ops-toolkit
 if [ -f "${OPS_ROOT}/projects.yml" ]; then
   MODE=check
@@ -58,6 +78,10 @@ if [ -f "${OPS_ROOT}/projects.yml" ]; then
   source "${OPS_ROOT}/scripts/lib/bootstrap-common.sh" 2>/dev/null
   # shellcheck source=/dev/null
   source "${OPS_ROOT}/scripts/lib/project-definitions.sh" 2>/dev/null
+
+  # Guard: si el source falló en silencio, is_staging no existe y `! is_staging`
+  # sería true → REFUSED silencioso de un staging legítimo. Mejor morir claro.
+  declare -F is_staging >/dev/null || { echo "FATAL: no pude cargar los helpers del toolkit (is_staging indefinido)"; exit 2; }
 
   if grep -qE "^[[:space:]]*-[[:space:]]+name:[[:space:]]+${PROJ_NAME}[[:space:]]*$" "${OPS_ROOT}/projects.yml"; then
     IN_FLEET=true
@@ -104,18 +128,8 @@ if $IN_FLEET; then
 else
   echo "OK: ${PROJ_NAME} no está en projects.yml y .env no marca producción. Asumiendo dev local."
 fi
-```
 
-**Notas:**
-
-- Si **ambas** señales son falsas o ausentes (proyecto local fuera del fleet, sin `.env`, dev en laptop) → procede.
-- **No hay flag para saltar el gate.** Si la skill detecta prod, no se corre. Si crees que es un falso positivo, corrige el `.env` o `projects.yml`.
-
----
-
-## 3. Detectar infraestructura del proyecto
-
-```bash
+# ---- Detectar infraestructura ----
 # Localizar manage.py
 CMD_DIR="${PROJ_PATH}/backend"
 [ -f "${CMD_DIR}/manage.py" ] || CMD_DIR="${PROJ_PATH}"
@@ -126,74 +140,67 @@ VENV_PY="${PROJ_PATH}/.venv/bin/python"
 [ -x "$VENV_PY" ] || VENV_PY="${PROJ_PATH}/venv/bin/python"
 [ -x "$VENV_PY" ] || { echo "FATAL: no .venv/venv ejecutable en ${PROJ_PATH}"; exit 2; }
 
-# Inventariar management commands
-MGMT_OUT="$("$VENV_PY" "${CMD_DIR}/manage.py" help 2>/dev/null || true)"
+# Inventariar management commands. NO silenciar un `manage.py help` roto:
+# distinguir "el proyecto no arranca" de "no tiene el comando".
+if ! MGMT_OUT="$("$VENV_PY" "${CMD_DIR}/manage.py" help 2>&1)"; then
+  echo "FATAL: manage.py help falló — el proyecto no arranca (settings/DB rotos):"
+  printf '%s\n' "$MGMT_OUT" | tail -5
+  exit 2
+fi
 
-HAS_DELETE="$(printf '%s\n' "$MGMT_OUT" | grep -oE '\b(delete_fake_data|flush_fake|reset_fake)\b' | head -1)"
-HAS_CREATE="$(printf '%s\n' "$MGMT_OUT" | grep -oE '\b(create_fake_data|populate_fake_data|seed_data|seed)\b' | head -1)"
+HAS_DELETE="$(printf '%s\n' "$MGMT_OUT" | grep -oE '\b(delete_fake_data|flush_fake|reset_fake)\b' | head -1 || true)"
+HAS_CREATE="$(printf '%s\n' "$MGMT_OUT" | grep -oE '\b(create_fake_data|populate_fake_data|seed_data|seed)\b' | head -1 || true)"
 
 if [ -z "$HAS_CREATE" ]; then
   echo "FATAL: ${PROJ_NAME} no tiene management command de fake data create."
   echo "       Esperaba uno de: create_fake_data, populate_fake_data, seed_data, seed."
-  echo "       Implementa uno antes de correr fake-data-refresh."
   exit 2
 fi
-
 echo "Create command detectado: ${HAS_CREATE}"
 echo "Delete command detectado: ${HAS_DELETE:-(ninguno)}"
-```
 
----
+# ---- Sondear signatures vía --help ANTES de ejecutar ----
+# (ejecutar-para-descubrir duplica registros si el create corre parcialmente
+# antes de fallar por la flag; y un retry de delete puede colgarse en un prompt)
+CREATE_HELP="$("$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" --help 2>/dev/null || true)"
+CREATE_ARGS=()
+if grep -q -- '--number-of-records' <<<"$CREATE_HELP"; then
+  CREATE_ARGS=(--number-of-records="$RECORDS")
+elif grep -qE '^\s+records|positional arguments' <<<"$CREATE_HELP"; then
+  CREATE_ARGS=("$RECORDS")
+else
+  echo "AVISO: ${HAS_CREATE} no expone cantidad en --help; correrá con sus defaults."
+fi
+DELETE_ARGS=()
+if [ -n "$HAS_DELETE" ]; then
+  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" --help 2>/dev/null | grep -q -- '--confirm' \
+    && DELETE_ARGS=(--confirm) \
+    || echo "AVISO: ${HAS_DELETE} no soporta --confirm (parchear el comando; caso candle)."
+fi
 
-## 4. Ejecutar delete
+# ---- Dry-run: mostrar el plan exacto y salir ----
+if $DRY_RUN; then
+  echo "DRY-RUN — comandos que correría:"
+  [ -n "$HAS_DELETE" ] && ! $SKIP_DELETE && echo "  $VENV_PY ${CMD_DIR}/manage.py $HAS_DELETE ${DELETE_ARGS[*]:-}"
+  echo "  $VENV_PY ${CMD_DIR}/manage.py $HAS_CREATE ${CREATE_ARGS[*]:-}"
+  exit 0
+fi
 
-```bash
-SKIP_DELETE=${SKIP_DELETE:-false}
-
+# ---- Delete ----
 if [ -n "$HAS_DELETE" ] && ! $SKIP_DELETE; then
-  echo ">>> Ejecutando: ${HAS_DELETE} --confirm"
-  if ! "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" --confirm 2>&1; then
-    echo "WARNING: ${HAS_DELETE} --confirm falló. Reintentando sin --confirm..."
-    if ! "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" 2>&1; then
-      echo "FATAL: ${HAS_DELETE} falló sin y con --confirm. Revisa el comando."
-      exit 2
-    fi
-    echo "AVISO: el comando ${HAS_DELETE} se ejecutó SIN flag --confirm. Considera agregar la flag para futuras ejecuciones más seguras."
-  fi
+  echo ">>> Ejecutando: ${HAS_DELETE} ${DELETE_ARGS[*]:-}"
+  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" "${DELETE_ARGS[@]:-}" || { echo "FATAL: ${HAS_DELETE} falló."; exit 2; }
 elif $SKIP_DELETE; then
   echo "Saltando delete (--skip-delete)"
 else
-  echo "AVISO: ${PROJ_NAME} no tiene delete_fake_data. Los registros se acumularán."
+  echo "AVISO: sin delete cmd — los registros se acumularán (NO idempotente en este modo)."
 fi
-```
 
----
+# ---- Create ----
+echo ">>> Ejecutando: ${HAS_CREATE} ${CREATE_ARGS[*]:-} (objetivo: ${RECORDS})"
+"$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" "${CREATE_ARGS[@]:-}" || { echo "FATAL: ${HAS_CREATE} falló."; exit 2; }
 
-## 5. Ejecutar create
-
-```bash
-RECORDS="${RECORDS:-50}"
-
-echo ">>> Ejecutando: ${HAS_CREATE} (registros objetivo: ${RECORDS})"
-
-# Probar tres signatures distintas (positional, --number-of-records, defaults)
-if "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" "$RECORDS" 2>&1; then
-  :
-elif "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" --number-of-records="$RECORDS" 2>&1; then
-  :
-elif "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" 2>&1; then
-  echo "AVISO: ${HAS_CREATE} corrió con sus defaults (no acepta argumento de cantidad)"
-else
-  echo "FATAL: ${HAS_CREATE} falló con todas las signatures conocidas."
-  exit 2
-fi
-```
-
----
-
-## 6. Verificar resultado
-
-```bash
+# ---- Verificar resultado ----
 echo ">>> Conteo post-create:"
 "$VENV_PY" "${CMD_DIR}/manage.py" shell -c '
 from django.apps import apps
@@ -210,33 +217,21 @@ Si todos los modelos relevantes para el proyecto quedan en `0`, el comando apare
 
 ---
 
-## 7. Reporte al operador
+## 3. Reporte al operador
 
 Cerrar con el bloque estándar de **Output final** (al pie): veredicto + tabla
 de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 
 ---
 
-## Dry-run mode
-
-Si la invocación incluye `--dry-run`:
-
-- Ejecuta el gate de producción (real, para mostrar la decisión).
-- Detecta los management commands (real).
-- **No ejecuta** delete ni create.
-- Imprime los comandos exactos que correría con sus argumentos.
-- Exit 0.
-
----
-
-## Argumentos soportados
+## Argumentos soportados (parseados por el bloque §2)
 
 | Flag | Default | Descripción |
 |---|---|---|
 | `[proyecto]` | `$(pwd)` | Path al proyecto. Si se omite, usa el CWD. |
-| `--records=N` | `50` | Cantidad objetivo de registros (se intenta como posicional o `--number-of-records`). |
-| `--skip-delete` | `false` | Salta el delete y solo crea. Útil cuando quieres añadir más data sin borrar. |
-| `--dry-run` | `false` | No ejecuta delete/create, solo simula. |
+| `--records=N` | `50` | Cantidad objetivo **por modelo principal** (50 alcanza para paginar 2 páginas en E2E). La signature real se sondea vía `--help`. |
+| `--skip-delete` | `false` | Salta el delete y solo crea (⚠️ acumula registros — no idempotente). |
+| `--dry-run` | `false` | Corre gate + detección + sondeo de signatures (reales) e imprime el plan exacto sin ejecutar delete/create. Exit 0. |
 
 ---
 
@@ -244,11 +239,12 @@ Si la invocación incluye `--dry-run`:
 
 | Proyecto | Env | Create cmd | Delete cmd | Comportamiento esperado |
 |---|---|---|---|---|
-| `mimittos_project` | production | `create_fake_data` | `delete_fake_data --confirm` | **REFUSED** (gate Signal A + B) |
+| `mimittos_project` | production | `create_fake_data` | `delete_fake_data --confirm` | **REFUSED** (gate Signal A — B no se evalúa para proyectos del fleet) |
 | `kore_project` | production | `create_fake_data` | `delete_fake_data --confirm` | **REFUSED** (gate Signal A) |
-| `fernando_aragon_project` | staging | `create_fake_data` | `delete_fake_data --confirm` | OK — refresh users |
-| `candle_staging_project` | staging | `create_fake_data` | `delete_fake_data` (sin `--confirm`) | OK con warning — el comando es destructivo sin flag, recomendar parche |
+| `fernando_aragon_project` | **production** (informativo — sirve dominio real) | `create_fake_data` | `delete_fake_data --confirm` | **REFUSED** (gate Signal A) |
+| `candle_project_staging` | staging (**suspended** — offline-total) | `create_fake_data` | `delete_fake_data` (sin `--confirm`) | Gate OK (staging), pero probable **FATAL** en `manage.py help` — el proyecto está apagado |
 | `azurita` | staging | (ninguno) | (ninguno) | **FATAL** — sin infraestructura |
+| `tuhuella/vastago/tenndalux_project_staging` · `gym_project_staging` | staging activo | según proyecto | según proyecto | OK — los targets reales de refresh |
 
 ---
 
@@ -260,7 +256,8 @@ Si la invocación incluye `--dry-run`:
 | `FATAL: no manage.py` | El CWD no es un proyecto Django, o el proyecto usa estructura no estándar | Pasar `[proyecto]` explícito o invocar desde la raíz correcta |
 | `FATAL: no .venv/venv ejecutable` | Venv no creado | `python -m venv .venv && .venv/bin/pip install -r requirements.txt` |
 | `FATAL: ... no tiene management command de fake data create` | El proyecto nunca tuvo seed | Implementar `create_fake_data` siguiendo el patrón de `mimittos_project` o `kore_project` |
-| Warning "comando se ejecutó SIN flag --confirm" | El delete del proyecto no soporta `--confirm` | Parchear el comando del proyecto para aceptar `--confirm` (caso `candle_staging_project`) |
+| Aviso "no soporta --confirm" | El `--help` del delete no expone la flag (se sondea ANTES de ejecutar, nunca retry a ciegas) | Parchear el comando del proyecto para aceptar `--confirm` |
+| FATAL "manage.py help falló" | El proyecto no arranca (settings/DB rotos o suspendido) — distinto de "no tiene el comando" | Revisar `.env`/servicios antes de reintentar |
 | Counts en 0 después de create | Comando no acepta argumento de cantidad y su default es 0, o falla silencioso | Ejecutar manualmente con verbose: `python manage.py <cmd> --verbosity=3` |
 
 ---
@@ -269,7 +266,7 @@ Si la invocación incluye `--dry-run`:
 
 - **Producción intocable:** dos señales independientes (`projects.yml` y `.env`) — si cualquiera dispara, refusa.
 - **Adaptativo:** detecta los comandos del proyecto (no asume nombres fijos).
-- **Idempotente:** correr la skill dos veces es seguro (delete + create da el mismo estado final).
+- **Idempotente CUANDO hay delete cmd y no se usa `--skip-delete`** (delete + create da el mismo estado final). Sin delete, o con `--skip-delete`, los registros se acumulan.
 - **Reportable:** siempre imprime counts y warnings; el operador sabe qué pasó.
 
 ---

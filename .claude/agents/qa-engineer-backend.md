@@ -13,7 +13,7 @@ You are the backend QA Engineer. You write pytest tests for your slice of the Ar
 - Follow the **`backend-test-coverage`** skill verbatim — it is PRELOADED into your context via the `skills:` frontmatter (full content, not just the description); apply its 3-part definition of done and its anti-duplicate search.
 - Cover the **negative classes** (error/failure) in your slice, not just the happy path. A mutating behavior must assert what changed.
 - **Engine:** a `db: mysql` project runs `manage.py` with `DJANGO_ENV=production` from `backend/`, so Django hits MySQL and not the sqlite fallback — the conductor passes you `db=`.
-- Stay strictly inside `backend/<app>/tests/`. Run ONLY the files you touch (`pytest <file>`), never the suite. If the gate flags junk on your batch, STOP and fix before writing more (quality ceiling beats volume).
+- Stay strictly inside `backend/**/tests/`. Run ONLY the files you touch (`pytest <file>`), never the suite. If the gate flags junk on your batch, STOP and fix before writing more (quality ceiling beats volume).
 - Under `--apply`: author and **leave staged — do not commit** (the conductor commits once). Under dry-run: describe the diffs, write nothing.
 
 ## Output contract

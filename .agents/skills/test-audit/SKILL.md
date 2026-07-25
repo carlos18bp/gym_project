@@ -23,6 +23,9 @@ cheapest legal move. Measured with the junk detectors:
 | Duplicated unit tests | 146 |
 | Assertions too weak to fail | 164 |
 
+These figures are from **projectapp (2026-07-24)**; fleet-wide the no-interaction
+count is **1152 / 3271 E2E tests (35%)** (`docs/audits/test-junk-audit-2026-07-24.md`).
+
 ## Relationship to the other test skills
 
 | Skill | Question it answers |
@@ -37,9 +40,13 @@ Only this skill will conclude that a test should be deleted.
 ## Invocation
 
 - `/test-audit` — full audit, **report only** (default, writes nothing)
+- `/test-audit --check` — explicit alias of the default dry-run (same behavior)
 - `/test-audit --apply` — audit, then propose cleanup batches for approval
 - `/test-audit --suite=e2e|unit|backend` — restrict the scope
-- `/test-audit --since=<git-ref>` — only tests added since a ref (post-campaign check)
+- `/test-audit --since=<ref>` — only tests added since a ref (post-campaign check).
+  Not a gate flag: it materializes as
+  `git diff --name-only <ref> -- '*test*' '*spec*'`, feeding one repeated
+  `--include-file` per changed file into `test_quality_gate.py`.
 
 ## Phase 0 — Preflight
 
@@ -72,17 +79,25 @@ explicitly in the report: the AST-based rules were skipped.
 
 ## Phase 2 — Classify
 
-Sort every finding into one of seven classes.
+Sort every finding into one of nine classes.
 
 | # | Class | Signal | Default verdict |
 |---|-------|--------|-----------------|
 | 1 | **No interaction** | `no_user_interaction` — E2E that never touches the UI | REWRITE, or DELETE if the flow is covered elsewhere |
 | 2 | **Lying tag** | `flow_tag_mismatch` — claims an action it does not perform, or mutates without asserting the change | REWRITE |
 | 3 | **Weak assertion** | `weak_assertion`, `tautological_selector` — cannot fail | REWRITE |
-| 4 | **Duplicate** | `duplicate_coverage` — identical body, or repeated name in one file | MERGE into the stronger one |
-| 5 | **Tests the mock** | `mock_call_contract_only` — asserts a spy was called and nothing else | REWRITE |
-| 6 | **Implementation-coupled** | `implementation_coupling`, `wrapper.vm.*` | REWRITE |
-| 7 | **No subject** | Covers constants, barrels, re-exports, trivial wrappers | DELETE |
+| 4 | **Duplicate** | `duplicate_coverage` — structurally identical body (a shared name alone is deliberately not a signal) | MERGE into the stronger one |
+| 5 | **Tests the mock** | `mock_only_assertion` — asserts the spy was called, never the effect; the escape is `toHaveBeenCalledWith`/`toHaveBeenCalledTimes` | REWRITE |
+| 6 | **Reimplements the SUT** | `reimplements_sut` — the expected side recomputes the result with the SUT's own operator (`toBe(a + b)`) | REWRITE to a hand-verified literal |
+| 7 | **Deep-link display** | `deep_link_entry` — fires only on `@outcome:display` flows entered via a deep URL instead of navigating the UI | REWRITE |
+| 8 | **No data assertion** | `no_data_assertion` — asserts only visibility, so it passes on an empty or wrong dataset | REWRITE |
+| 9 | **No subject** | Covers constants, barrels, re-exports, trivial wrappers | DELETE |
+
+> **Only 2 rules DISQUALIFY coverage credit**: `no_user_interaction` and
+> `flow_tag_mismatch` (the audit's `DISQUALIFYING_RULES`). The other 7 are
+> quality findings — the test still counts as evidence the flow is exercised.
+> Batch priority follows: disqualifying classes first (they are what uncovers
+> `junk-only` flows), quality classes after.
 
 Two findings that are **not** junk and must not be swept in:
 
@@ -102,7 +117,11 @@ For each junk test decide, and record the reason in one line:
   interaction and the assertion it needs.
 - **MERGE** — a duplicate. Name the survivor.
 - **KEEP** — the finding is a false positive. **Record why**, and add the
-  `quality: allow-*` marker with the reason so the gate stops reporting it.
+  matching `quality: allow-*` marker so the gate stops reporting it. Six exist:
+  `allow-no-interaction`, `allow-deep-link`, `allow-render-only`,
+  `allow-duplicate`, `allow-mock-only`, `allow-reimpl`. The reason in
+  parentheses is **mandatory**, and the marker goes **inside the test block**
+  it excuses — e.g. `// quality: allow-no-interaction (asserts the API contract; no UI exists)`.
 
 Prioritize `junk-only` flows above everything else: they report green today, so
 they are actively misleading, unlike an honestly missing flow.
@@ -110,8 +129,10 @@ they are actively misleading, unlike an honestly missing flow.
 ## Phase 4 — Report
 
 Write `docs/audits/test-audit-<YYYY-MM-DD>.md` with the inventory, the class
-breakdown, the triage table, and the before/after coverage figures. Then report
-per [[_output-protocol]].
+breakdown, the triage table, and the before/after coverage figures. Coverage
+states are `covered` / `partial` / `junk-only` / `missing` / `exempt` —
+`exempt` (`expectedSpecs: 0`) is a deliberate exemption, NOT a gap and not a
+cleanup candidate. Then report per [[_output-protocol]].
 
 **In `--check` mode this is the end. Nothing is written to the test corpus.**
 
@@ -134,7 +155,8 @@ Only with `--apply`, and only after the operator approves each batch.
 1. Re-run the gate over the touched files: the class just cleaned must be gone.
 2. Re-run `flow_coverage_audit.py`. **Coverage will drop, and that is the point:**
    flows previously credited to junk become `missing`. State the before/after
-   explicitly so the drop is not read as a regression.
+   explicitly so the drop is not read as a regression. `exempt` flows
+   (`expectedSpecs: 0`) stay `exempt` — a deliberate exemption, not a gap.
 3. Confirm the corpus still passes: run the affected modules, not the suite.
 
 ## Guardrails
@@ -148,7 +170,10 @@ Only with `--apply`, and only after the operator approves each batch.
 - **Never delete a test whose behavior is not covered elsewhere** unless there is
   no behavior to cover. A junk test still marks intent; deleting it silently
   loses the record that the flow was meant to be covered. Register the flow as
-  `missing` in `docs/USER_FLOW_MAP.md` before deleting.
+  `missing` in `docs/USER_FLOW_MAP.md` before deleting. Exception: if the flow
+  is `exempt` (`expectedSpecs: 0`) there is no transition to `missing` — the
+  DELETE proceeds and the exemption is noted; do not register it in
+  USER_FLOW_MAP as a gap.
 - **A false positive is a finding about the rules**, not about the test. Record
   it and report it so the detectors get calibrated.
 
@@ -176,10 +201,13 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 | Clase 3 assert débil | ⚠️ | 164 tests → REWRITE |
 | Clase 4 duplicados | ⚠️ | 146 tests → MERGE |
 | Falsos positivos | ℹ️ | N marcados KEEP con razón + marcador allow-* |
-| Cobertura antes/después | ℹ️ | 189 covered → N (los junk-only pasan a missing) |
+| Cobertura antes/después | ℹ️ | 189 covered → N (los junk-only pasan a missing; los `exempt` con `expectedSpecs: 0` son exención deliberada, no gap ni candidato) |
 | Aplicación | ⏭️ | modo --check: no se escribió nada |
 ```
 
 ## Next steps
 - `/test-audit --apply` — proponer los lotes de limpieza para aprobación
-- (por cada KEEP) agregar `// quality: allow-<regla> (razón)` al test
+- (por cada KEEP) agregar DENTRO del bloque del test el marcador que corresponda —
+  `allow-no-interaction` / `allow-deep-link` / `allow-render-only` /
+  `allow-duplicate` / `allow-mock-only` / `allow-reimpl` — con la razón entre
+  paréntesis (obligatoria): `// quality: allow-<marker> (razón)`
