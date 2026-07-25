@@ -29,6 +29,7 @@ cheapest legal move. Measured with the junk detectors:
 |---|---|
 | [[test-quality-gate]] | How do I raise the gate score on tests I am keeping? |
 | [[fix-broken-tests]] | Why is this specific test failing? |
+| [[qa]] | Runs this audit as its Phase 6 (junk purge) inside the full QA chain |
 | **test-audit** | **Which of these tests should exist at all?** |
 
 Only this skill will conclude that a test should be deleted.

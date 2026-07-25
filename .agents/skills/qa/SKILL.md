@@ -2,7 +2,12 @@
 name: qa
 description: "QA conductor for a project: after a feature or fix is functionally complete, close and validate its test coverage end to end. Refreshes the E2E flow map, audits coverage (junk-only first), fans out backend / frontend-unit / e2e subagents to author tests to the 3-part definition of done, runs the quality gate, purges junk via test-audit, and lands the tests on the correct branch — never merging. Default dry-run; --apply to write and commit. From the toolkit, --all-repos / --all-vps run an analysis-only QA sweep of the fleet. Use when the operator says 'QA this', 'cover/validate the tests', 'self-QA', or has just finished a feature — NOT on every trivial edit."
 argument-hint: "[proyecto] [--apply] [--layers=backend,frontend-unit,e2e] [--project=X] [--all-repos] [--all-vps]"
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Task
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
+hooks:
+  Stop:
+    - hooks:
+        - type: command
+          command: "bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --gate-hook"
 ---
 
 # QA — the conductor
@@ -23,11 +28,20 @@ reimplement it.
 - `qa-agent.sh --check <proj>` → coverage audit + quality gate → worklist counts,
   verdict, and a `docs/audits/<date>-<proj>-qa.md` report.
 - `qa-agent.sh --verify <proj> --files=a,b` → re-run the gate on touched files.
+  A gate that scans ZERO files is a false-clean and exits 2 — never a pass.
+- `qa-agent.sh --gate-hook` → the deterministic Stop-hook backstop (wired in this
+  skill's frontmatter). While `<repo>/.qa-gate-pending` exists, ending the turn is
+  BLOCKED (exit 2) until the gate passes over the files it lists.
 
 ## Roles — dedicated subagents (dispatch by `subagent_type`)
 
-Each phase dispatches a dedicated agent (installed in `~/.claude/agents/`, canonical
-in `workflows/.user-level/.claude/agents/`). **Tool scope = role boundary**: only the
+Each phase dispatches a dedicated agent. The agents are **distributed per-project
+at `.claude/agents/qa-*.md`** (canonical: `workflows/.user-level/.claude/agents/`;
+project-level wins over any `~/.claude/agents/` copy), so `/qa` works on any
+machine holding the repo. Caveat: the first time an `agents/` dir appears in a
+scope, restart the session for the watcher to pick it up. The Engineers, Auditor
+and Analyst **preload their skill via `skills:` frontmatter** (full content
+injected — no prose indirection). **Tool scope = role boundary**: only the
 Engineers and the Healer can write; Analyst / Architect / Auditor / Verifier are
 read-only. One role, one agent.
 
@@ -136,6 +150,12 @@ Each engineer:
 
 Assert the `files_touched` sets are pairwise disjoint (they must be, by directory).
 A non-disjoint result is a bug → stop and report.
+
+**Gate marker (under `--apply`):** as soon as the engineers return, write the union
+of `files_touched` (one repo-relative path per line) to `<repo>/.qa-gate-pending`.
+From that moment the Stop hook makes it impossible to end the turn until the gate
+passes over those files; Phase 5's `--verify` clears the marker on a clean pass.
+Never delete the marker by hand to "unblock" — fix the findings.
 
 **E2E needs the running app.** In a headless run the e2e subagent **drafts** specs
 (tagged `@flow`/`@outcome`, acts + asserts) but cannot execute them → returns

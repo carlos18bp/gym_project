@@ -5,6 +5,11 @@ description: "E2E coverage — close untested user flows with specs that exercis
 
 # E2E Test Coverage
 
+> **Cadena:** el conductor [[qa]] corre esta skill como Fase 4 (subagente
+> `qa-engineer-e2e`, que la precarga vía `skills:`); el flow-map que consume lo
+> refresca [[e2e-user-flows-check]] en la Fase 1. Invocable suelta para trabajo
+> puntual de una capa.
+
 ## Goal
 
 Close flows that no test exercises, by writing specs that would fail if the

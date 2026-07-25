@@ -78,6 +78,13 @@ b. Update the documentation in `docs/` and `tasks/`
 
 ---
 
+## Cierre — QA de lo implementado
+
+Al terminar la implementación (feature funcionalmente completa), la forma
+canónica de cerrar la cobertura es invocar **[[qa]]**: audita el flow-map,
+escribe los tests faltantes al DoD de 3 puntos (casos negativos incluidos),
+corre el gate y purga junk — sin mergear. Sugerilo siempre en el cierre.
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/implement`:

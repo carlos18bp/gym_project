@@ -83,6 +83,12 @@ def required_outcomes(definition: dict) -> list[str]:
     declared = definition.get("outcomes")
     if isinstance(declared, list) and declared:
         return [o for o in declared if o in OUTCOME_CLASSES]
+    # `expectedSpecs: 0` is the legacy "intentionally uncovered" sentinel
+    # (honored by check-flow-definitions-sync.mjs). It has no outcomes-schema
+    # equivalent yet, so it must not fall through to requiring `success` —
+    # that would turn every deliberate exemption into a phantom `missing`.
+    if definition.get("expectedSpecs") == 0:
+        return []
     return ["success"]
 
 
@@ -143,7 +149,10 @@ def audit(repo_root: Path) -> dict:
             and seen.get(o, {}).get("disqualified", 0) > 0
         ]
 
-        if not seen:
+        if not needed:
+            # Declared exempt (expectedSpecs: 0) — no required outcomes.
+            status = "exempt"
+        elif not seen:
             status = "missing"
         elif len(satisfied) == len(needed):
             status = "covered"
@@ -189,6 +198,7 @@ def _summarize(flows: dict, total_tests: int, spec_count: int) -> dict:
         "partial": counts["partial"],
         "junk_only": counts["junk-only"],
         "missing": counts["missing"],
+        "exempt": counts["exempt"],
         "declaring_outcomes": sum(1 for f in flows.values() if f["declares_outcomes"]),
     }
 
@@ -224,6 +234,8 @@ def print_report(result: dict) -> None:
     print(f"    partial:            {s['partial']}")
     print(f"    junk-only:          {s['junk_only']}   (tests exist, none qualify)")
     print(f"    missing:            {s['missing']}")
+    if s.get("exempt"):
+        print(f"    exempt:             {s['exempt']}   (expectedSpecs: 0 — intentionally uncovered)")
     print(f"  Flows with outcomes:  {s['declaring_outcomes']} / {s['flows']}")
 
     junk_only = sorted(k for k, v in result["flows"].items() if v["status"] == "junk-only")

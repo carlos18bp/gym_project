@@ -9,6 +9,7 @@ description: "Initialize or refresh the Memory Bank methodology system. Creates 
 
 - **New project**: First-time setup of the Memory Bank system
 - **Refresh**: After major feature additions, when counts drift, or after methodology updates
+- **Chained**: the [[qa]] conductor runs this as its Phase 1 (product understanding) when `docs/methodology/` is missing or stale
 
 ## Step 1: Ensure Directory Structure
 

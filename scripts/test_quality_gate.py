@@ -80,11 +80,14 @@ ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {
 RELAXED_CROSS_ENGINE_RULE_IDS: frozenset[str] = frozenset({"sleep_call", "wait_for_timeout"})
 
 
-JUNK_RULE_IDS: frozenset[str] = frozenset({
-    "no_user_interaction", "flow_tag_mismatch", "deep_link_entry",
-    "no_data_assertion", "weak_assertion", "duplicate_coverage",
-    "tautological_selector",
-})
+# Derived from the single registry in quality.base — a hardcoded copy here
+# silently diverged when the 2026-07 rules (mock_only_assertion,
+# reimplements_sut) were added: --write-junk-baseline FILTERED them out of the
+# freeze while the escalator still raised them to ERROR, so every reconciled
+# repo went red in CI with a baseline that claimed zero new-rule findings.
+from quality.base import JUNK_RULE_CATEGORIES  # noqa: E402
+
+JUNK_RULE_IDS: frozenset[str] = frozenset(JUNK_RULE_CATEGORIES)
 
 
 def _iter_issues(report: dict) -> "list[dict]":

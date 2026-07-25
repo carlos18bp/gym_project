@@ -18,6 +18,7 @@ Skill para refrescar (`delete + create`) la fake data de un proyecto Django. Dis
 Disparadores:
 
 - "refresca fake data en `<proyecto>`" / "borra y recrea data" / "reseed staging X"
+- Encadenada por el conductor [[qa]] (Fase 3) cuando el trabajo necesita fixtures frescas — con el MISMO gate inverso de producción: en prod el conductor la saltea de entrada
 - Después de un cambio de modelo / FK / lógica de negocio (referenciado por `new-feature-checklist`)
 - Cuando los counts de modelos quedaron en 0 o incoherentes
 - Como paso intermedio antes de invocar `playwright-validation` si el flujo a probar necesita data fresca

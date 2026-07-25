@@ -5,6 +5,10 @@ description: "Backend test coverage — cover untested behavior in models, seria
 
 # Backend Test Coverage
 
+> **Cadena:** el conductor [[qa]] corre esta skill como Fase 4 (subagente
+> `qa-engineer-backend`, que la precarga vía `skills:`). Invocable suelta para
+> trabajo puntual de una capa.
+
 ## Goal
 
 Cover untested **behavior** across Models, Serializers, Views, Utils and Tasks.

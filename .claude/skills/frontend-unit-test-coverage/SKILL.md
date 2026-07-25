@@ -5,6 +5,10 @@ description: "Frontend unit coverage — cover untested behavior in stores, comp
 
 # Frontend Unit Test Coverage
 
+> **Cadena:** el conductor [[qa]] corre esta skill como Fase 4 (subagente
+> `qa-engineer-unit`, que la precarga vía `skills:`). Invocable suelta para
+> trabajo puntual de una capa.
+
 ## Goal
 
 Cover untested **behavior** in state management, shared logic and components.

@@ -5,6 +5,10 @@ description: "User flow mapping — walk every view, module and component and en
 
 # User Flow Map — per view, per outcome
 
+> **Cadena:** el conductor [[qa]] corre esta skill como su Fase 1 (freshness del
+> flow-map) antes de auditar cobertura. Invocable suelta cuando sólo se quiere
+> refrescar el mapa.
+
 You are a Senior QA/Product Analyst. Your mission is to produce a **complete map
 of the real interactions a user can perform**, view by view, and to identify
 which of them no qualifying test exercises.
@@ -51,9 +55,19 @@ Rules that keep the map honest:
 Identify roles/personas and modules. Confirm boundaries with the operator.
 
 ### Phase 1 — Source inventory
-Collect evidence: UI routes, view/page components, forms and their validation,
-backend endpoints (including their error responses), product docs, existing
-specs. Endpoint error responses are the best source for the `failure` class.
+**Seed deterministically first** — the core ships a proposer that answers two
+questions before any hand-walking:
+
+```bash
+python3 scripts/propose_flow_definitions.py --repo-root . --mode freshness         # ¿el mapa quedó viejo vs rutas/componentes/endpoints?
+python3 scripts/propose_flow_definitions.py --repo-root . --mode migrate-outcomes  # propuesta de outcomes por flow (review, nunca pisa el mapa)
+```
+
+Review the `.proposed.json` output — this skill is the REVIEWER that applies it;
+the proposer never writes the map in place. Then collect the rest of the
+evidence: UI routes, view/page components, forms and their validation, backend
+endpoints (including their error responses), product docs, existing specs.
+Endpoint error responses are the best source for the `failure` class.
 
 ### Phase 2 — Per-view interaction matrix
 For **each view / module / component**, produce a row per interaction:

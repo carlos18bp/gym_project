@@ -5,6 +5,11 @@ description: "Checklist for new features — ensures fake data creation follows 
 
 # New Feature Checklist
 
+> **La forma canónica de ejecutar los pasos 2 y 3 es invocar [[qa]]** — el
+> conductor corre flow-map → cobertura (backend/unit/e2e) → gate → test-audit
+> como fases ordenadas con las guardas de producción ya cableadas (y salta
+> fake-data en prod solo). Esta checklist queda como la vía granular manual.
+
 ## 1. Fake Data Creation / Validation (Backend)
 
 Before creating test data, verify that fake data complies with:
