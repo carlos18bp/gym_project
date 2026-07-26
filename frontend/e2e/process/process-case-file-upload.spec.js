@@ -1,6 +1,10 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
-import { buildMockProcess, buildMockUser } from "../helpers/processMocks.js";
+import {
+  buildMockProcess,
+  buildMockUser,
+  installProcessApiMocks,
+} from "../helpers/processMocks.js";
 import { mockApi } from "../helpers/api.js";
 
 /**
@@ -112,6 +116,10 @@ test("lawyer uploads a new case file while editing: it reaches update_case_file/
     clients: [client],
     lawyer,
     caseType: "Civil",
+    // Saving needs the nested case id the real ProcessSerializer sends:
+    // ProcessForm submits selectedCaseType.id as caseTypeId, and
+    // validateFormData() blocks the whole submit when it is empty.
+    caseTypeId: 1,
     subcase: "Contractual",
     ref: "RAD-503",
     authority: "Juzgado 1",

@@ -24,11 +24,24 @@ export function buildMockUser({
   };
 }
 
+/**
+ * Builds a process payload shaped like gym_app.serializers.ProcessSerializer.
+ *
+ * `caseTypeId` mirrors CaseSerializer's `['id', 'type']`: the real API always
+ * nests the case id, and ProcessForm's edit mode hydrates its case-type
+ * selector straight from `process.case` (assignProcessToFormData), then submits
+ * `selectedCaseType.id` as `caseTypeId`. A process built without it renders
+ * fine but cannot be SAVED — validateFormData() rejects the empty
+ * "Tipo de Caso" and no update request is ever issued. Any spec that clicks
+ * "Guardar Proceso" on an existing process must pass it.
+ * Left optional (undefined serializes away) so read-only specs stay unchanged.
+ */
 export function buildMockProcess({
   id,
   clients,
   lawyer,
   caseType,
+  caseTypeId,
   subcase = "",
   ref = "RAD-001",
   authority = "Autoridad",
@@ -43,7 +56,7 @@ export function buildMockProcess({
     id,
     clients,
     lawyer,
-    case: { type: caseType },
+    case: { id: caseTypeId, type: caseType },
     subcase,
     ref,
     authority,

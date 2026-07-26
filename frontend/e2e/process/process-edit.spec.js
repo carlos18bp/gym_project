@@ -101,6 +101,10 @@ test("lawyer edits an existing process via the UI: the update PUT carries the re
     clients: [client],
     lawyer,
     caseType: "Civil",
+    // Saving needs the nested case id the real ProcessSerializer sends:
+    // ProcessForm submits selectedCaseType.id as caseTypeId, and
+    // validateFormData() blocks the whole submit when it is empty.
+    caseTypeId: 1,
     subcase: "Contractual",
     ref: "RAD-EDIT-003",
     authority: "Juzgado 3",
