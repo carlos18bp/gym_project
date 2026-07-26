@@ -876,6 +876,41 @@ class QualityReport:
             )
             backend_root = self.repo_root / "backend" / self.config.backend_app_name / "tests"
             backend = py_analyzer.analyze_suite(backend_root, file_matcher=path_matcher)
+            # F37: backend/ exists but the resolved app's tests dir does not →
+            # the suite silently scanned nothing and reported green. Measured
+            # failure mode: a repo adopting the core BEFORE running
+            # extract_project_config.py inherits the canonical default
+            # backend_app_name (one project's app) and every backend run is a
+            # silent no-op. WARNING, not error: it must surface in every report
+            # without turning adoption itself red.
+            if (self.repo_root / "backend").is_dir() and not backend_root.is_dir():
+                from quality.base import CONFIG_FILENAME, FileResult
+                _has_cfg = (self.repo_root / CONFIG_FILENAME).is_file()
+                backend.suite_findings["default_app_missing"] = True
+                _sentinel = FileResult(
+                    file=f"backend/{self.config.backend_app_name}/tests",
+                    area="backend",
+                    location_ok=True,
+                )
+                _sentinel.issues.append(Issue(
+                    file=f"backend/{self.config.backend_app_name}/tests",
+                    message=(
+                        f"backend suite scanned nothing: backend/ exists but "
+                        f"'{self.config.backend_app_name}' "
+                        + ("(from .testquality.yml)" if _has_cfg else
+                           f"(canonical default — no {CONFIG_FILENAME} in this repo)")
+                        + " has no tests dir — a green backend result here verifies nothing"
+                    ),
+                    severity=Severity.WARNING,
+                    category=IssueCategory.MISPLACED_FILE,
+                    rule_id="config_default_app_missing",
+                    line=0,
+                    suggestion=(
+                        f"Run extract_project_config.py to derive {CONFIG_FILENAME} "
+                        "with the repo's real backend_app_name"
+                    ),
+                ))
+                backend.add_file(_sentinel)
             timings["backend"] = time.perf_counter() - suite_started
         
         # Analyze frontend unit tests

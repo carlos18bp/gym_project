@@ -113,6 +113,9 @@ ALLOW_MARKERS: dict[str, str] = {
     # Same contract as every other marker: a written reason is required and
     # the gate surfaces the active exception.
     "allow-flow-tag-mismatch": "flow_tag_mismatch",
+    # F41 ships with its escape hatch from day one (the F32 lesson): a test
+    # that legitimately accepts two destinations documents why.
+    "allow-url-alternation": "tautological_url",
 }
 
 # `test`/`it` must be a standalone identifier, never a method. A plain \b here
@@ -1233,6 +1236,61 @@ def detect_weak_assertion(block: TestBlock) -> Finding | None:
     )
 
 
+_GOTO_LITERAL_RE = re.compile(r"\.goto\(\s*[`'\"]([^`'\"]+)[`'\"]")
+_URL_REGEX_ASSERT_RE = re.compile(r"toHaveURL\(\s*/((?:\\.|[^/\\])*)/")
+
+
+def detect_tautological_url(block: TestBlock) -> Finding | None:
+    """
+    A `toHaveURL(/a|b/)` whose alternation matches the navigated path itself.
+
+    The measured shape: `goto('/admin/dashboard')` then
+    `toHaveURL(/sign-in|dashboard/)` — the second alternative matches the input
+    URL, so redirect and no-redirect both pass and the assertion can never
+    fail. 37 instances machine-verified across 12 files of one repo (F41), all
+    reporting their auth-guard flows green. A single-pattern `toHaveURL(/x/)`
+    after `goto('/x')` is NOT flagged: asserting you stayed is a real check.
+    Alternatives are split naively on `|` — the measured shapes are simple, and
+    an unparseable alternative just doesn't fire.
+    """
+    if "tautological_url" in block.allow_markers:
+        return None
+    source = block.expanded or block.source
+    gotos = _GOTO_LITERAL_RE.findall(source)
+    if not gotos:
+        return None
+    for m in _URL_REGEX_ASSERT_RE.finditer(source):
+        body = m.group(1)
+        if "|" not in body:
+            continue
+        for alt in body.split("|"):
+            alt = alt.strip().replace("\\/", "/")
+            if not alt:
+                continue
+            try:
+                alt_re = re.compile(alt)
+            except re.error:
+                continue
+            if any(alt_re.search(path) for path in gotos):
+                return Finding(
+                    rule_id="tautological_url",
+                    message=(
+                        f"toHaveURL alternation (/{body}/) matches the navigated path itself "
+                        f"('{next(p for p in gotos if alt_re.search(p))}') - redirect and "
+                        "no-redirect both pass, so the assertion cannot fail"
+                    ),
+                    file=block.file,
+                    line=block.start_line,
+                    identifier=block.name,
+                    suggestion=(
+                        "Assert the single expected destination (toHaveURL(/sign-in/)); a test "
+                        "that legitimately accepts two destinations documents it with "
+                        "`// quality: allow-url-alternation (reason)`"
+                    ),
+                )
+    return None
+
+
 _CLASS_SELECTOR_RE = re.compile(
     r"\.(?:findAll|find|querySelectorAll|querySelector|locator)\(\s*[`'\"]([^`'\"]*)"
 )
@@ -1429,7 +1487,12 @@ def analyze_e2e_source(source: str, file: str, spec_path: Path | None = None) ->
             if mismatch:
                 findings.append(mismatch)
 
-        for detector in (detect_deep_link_entry, detect_no_data_assertion, detect_weak_assertion):
+        for detector in (
+            detect_deep_link_entry,
+            detect_no_data_assertion,
+            detect_weak_assertion,
+            detect_tautological_url,
+        ):
             found = detector(block)
             if found:
                 findings.append(found)

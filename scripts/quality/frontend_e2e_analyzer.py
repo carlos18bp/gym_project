@@ -234,11 +234,23 @@ class FrontendE2EAnalyzer:
             return issues
         
         lines = content.split("\n")
-        
+
+        in_block_comment = False
         for line_num, line in enumerate(lines, start=1):
-            # Skip comments
+            # Skip comments — INCLUDING block-comment continuation lines (F43):
+            # a JSDoc ` * ...` line mentioning `.first()` used to raise a real
+            # fragile_locator finding because only `//` and `/*` prefixes were
+            # skipped, never the lines between `/*` and `*/`.
             stripped = line.strip()
-            if stripped.startswith("//") or stripped.startswith("/*"):
+            if in_block_comment:
+                if "*/" in stripped:
+                    in_block_comment = False
+                continue
+            if stripped.startswith("//"):
+                continue
+            if stripped.startswith("/*"):
+                if "*/" not in stripped:
+                    in_block_comment = True
                 continue
 
             allow_marker = self._has_allow_fragile_selector_with_reason(stripped)

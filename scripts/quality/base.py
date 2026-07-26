@@ -81,6 +81,7 @@ class IssueCategory(Enum):
     TAUTOLOGICAL_SELECTOR = auto()
     MOCK_ONLY_ASSERTION = auto()
     REIMPLEMENTS_SUT = auto()
+    TAUTOLOGICAL_URL = auto()
 
 
 # Centralized semantic rule identifiers used for rollout gating and reporting.
@@ -135,6 +136,10 @@ JUNK_RULE_CATEGORIES: dict[str, str] = {
     "tautological_selector": "TAUTOLOGICAL_SELECTOR",
     "mock_only_assertion": "MOCK_ONLY_ASSERTION",
     "reimplements_sut": "REIMPLEMENTS_SUT",
+    # F41 (2026-07): toHaveURL alternation where one branch matches the
+    # navigated path itself — redirect and no-redirect both pass. 37 instances
+    # machine-verified in one repo, all invisible before this rule.
+    "tautological_url": "TAUTOLOGICAL_URL",
 }
 
 

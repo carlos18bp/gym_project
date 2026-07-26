@@ -1213,6 +1213,7 @@ and are audited like any other exception.
 | `// quality: allow-mock-only (reason)` | `mock_only_assertion` | the outbound call IS the contract (e.g. telemetry/analytics emission with no observable state) |
 | `// quality: allow-reimpl (reason)` | `reimplements_sut` | recomputing is the spec itself (e.g. a property/identity the test intentionally re-states) |
 | `// quality: allow-flow-tag-mismatch (reason)` | `flow_tag_mismatch` | the spec legitimately exercises the tagged flow through vocabulary the heuristic cannot map (e.g. the UI copy names the action differently than the flow id) |
+| `// quality: allow-url-alternation (reason)` | `tautological_url` | the test genuinely accepts two destinations (e.g. a geo-dependent localized home) — the default shape `toHaveURL(/sign-in\|<navigated-segment>/)` cannot fail and is junk |
 
 ### Draft marker — `// qa: draft-unvalidated` (2026-07)
 
