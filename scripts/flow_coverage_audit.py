@@ -13,13 +13,19 @@ Nothing checks that the test performs the flow. Measured on a real suite, 301 of
 buying coverage credit for a flow. That is the incentive that manufactures junk
 tests: the cheapest way to turn a flow green is `goto` plus `toBeVisible`.
 
-This audit replaces that credit rule with two conditions:
+This audit replaces that credit rule with three conditions:
 
 1. **Outcome completeness.** A flow declares the outcome classes it must cover
    (`success`, `error`, `failure`, `display`). It is covered only when every
    declared class has a qualifying test.
 2. **Qualifying tests only.** A test disqualified by the junk detectors grants
    no credit, no matter that it passes.
+3. **Executed tests only.** A spec file carrying the `// qa: draft-unvalidated`
+   marker holds tests that were authored without ever running (no app was
+   reachable). They are structurally sound but unproven — measured across four
+   /qa pilots, 4 of 4 draft batches failed on first live execution. Draft
+   evidence never grants credit and never subtracts from credit earned by real
+   tests in other files; a flow backed only by drafts reports `unvalidated`.
 
 It runs statically, so it needs no browser and no test run, and it works on
 hosts where frontend dev dependencies are pruned. It is deliberately a separate
@@ -34,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -58,6 +65,15 @@ DISQUALIFYING_RULES: frozenset[str] = frozenset({
     "no_user_interaction",
     "flow_tag_mismatch",
 })
+
+# File-level marker written by the /qa e2e engineer on specs authored while no
+# app was reachable, removed only after the spec first runs green live. The
+# `qa:` prefix is deliberate: `quality:` markers are block-scoped exemptions
+# (they promote), this one is file-scoped and demotes — and it stays inert to
+# the junk detectors and the quality gate, so repos on an older core see it as
+# a plain comment. Marker semantics: "never executed green once", NOT "green
+# forever" — a validated spec that later regresses is an ordinary red test.
+DRAFT_MARKER_RE = re.compile(r"^\s*//\s*qa:\s*draft-unvalidated\b", re.MULTILINE)
 
 
 def load_flow_definitions(path: Path) -> dict:
@@ -98,9 +114,10 @@ def audit(repo_root: Path) -> dict:
     e2e_root = repo_root / "frontend" / config.frontend_e2e_dir
     definitions = load_flow_definitions(e2e_root / "flow-definitions.json")
 
-    # flow id -> outcome class -> counts of qualifying / disqualified tests
+    # flow id -> outcome class -> counts of qualifying / disqualified /
+    # unvalidated (drafted, never executed) tests
     evidence: dict[str, dict[str, dict[str, int]]] = defaultdict(
-        lambda: defaultdict(lambda: {"qualifying": 0, "disqualified": 0})
+        lambda: defaultdict(lambda: {"qualifying": 0, "disqualified": 0, "unvalidated": 0})
     )
     untagged: list[dict] = []
     total_tests = 0
@@ -115,6 +132,7 @@ def audit(repo_root: Path) -> dict:
         except OSError:
             continue
         rel = spec.relative_to(repo_root).as_posix()
+        file_drafted = bool(DRAFT_MARKER_RE.search(source))
 
         disqualified_lines = {
             f.line for f in analyze_e2e_source(source, rel, spec)
@@ -131,7 +149,14 @@ def audit(repo_root: Path) -> dict:
             # An untagged outcome cannot be credited to a specific class; it
             # counts as `success` so that pre-migration suites still register.
             outcomes = [o for o in block.outcomes if o in OUTCOME_CLASSES] or ["success"]
-            key = "disqualified" if block.start_line in disqualified_lines else "qualifying"
+            # Junk wins over draft: a drafted test that is ALSO junk stays
+            # junk after validation, so name the worse state now.
+            if block.start_line in disqualified_lines:
+                key = "disqualified"
+            elif file_drafted:
+                key = "unvalidated"
+            else:
+                key = "qualifying"
 
             for flow_id in flow_ids:
                 for outcome in outcomes:
@@ -146,16 +171,29 @@ def audit(repo_root: Path) -> dict:
         if needed and not (isinstance(declared, list) and declared):
             # Legacy fallback (no `outcomes:` declared): keep the expectedSpecs
             # semantics — a qualifying test of ANY class (or untagged) satisfies it.
+            # Most fleet maps are still pre-outcomes, so this is the COMMON path:
+            # without the third arm a drafted spec would fall through to
+            # `missing`, misnaming the exact state the marker exists to report.
             has_qualifying = any(c.get("qualifying", 0) > 0 for c in seen.values())
             has_junk = any(c.get("disqualified", 0) > 0 for c in seen.values())
+            has_draft = any(c.get("unvalidated", 0) > 0 for c in seen.values())
             satisfied = list(needed) if has_qualifying else []
             junk_only = list(needed) if has_junk and not has_qualifying else []
+            unvalidated_out = (
+                list(needed) if has_draft and not has_qualifying and not has_junk else []
+            )
         else:
             satisfied = [o for o in needed if seen.get(o, {}).get("qualifying", 0) > 0]
             junk_only = [
                 o for o in needed
                 if seen.get(o, {}).get("qualifying", 0) == 0
                 and seen.get(o, {}).get("disqualified", 0) > 0
+            ]
+            unvalidated_out = [
+                o for o in needed
+                if seen.get(o, {}).get("qualifying", 0) == 0
+                and seen.get(o, {}).get("disqualified", 0) == 0
+                and seen.get(o, {}).get("unvalidated", 0) > 0
             ]
 
         if not needed:
@@ -169,6 +207,11 @@ def audit(repo_root: Path) -> dict:
             status = "partial"
         elif junk_only:
             status = "junk-only"
+        elif unvalidated_out:
+            # Only draft evidence: authored but never executed. Better than
+            # missing (the work exists) and better-named than covered (it is
+            # unproven) — the state /qa heals on its next run with the app up.
+            status = "unvalidated"
         else:
             status = "missing"
 
@@ -179,6 +222,7 @@ def audit(repo_root: Path) -> dict:
             "required_outcomes": needed,
             "satisfied_outcomes": satisfied,
             "junk_only_outcomes": junk_only,
+            "unvalidated_outcomes": unvalidated_out,
             "declares_outcomes": isinstance(definition.get("outcomes"), list),
         }
 
@@ -206,6 +250,7 @@ def _summarize(flows: dict, total_tests: int, spec_count: int) -> dict:
         "covered": counts["covered"],
         "partial": counts["partial"],
         "junk_only": counts["junk-only"],
+        "unvalidated": counts["unvalidated"],
         "missing": counts["missing"],
         "exempt": counts["exempt"],
         "declaring_outcomes": sum(1 for f in flows.values() if f["declares_outcomes"]),
@@ -242,6 +287,11 @@ def print_report(result: dict) -> None:
     print(f"    covered:            {s['covered']}")
     print(f"    partial:            {s['partial']}")
     print(f"    junk-only:          {s['junk_only']}   (tests exist, none qualify)")
+    # Label discipline: qa-agent.sh scrapes these counters with
+    # `grep -oE '<label>:\s+[0-9]+'` — never add a label that is a substring
+    # of another (e.g. a future `validated:` would match inside this line).
+    if s.get("unvalidated"):
+        print(f"    unvalidated:        {s['unvalidated']}   (drafted, never executed — qa: draft-unvalidated)")
     print(f"    missing:            {s['missing']}")
     if s.get("exempt"):
         print(f"    exempt:             {s['exempt']}   (expectedSpecs: 0 — intentionally uncovered)")
@@ -254,6 +304,14 @@ def print_report(result: dict) -> None:
             print(f"    - {flow_id}")
         if len(junk_only) > 20:
             print(f"    ... and {len(junk_only) - 20} more")
+
+    unvalidated = sorted(k for k, v in result["flows"].items() if v["status"] == "unvalidated")
+    if unvalidated:
+        print(f"\n  UNVALIDATED FLOWS ({len(unvalidated)}) — authored but never executed:")
+        for flow_id in unvalidated[:20]:
+            print(f"    - {flow_id}")
+        if len(unvalidated) > 20:
+            print(f"    ... and {len(unvalidated) - 20} more")
 
     missing = sorted(
         (k for k, v in result["flows"].items() if v["status"] == "missing"),
@@ -287,7 +345,7 @@ def main() -> int:
     parser.add_argument("--repo-root", type=Path, default=Path("."))
     parser.add_argument("--json", type=Path, help="Write the full result as JSON")
     parser.add_argument("--strict", action="store_true",
-                        help="Exit 1 when any flow is junk-only or partial")
+                        help="Exit 1 when any flow is junk-only, partial or unvalidated")
     args = parser.parse_args()
 
     repo_root = args.repo_root.resolve()
@@ -301,7 +359,7 @@ def main() -> int:
 
     if args.strict:
         s = result["summary"]
-        if s["junk_only"] or s["partial"]:
+        if s["junk_only"] or s["partial"] or s["unvalidated"]:
             return 1
     return 0
 

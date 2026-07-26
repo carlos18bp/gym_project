@@ -1212,6 +1212,33 @@ and are audited like any other exception.
 | `// quality: allow-duplicate (reason)` | `duplicate_coverage` | the same body must run twice by design (e.g. a per-role or per-viewport contract) |
 | `// quality: allow-mock-only (reason)` | `mock_only_assertion` | the outbound call IS the contract (e.g. telemetry/analytics emission with no observable state) |
 | `// quality: allow-reimpl (reason)` | `reimplements_sut` | recomputing is the spec itself (e.g. a property/identity the test intentionally re-states) |
+| `// quality: allow-flow-tag-mismatch (reason)` | `flow_tag_mismatch` | the spec legitimately exercises the tagged flow through vocabulary the heuristic cannot map (e.g. the UI copy names the action differently than the flow id) |
+
+### Draft marker — `// qa: draft-unvalidated` (2026-07)
+
+Different family from the `quality: allow-*` markers: those are block-scoped
+exemptions that **promote** (silence one rule); this one is **file-scoped** and
+**demotes**. The /qa e2e engineer writes it at the top of any spec authored
+while no app was reachable:
+
+```javascript
+// qa: draft-unvalidated (2026-07-26 — app not running)
+```
+
+Semantics:
+
+- Every test in the file counts as `unvalidated` evidence in the flow coverage
+  audit: it never buys coverage credit (a flow backed only by drafts reports
+  `unvalidated`, not `covered`) and never subtracts from credit earned by real
+  tests in other files. A draft test that is also junk stays junk — junk wins.
+- The marker means "**never executed green once**", NOT "green forever". It is
+  removed only after the spec first runs green against a live app (the /qa
+  Phase 5b validation); a validated spec that later regresses is an ordinary
+  red test, never re-marked.
+- **Never add non-draft tests to a marked file** — the marker taints the whole
+  file. Validate-and-unmark first, or use a new file.
+- Inert everywhere else by design: the junk detectors and the quality gate
+  ignore it, so repos on an older core see a plain comment.
 
 ### Exception Tracking
 
@@ -1409,6 +1436,23 @@ While this document focuses on quality over quantity, reasonable coverage target
 | E2E | Critical paths | Login, checkout, main workflows |
 
 > **Remember:** Coverage measures lines executed, not behavior verified. A test with no assertions gives coverage but no value.
+
+### Flow coverage states (`flow_coverage_audit.py`)
+
+Every flow declared in `flow-definitions.json` resolves to exactly one state.
+Precedence, worst-signal first when evidence mixes:
+
+| State | Meaning | Counts as covered? |
+|-------|---------|--------------------|
+| `covered` | every declared outcome class has a **qualifying, executed** test | ✅ |
+| `partial` | some declared classes qualified, others not (the gaps may be junk, drafted or absent — see `junk_only_outcomes` / `unvalidated_outcomes`) | ❌ |
+| `junk-only` | tests exist, **none qualify** (`no_user_interaction` / `flow_tag_mismatch`). Worse than `missing`: it reports green in the runtime reporter | ❌ |
+| `unvalidated` | only draft evidence (`// qa: draft-unvalidated` files): authored, structurally sound, **never executed**. Junk in the same evidence wins (`junk-only`) | ❌ |
+| `missing` | declared, no test references it | ❌ |
+| `exempt` | `expectedSpecs: 0` — intentionally uncovered, not a gap | n/a |
+
+Real qualifying tests are never demoted by drafts elsewhere: a flow with a
+green test in one file and a draft twin in another stays `covered`.
 
 ---
 

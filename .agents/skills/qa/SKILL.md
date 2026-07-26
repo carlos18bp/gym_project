@@ -50,15 +50,24 @@ read-only. One role, one agent.
 
 | Phase | subagent_type | Does | Writes? |
 |---|---|---|---|
-| 1–2 | `qa-analyst` | maps flows + ranks gaps (junk-only first, negative cases) | no |
-| 2 | `qa-architect` | per-layer plan · duplicates/wrong-location · selector precondition | no |
-| 4 | `qa-engineer-backend` · `qa-engineer-unit` · `qa-engineer-e2e` | author tests to the 3-part DoD | yes |
+| 1 | `qa-analyst` | (re)generates the flow map when stale — its ONLY duty | no |
+| 2 | `qa-architect` | ranks the worklist + per-layer plan as **forwardable brief blocks** (file:line evidence) · duplicates/wrong-location · selector precondition | no |
+| 4 | `qa-engineer-backend` · `qa-engineer-unit` · `qa-engineer-e2e` | author tests to the 3-part DoD from the Architect's block, verbatim | yes |
 | 5 | `qa-verifier` | runs the gate + tests → APPROVED/REJECTED | no |
 | 5 | `qa-healer` (opus) | root-causes red/flaky → minimal fix | yes |
 | 6 | `qa-auditor` | KEEP/REWRITE/MERGE/DELETE, citing the rule | no |
 
+Nota: the Analyst owns **Phase 1 only** (the flow map — measured: 0 dispatches
+in 4 pilots with fresh maps; do not invent work for it). Phase 2's audit is
+deterministic (`qa-agent.sh --check`, run by the conductor), its RANKING lives
+in the **Architect** (official as of the pilot series), and its dispatch goes
+to the **Architect**.
+
 Spawn them with the Agent tool (`subagent_type: qa-…`); synthesize their fixed-format
-returns and take the **worst** result as the run verdict. **The hard gate is not a
+returns and take the **worst** result as the run verdict. **Dispatch resilience:** a
+role that dies on a server-side API error (529/overloaded) gets ONE immediate retry;
+if the retry also dies, wait ~4 min and try once more; a third death → ⏸️ declared
+pause naming the dead role (never silently skip a phase). **The hard gate is not a
 subagent verdict** (that is model judgment) — it is an exit code, enforced twice with
 the same severity: locally by `--verify`/`--gate-hook` and in CI
 (`--junk-severity=error` against `.junk-baseline.json` in both). `qa-verifier` is the
@@ -68,7 +77,7 @@ in-loop check that feeds it; the CI gate is what actually blocks a merge.
 
 Run `basename "$(git rev-parse --show-toplevel)"`:
 
-- A **project repo** → single-project run (Phases 0–7).
+- A **project repo** → single-project run (Phases 0–8).
 - **vps-ops-toolkit** + `--all-repos` or `--all-vps` → `qa-agent.sh` in fleet mode
   (analysis-only) and report. Never author on a fleet sweep.
 - **vps-ops-toolkit** with no fleet flag → refuse: run `/qa` inside a project, or
@@ -85,8 +94,10 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
 3. **fake-data-refresh only off production.** `--preflight` reports
    `fake_data_allowed`. If `no`, SKIP the fake-data phase — never reseed prod.
 4. **Land on the resolved coordinate.** Commit only on `resolved_branch` from the
-   preflight. `host_status=wrong-host` → STOP, touch nothing; the work lives in
-   another VPS clone (use its `tailscale ssh`).
+   preflight. `host_status=wrong-host` blocks **authoring/landing** — STOP before
+   writing anything; the work lives in another VPS clone (use its `tailscale
+   ssh`). The dry-run analysis (Phases 0–2) MAY proceed on the wrong host,
+   flagged ⚠️ and declared in the verdict.
 5. **Never merge.** Stop at "committed on the work branch". Merging is
    `/merge-when-green`. A release branch (`pr_state=single|ambiguous`) →
    commit-hold, no merge.
@@ -101,21 +112,64 @@ Read the scope. **Abstain `⏭️` in seconds** when `abstain=yes` (no test infr
 nothing changed since the branch base. A false auto-invocation must cost a fast
 no-op, never a write.
 
+**`registry=absent`** = the directory exists but the project is NOT in
+`projects.yml`, so every registry-derived default is untrustworthy. Before ANY
+`manage.py`, derive `db`/settings from the repo itself — the settings selector
+may be `DJANGO_SETTINGS_MODULE` (base_feature lineage), not `DJANGO_ENV`, and
+the engine may be postgres/sqlite even where the fleet default says mysql.
+Treat the CURRENT branch as the work coordinate only with explicit operator
+confirmation (the resolver reports `coordinate=unavailable` for it), and
+suggest registering the project in `projects.yml`.
+
+**QA memory (`qa_memory=<path|absent>`)** — the per-codebase shape cache in
+`config/qa-memory/` (schema + full contract: its `README.md`). When present,
+Read it: `shape`/`quirks` seed the Architect, layer quirks seed the engineer
+preambles, `watchlist` items join the worklist, `unvalidated_specs` feed
+Phase 5b. **Anti-bias contract — memory pre-seeds hypotheses, it never
+replaces measurement:**
+
+- `--check` always re-measures; no remembered count is authoritative.
+- Every memory fact used in a brief is re-verified this run — enforced
+  structurally by the Architect's file:line evidence rule (an unverified
+  claim cannot enter a brief block).
+- Mismatch memory↔repo → correct the memory file in this run, never propagate.
+- Memory NEVER justifies skipping a phase or shrinking scope; `watchlist`
+  only ADDS work. No metrics live in memory (a stored number becomes a
+  target — history lives in `docs/audits/*-qa.md`).
+
+On `qa_memory=absent` for a repo worth remembering, Phase 7 creates the file
+at the printed path.
+
 ## Phase 1 — Understand + flow map (Analyst)
 
 - If `docs/methodology/` is missing or stale, run **methodology-setup** (conductor
   work — no dedicated agent) to build the Memory Bank. Safe anywhere.
 - Flow map: the preflight emits `flow_map_fresh=yes|no`; **if the key is ABSENT,
   the map does not exist** — same action as `no`: dispatch **`qa-analyst`** (it
-  preloads `e2e-user-flows-check`) to (re)generate `frontend/e2e/flow-definitions.json`
-  + `docs/USER_FLOW_MAP.md` — the four outcome classes (success/error/failure/display),
-  **negative cases included**. If `yes`, skip `⏭️`.
+  preloads `e2e-user-flows-check`) to derive `frontend/e2e/flow-definitions.json`
+  + `docs/USER_FLOW_MAP.md` from the app's real code — the four outcome classes
+  (success/error/failure/display), **negative cases included**. The Analyst
+  RETURNS both files' content (role boundary: it never writes); the conductor
+  writes them (under dry-run: report the diff, write nothing). This is the
+  Analyst's ONLY duty — ranking belongs to the Architect. If `yes`, skip `⏭️`.
 
-## Phase 2 — Coverage audit + worklist (Analyst → Architect)
+## Phase 2 — Coverage audit + worklist (conductor → Architect)
 
-`qa-agent.sh --check <proj>`; then dispatch **`qa-architect`** with the counts to
-produce the per-layer plan. Build the ordered work list (priority scale = the
-flow-map's own `priority: P1–P4`; `exempt` flows are NOT gaps — skip them):
+`qa-agent.sh --check <proj>`; besides the counts, its output itemizes the flow
+ids: `junk_only_flows=[…]` / `unvalidated_flows=[…]` / `missing_flows=[…]` /
+`undeclared_flows=[…]` (emitted only when non-empty, capped at 20 each), plus
+per-suite `<suite>_error_files=[…]` — the files carrying content-error gate
+findings, which is the backend/frontend-unit layers' only deterministic worklist
+(they have no flow map). Then dispatch **`qa-architect`** with the counts AND
+those itemized lists verbatim in its prompt — the Architect must NOT re-derive
+them by re-reading the whole repo. Its prompt also names the findings ledger's
+"recurring heal classes" section (`docs/qa-agent/findings-ledger.md`) and, when
+the preflight reported a `qa_memory` file, the memory's `shape` + `quirks`
+slices — both as hypotheses the Architect must verify against the repo, never
+as facts to forward.
+
+The **ranking lives in the Architect** (priority scale = the flow-map's own
+`priority: P1–P4`; `exempt` flows are NOT gaps — skip them):
 
 1. **junk-only flows first** — a false green is worse than an honest gap.
 2. missing P1/P2 flows.
@@ -123,6 +177,16 @@ flow-map's own `priority: P1–P4`; `exempt` flows are NOT gaps — skip them):
    QA.
 4. weak / duplicate gate findings; mark duplicates and wrong-location tests for the
    Auditor.
+
+(`unvalidated_flows` are NOT authoring work — they are Phase 5b validation work;
+route them there, never to an engineer as "missing".)
+
+**The Architect's return IS the work order.** It comes back as fenced per-layer
+blocks (```` ```brief-backend ```` / ```` ```brief-unit ```` /
+```` ```brief-e2e ````, items `B1..`/`U1..`/`E1..`, every claim carrying
+`file:line` evidence). Store the blocks: Phase 4 forwards each one to its
+engineer **verbatim** — measured in the pilots, every layer of conductor prose
+between the plan and the engineer introduced factual errors (4 in 4 pilots).
 
 Assert the **selector convention** (`data-testid`/role). If the app lacks it, say
 so and bound the e2e work until it exists — an auditor with nothing consistent to
@@ -151,12 +215,19 @@ layers own **disjoint file sets**: backend = `backend/**/tests/`; unit = every
 `*.test.*`/`*.spec.*` under `frontend/` OUTSIDE `e2e/` (Next/Nuxt colocate them in
 `**/__tests__/` at arbitrary depth — there is no single "unit dir"); e2e =
 `frontend/e2e/`. They never collide. Only for present layers with non-empty work.
-Each engineer:
+
+**The engineer prompt is: fixed preamble + the Architect's block VERBATIM.**
+The preamble carries only run facts the Architect does not own: resolved
+coordinate + guards, `db=`, `app_reachable`, dry-run/apply mode, and the
+layer's memory `quirks` slice when one exists. Then paste that layer's fenced
+brief block byte-for-byte. You MAY append facts after it; you MUST NOT rewrite,
+summarize, re-derive or "clean up" the block — the 4 measured brief errors of
+the pilot series all came from conductor paraphrase. Each engineer:
 
 - Follows its coverage skill verbatim: backend → `backend-test-coverage`,
   frontend-unit → `frontend-unit-test-coverage`, e2e → `frontend-e2e-test-coverage`.
-- Gets its worklist slice, junk-only first, with the **negative-case classes** it
-  must cover.
+- Works its brief items in order (junk-only first), covering the
+  **negative-case classes** the block declares.
 - Hard constraints: run only touched files; a `db: mysql` project runs `manage.py`
   with `DJANGO_ENV=production` from `backend/` (see `--preflight db=`); stay inside
   your layer's directory; stop and fix if the gate flags junk on your batch
@@ -164,9 +235,18 @@ Each engineer:
   not commit** (the conductor commits once); under dry-run, describe the diffs and
   write nothing.
 - Returns its fixed-format block (the agents' own contract): `STATUS
-  (AUTHORED|DRAFTED|ABSTAINED|BLOCKED), tests_authored, flows_closed, abstentions,
-  gate_on_batch, tests_run, files_touched, blocked`. The engineer's identity tells
+  (AUTHORED|DRAFTED|ABSTAINED|BLOCKED), brief_items, brief_corrections,
+  tests_authored, flows_closed, abstentions, gate_on_batch, tests_run,
+  files_touched, blocked` (+ `markers` for e2e). The engineer's identity tells
   you the layer — do not expect a `layer` field.
+
+**Conservation check:** every id in the forwarded block must appear in the
+engineer's `brief_items` (done / blocked / abstained). A `blocked(brief-conflict)`
+item means the repo contradicted the plan — the repo wins: re-dispatch ONLY the
+conflicted items to the Architect with the engineer's `file:line` evidence, or
+drop them declared in the report. Never re-author them yourself and never let
+them vanish silently. `brief_corrections` (trivial fixes the engineer absorbed)
+feed the memory update in Phase 7.
 
 Assert the `files_touched` sets are pairwise disjoint (they must be, by directory).
 A non-disjoint result is a bug → stop and report.
@@ -180,22 +260,39 @@ Never delete the marker by hand to "unblock" — fix the findings.
 **E2E needs the running app.** The preflight probes it: `app_reachable=local:<port>
 | staging:<url> | no` (production is NEVER probed nor validated — read-only by
 contract). Pass the value to the e2e engineer: with an app it EXECUTES its specs;
-without one it **drafts** (tagged `@flow`/`@outcome`, acts + asserts) and returns
-`blocked: validate-pending`.
+without one it **drafts** (tagged `@flow`/`@outcome`, acts + asserts), writes the
+file-level `// qa: draft-unvalidated (<date> — <reason>)` marker on every new
+spec, and returns `blocked: validate-pending`. The marker is what keeps a draft
+from buying false coverage: the flow audit reports its flows `unvalidated`, and
+4/4 pilot draft batches failed on first live execution — a draft that LOOKS
+finished is the failure mode this state exists to name.
 
 ## Phase 5b — Live e2e validation (conditional — playwright-validation as a phase)
 
-Runs ONLY when the e2e engineer returned `validate-pending` AND `app_reachable≠no`:
+Runs when `app_reachable≠no` AND either trigger holds:
+
+- the e2e engineer returned `validate-pending` **this run**, or
+- the preflight reported leftover `unvalidated_specs=[…]` from a **previous
+  run** — cross-run healing: validate the leftovers FIRST, before this run's
+  own drafts.
+
+Under **dry-run, leftovers are reported only** — executing a mutating draft
+against staging is a write, and rail 1 owns writes; validation + marker removal
+happen exclusively under `--apply`.
 
 1. Follow `playwright-validation` §9 (Handoff validate-pending) inline: for each
    draft spec, `cd frontend && npx playwright test e2e/<spec>`; collect pass/fail.
-2. Green → `qa-agent.sh --verify <proj> --files=<specs>` (clears the marker);
-   the run upgrades 🟡→🟢 for the e2e dimension.
-3. Failures → dispatch **`qa-healer`** (≤3 attempts per spec).
+2. Green → **remove the spec's `// qa: draft-unvalidated` line** (first green
+   run = the marker's exit condition; a later regression is an ordinary red
+   test, never re-marked), then `qa-agent.sh --verify <proj> --files=<specs>`
+   (clears the gate marker); the run upgrades 🟡→🟢 for the e2e dimension. The
+   removal is part of this run's commit.
+3. Failures → dispatch **`qa-healer`** (≤3 attempts per spec); the marker stays
+   until the heal runs green.
 4. Mutating drafts run only against `local:`/`staging:` targets — which is all
-   the probe can return; if `app_reachable=no`, this phase is skipped and the
-   manual handoff (Next steps → `dev-up` + `playwright-validation`, re-`/qa`)
-   stays exactly as before.
+   the probe can return; if `app_reachable=no`, this phase is skipped, the
+   markers stay, and the manual handoff (Next steps → `dev-up` +
+   `playwright-validation`, re-`/qa`) stays exactly as before.
 
 ## Phase 5 — Gate / verify (Verifier → Healer)
 
@@ -215,11 +312,78 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
 
 ## Phase 7 — Land + report (conductor)
 
-- Under `--apply`: commit the authored tests on `resolved_branch` (Conventional
-  Commits, English). **Do not merge.** Do not write to a production clone without an
-  explicit `--project`.
+- Under `--apply`: commit the authored tests (Conventional Commits, English).
+  "Commit on `resolved_branch`" means the resolved branch is the **BASE** of the
+  work, not necessarily where the commit lands directly:
+  - **Open release branch** (`resolved_branch` = the release PR's head): commit
+    directly on that branch — current behavior, no new branch.
+  - **Prod-direct repo** (`resolved_branch` = `main`/`master`): land as a
+    `qa/<fecha>` branch + PR targeting `resolved_branch`, per
+    `git-branch-protocol` — NEVER push directly to a project repo's main.
+  **Do not merge.** Do not write to a production clone without an explicit
+  `--project`.
+- **Git identity before committing:** `git var GIT_COMMITTER_IDENT` fails on a
+  fresh clone — if it does, configure `user.name`/`user.email` **repo-local**
+  with the operator's identity (never `--global`), then commit.
+- **Stale in-repo gate:** in a repo whose in-repo quality gate is an old fork of
+  the core, the canonical allow-markers are inert for THAT repo's CI until
+  `sync-test-quality-core.sh` propagates the core — declare the divergence in
+  the report instead of assuming the markers took effect. Same for the
+  `unvalidated` state: an old in-repo `flow_coverage_audit.py` still counts
+  drafts as covered — the false green persists IN THAT REPO's own reporting
+  until the core syncs; declare it.
+- **QA memory update** (any mode — recording is not a project write): refresh
+  the codebase's `config/qa-memory/<key>.yml` — bump `runs`/`last_run`, fold in
+  what this run verified or corrected (`brief_corrections` are prime input),
+  new quirks with evidence, expired watchlist items out (2 runs untouched),
+  current `unvalidated_specs`. Respect the caps (quirks 30, watchlist 10) and
+  the no-metrics rule. Commit it to the TOOLKIT on master as its own small
+  commit — never mixed into the project's QA commit.
 - Close per `[[_output-protocol]]`. **Suggest — never run** — `/deploy-and-check`
   and `/merge-when-green` in Next steps.
+
+## Phase 8 — System retro: fix-or-file (conductor)
+
+The /qa system improves itself the way it improved through the pilots — every
+run ends by triaging the frictions it hit **in the system** (engine errors,
+wrong or ambiguous skill/agent text, core false positives/negatives, doc gaps).
+Accumulate them during the run; act ONCE, here, after Phase 7. Findings about
+the PROJECT are report material, never retro material.
+
+Triage each friction into exactly one class:
+
+- **Class A — engine/core bug with a deterministic repro** (qa-agent.sh,
+  `workflows/testing/`): write the failing regression check FIRST → fix → run
+  ALL THREE harnesses — green, or revert immediately (toolkit master is never
+  left red). Commit to toolkit master. **Auto** (operator decision 2026-07-26),
+  always reported prominently. A new junk RULE additionally requires the
+  baseline re-freeze in the same commit (existing rule).
+- **Class B — skill/agent text defect** (qa.md, `qa-*.md`, the coverage
+  skills): draft the diff and ASK the operator (AskUserQuestion) before
+  applying — text changes alter future-run behavior. Exception: pure typos and
+  dead references are auto. A `qa.md` edit is always paired with
+  `sync-skill-mirrors.sh --apply` in the same commit.
+- **Class C — improvement idea, no bug**: file it in the ledger backlog with
+  rationale. No code change.
+- **Class S — NEVER auto, operator-only regardless of class**: the 7 safety
+  rails' text, the production/fake-data/probe guards (F24), and the
+  gate-hook/marker-clearing logic. A "fix" that weakens a guard is a
+  regression by definition.
+
+Hard guardrails (all always ON):
+
+1. Phase 8 runs ONCE per run, after landing — never mid-phase, and a self-fix
+   never re-triggers the retro.
+2. Anything discovered WHILE self-fixing goes to the ledger, never fixed in
+   the same run — this kills recursion.
+3. **≤2 Class A fixes per run**; the rest go to the backlog.
+4. The current run's verdict stands on the code that RAN — a self-fix never
+   retro-upgrades it.
+5. Every action (A, B or C) appends its row to
+   `docs/qa-agent/findings-ledger.md` — next ID from its header, same commit
+   as the fix. The ledger is the memory of the system itself.
+6. Self-fix commits are toolkit commits, always separate from the project's
+   QA commit.
 
 ## Fleet mode (analysis-only)
 
@@ -228,6 +392,20 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
 report. **No authoring** — subagents run where Claude runs, and there is no Claude
 on a VPS. Authoring is always local + single-project. On a tailscale auth pause
 (exit 75) show the login link and re-run.
+
+**Pilot clones (authoring a repo whose work clone lives on another VPS):** clone
+into a NON-COLLIDING path (`<name>_pilot`, never the fleet dir name — the fleet
+clone may already exist on this host and `clone && cd && checkout` against it
+mutates a PRODUCTION checkout; measured incident, pilot #3). Verify the clone
+succeeded BEFORE any cd/checkout. Check out the resolved work branch, author,
+push to that same branch, delete the pilot clone at close.
+
+**Remote-verify (running the touched tests on the VPS work clone via
+`tailscale ssh`):** the substrate lives there (venv, DB, node_modules, browsers).
+Node is under nvm with an interactive-only guard — non-interactive SSH (even
+`bash -lc`) cannot see `npx`; prefix the absolute path:
+`export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"`. This is the CI
+substitute for billing-blocked private repos and the Fase 5b runner.
 
 ---
 
@@ -245,7 +423,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 | Methodology (fase 1) | ⏭️ | docs/methodology fresco (✅ si se regeneró) |
 | Flow-map | ✅ | flow-definitions.json fresco (⏭️ si no aplica) |
 | Fake data (fase 3) | ⏭️ | prod: skip silencioso · staging: preguntado/skip-sin-señal |
-| Auditoría cobertura | ⚠️ | junk-only: N · missing P1/P2: N · clases error/failure faltantes: N · exempt: N (no son gaps) |
+| Auditoría cobertura | ⚠️ | junk-only: N · unvalidated: N (drafts sin ejecutar) · missing P1/P2: N · clases error/failure faltantes: N · exempt: N (no son gaps) |
 | Backend (subagente) | ✅ | N tests, valor concreto + "qué bug atrapa"; DJANGO_ENV=production |
 | Frontend-unit (subagente) | ✅ | N tests, sin weak/tautological/duplicate |
 | E2E (subagente) | ⚠️ | N specs @flow/@outcome; 2 draft — app no corriendo (validate-pending) |
@@ -265,11 +443,16 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 
 Casos de veredicto:
 
-- 🟢 gate limpio, cero junk-only, cada clase de outcome declarada cubierta o
-  abstenida con razón.
-- 🟡 quedan gaps, abstenciones declaradas, e2e draft-only (validate-pending), o
-  alcance staging-only.
-- 🔴 errores del gate, o un test (nuevo o existente) falla.
+- 🟢 gate limpio, cero junk-only, **cero unvalidated** (el engine computa el
+  conteo global — un draft sin ejecutar en CUALQUIER spec del repo degrada,
+  igual que junk-only), cada clase de outcome declarada cubierta o abstenida
+  con razón.
+- 🟡 quedan gaps, abstenciones declaradas, e2e draft-only (validate-pending o
+  specs con marker `qa: draft-unvalidated` pendientes de validación en vivo),
+  alcance staging-only, o `analysis=degraded` (errores sólo-infra del gate: AST
+  bridge ausente — `npm install` en `frontend/` habilita el análisis completo;
+  el gate CI con node_modules es la última palabra).
+- 🔴 errores de CONTENIDO del gate, o un test (nuevo o existente) falla.
 - 🚫 REFUSED — intento de authoring sobre prod protegido sin `--project`, o commit
   en `wrong-host`. Nombrar el override / el VPS correcto.
 - ⏭️ abstención (sin infra de tests / nada que QA-ear).
