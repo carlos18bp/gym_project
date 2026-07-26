@@ -78,6 +78,27 @@ ALLOW_MARKER_PATTERNS: dict[str, re.Pattern[str]] = {
     for marker in ALLOW_MARKER_RULE_IDS
 }
 
+
+def _join_comment_continuations(lines: list[str], index: int) -> str:
+    """
+    The line at `index` extended with the immediately following consecutive
+    `//` comment lines, joined into one logical line.
+
+    An allow-marker reason legitimately wraps across a comment block; matching
+    one physical line at a time reported those markers as missing their reason.
+    Joining stops once a line closes the reason's parenthesis (or the comment
+    run ends), so unrelated lines below the block are never swallowed.
+    """
+    logical = lines[index]
+    for continuation in lines[index + 1:]:
+        stripped = continuation.lstrip()
+        if not stripped.startswith("//"):
+            break
+        logical += " " + stripped[2:].strip()
+        if ")" in stripped:
+            break
+    return logical
+
 # Relaxed cross-engine dedupe for known overlapping rules that may disagree on line number.
 RELAXED_CROSS_ENGINE_RULE_IDS: frozenset[str] = frozenset({"sleep_call", "wait_for_timeout"})
 
@@ -235,7 +256,8 @@ class QualityReport:
             except OSError:
                 continue
 
-            for line_number, line in enumerate(content.splitlines(), start=1):
+            lines = content.splitlines()
+            for line_number, line in enumerate(lines, start=1):
                 for disable_match in DISABLE_MARKER_PATTERN.finditer(line):
                     marker_text = disable_match.group(0).strip()
                     raw_rule_id = disable_match.group(1) or ""
@@ -272,6 +294,16 @@ class QualityReport:
 
                     marker_pattern = ALLOW_MARKER_PATTERNS[marker]
                     marker_match = marker_pattern.search(line)
+                    if marker_match is not None and marker_match.group(1) is None:
+                        rest = line[marker_match.end():]
+                        if rest.lstrip().startswith("(") and ")" not in rest:
+                            # The reason opens a paren that closes on a later
+                            # consecutive `//` comment line: rematch against the
+                            # joined comment run. Where the marker itself may
+                            # live is unchanged — only its reason may wrap.
+                            marker_match = marker_pattern.search(
+                                _join_comment_continuations(lines, line_number - 1)
+                            )
                     marker_text = marker_match.group(0).strip() if marker_match else f"quality: {marker}"
                     reason = (
                         (marker_match.group(1) or "").strip()
@@ -500,6 +532,35 @@ class QualityReport:
             if matcher(file_result.file)
         ]
         return filtered
+
+    def _unmatched_include_files(
+        self,
+        backend: SuiteResult,
+        unit: SuiteResult,
+        e2e: SuiteResult,
+    ) -> list[str]:
+        """
+        --include-file arguments that matched no scanned file in any suite.
+
+        A typo'd path silently produced an empty (and green) run, which reads
+        as "this file is clean". Matching mirrors `_build_file_matcher`: an
+        include file is satisfied only by an exact normalized-path match, so
+        anything the matcher would never select is reported here.
+        """
+        if not self.include_files:
+            return []
+        scanned = {
+            file_result.file.replace("\\", "/")
+            for suite_result in (backend, unit, e2e)
+            for file_result in suite_result.files
+            if file_result.file
+        }
+        normalized = {
+            self._normalize_relative_path(path)
+            for path in self.include_files
+            if path.strip()
+        }
+        return sorted(normalized - scanned)
 
     def _suite_file_paths(self, suite_result: SuiteResult) -> list[Path]:
         """Return absolute file paths discovered in a suite result."""
@@ -862,6 +923,11 @@ class QualityReport:
         unit = self._filter_suite_result(unit, file_matcher)
         e2e = self._filter_suite_result(e2e, file_matcher)
 
+        # An --include-file that matched nothing is a configuration error, not
+        # a clean run. Checked against the filtered suites, before external
+        # lint attaches its placeholder file entries.
+        unmatched_include_files = self._unmatched_include_files(backend, unit, e2e)
+
         external_started = time.perf_counter()
         external_lint = self._run_external_lints(backend, unit, e2e)
         timings["external_lint"] = time.perf_counter() - external_started
@@ -895,7 +961,18 @@ class QualityReport:
         errors = sum(1 for i in all_issues if i.severity == Severity.ERROR)
         warnings = sum(1 for i in all_issues if i.severity == Severity.WARNING)
         infos = sum(1 for i in all_issues if i.severity == Severity.INFO)
-        
+
+        # Unmatched include files count as errors so the run cannot pass.
+        errors += len(unmatched_include_files)
+
+        # Infrastructure errors (missing tooling, not test-quality findings).
+        # Contract: summary.infra_errors is ALWAYS present, 0 when none.
+        infra_errors = sum(
+            1 for i in all_issues
+            if i.severity == Severity.ERROR
+            and self._rule_id_for_issue(i) == "ast_bridge_unavailable"
+        )
+
         # Categorize by type
         by_category = Counter(i.category.name.lower() for i in all_issues)
         
@@ -915,6 +992,8 @@ class QualityReport:
                 "errors": errors,
                 "warnings": warnings,
                 "info": infos,
+                "infra_errors": infra_errors,
+                "unmatched_include_files": unmatched_include_files,
                 "quality_score": score,
                 "status": "passed" if errors == 0 else "failed",
                 "issues_by_category": dict(by_category),
@@ -1204,9 +1283,16 @@ def main() -> int:
     else:
         print_report(report, args.show_all)
         print(f"Report: {report_path}")
-    
+
     # Exit code
     summary = report["summary"]
+    unmatched_include_files = summary.get("unmatched_include_files") or []
+    if unmatched_include_files:
+        # A typo'd --include-file must fail loudly as a configuration error,
+        # never pass as an empty-but-green run. stderr keeps --json-only clean.
+        for path in unmatched_include_files:
+            print(f"  ERROR: --include-file matched no suite: {path}", file=sys.stderr)
+        return 2
     if summary["errors"] > 0:
         return 1
     if args.strict and summary["warnings"] > 0:

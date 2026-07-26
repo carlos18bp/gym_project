@@ -198,13 +198,80 @@ class TestBlock:
 # Source scanning
 # ---------------------------------------------------------------------------
 
+# Characters after which a `/` opens a regex literal rather than a division:
+# JS expects an expression there. `>` also covers `=>` (arrow bodies). After an
+# identifier, a digit, `)`, `]` or a closing quote the `/` divides instead.
+_REGEX_PRECEDERS = frozenset("(,=:[!&|?{;>~^%")
+
+# Keywords after which a regex literal may start even though the previous
+# character is an identifier character (`return /x/.test(s)`).
+_REGEX_PRECEDING_KEYWORDS = frozenset({
+    "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+    "throw", "case", "do", "else", "yield", "await",
+})
+
+
+def _regex_literal_end(source: str, out: list[str], start: int) -> int:
+    """
+    Index just past the regex literal opened at `start`, or -1 if `source[start]`
+    is not a regex opener (division, or an unterminated candidate).
+
+    The decision is positional: a `/` starts a regex only where JS expects an
+    expression. The last significant character already EMITTED (`out`, where
+    string/comment contents are blanked but delimiters survive) tells which
+    side of that fence we are on — after `(`, `,`, `=`… a regex; after an
+    identifier, `)`, `]` or a closing quote, a division.
+    """
+    j = start - 1
+    while j >= 0 and out[j] in " \t\r\n":
+        j -= 1
+    if j >= 0:
+        prev = out[j]
+        if prev not in _REGEX_PRECEDERS:
+            if not (prev.isalnum() or prev in "_$"):
+                return -1  # `)`, `]`, quotes, `.`… — a division position.
+            word_end = j + 1
+            while j >= 0 and (out[j].isalnum() or out[j] in "_$"):
+                j -= 1
+            if "".join(out[j + 1:word_end]) not in _REGEX_PRECEDING_KEYWORDS:
+                return -1  # A plain identifier or number: division.
+
+    # Consume the literal: `\x` never closes, `/` inside a `[...]` class does
+    # not close, and an unescaped newline means this was never a regex.
+    i = start + 1
+    n = len(source)
+    in_class = False
+    while i < n:
+        ch = source[i]
+        if ch == "\\":
+            i += 2
+            continue
+        if ch == "\n":
+            return -1
+        if in_class:
+            if ch == "]":
+                in_class = False
+        elif ch == "[":
+            in_class = True
+        elif ch == "/":
+            i += 1
+            while i < n and source[i].isalpha():  # flags
+                i += 1
+            return i
+        i += 1
+    return -1
+
+
 def _strip_for_scanning(source: str) -> str:
     """
-    Blank out string and comment content, preserving length and newlines.
+    Blank out string, comment and regex-literal content, preserving length and
+    newlines.
 
-    Delimiters are kept so offsets stay aligned with the original source; only
-    the contents are replaced, so a brace inside a string cannot fool the
-    paren matcher.
+    String delimiters are kept so offsets stay aligned with the original
+    source; only the contents are replaced, so a brace inside a string cannot
+    fool the paren matcher. Regex literals are blanked whole: a `\\//` or a
+    quote inside one otherwise reads as a comment or string opener and
+    desynchronizes everything after it.
     """
     out = list(source)
     i = 0
@@ -245,6 +312,13 @@ def _strip_for_scanning(source: str) -> str:
                 out[i + 1] = " "
             i += 2
             continue
+        if ch == "/":
+            end = _regex_literal_end(source, out, i)
+            if end != -1:
+                for j in range(i, end):  # literal has no newlines by construction
+                    out[j] = " "
+                i = end
+                continue
         i += 1
     return "".join(out)
 
@@ -335,10 +409,26 @@ def extract_test_blocks(source: str, file: str = "") -> list[TestBlock]:
 # within the file and across relative imports.
 
 _FUNC_DECL_RE = re.compile(r"\b(?:async\s+)?function\s+(\w+)\s*\(")
-_FUNC_CONST_RE = re.compile(r"\b(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>")
+# Arrow assignments: group 2 distinguishes a parenthesized param list (matched
+# structurally below, so destructured/typed params with nested parens resolve)
+# from the bare single-param form (`const f = x => …`).
+_FUNC_CONST_RE = re.compile(r"\b(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(\(|\w+\s*=>)")
 _IMPORT_RE = re.compile(r"import\s+\{([^}]*)\}\s+from\s+['\"](\.[^'\"]*)['\"]")
 
 _MAX_HELPER_DEPTH = 3
+
+
+def _matched_brace_end(masked: str, brace: int) -> int:
+    """Index just past the brace that closes the one at `brace`, or -1."""
+    depth = 0
+    for i in range(brace, len(masked)):
+        if masked[i] == "{":
+            depth += 1
+        elif masked[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+    return -1
 
 
 def _function_bodies(source: str) -> dict[str, str]:
@@ -346,24 +436,43 @@ def _function_bodies(source: str) -> dict[str, str]:
     masked = _strip_for_scanning(source)
     bodies: dict[str, str] = {}
 
-    for regex in (_FUNC_DECL_RE, _FUNC_CONST_RE):
-        for match in regex.finditer(masked):
-            name = match.group(1)
-            brace = masked.find("{", match.end() - 1)
-            if brace == -1:
+    for match in _FUNC_DECL_RE.finditer(masked):
+        # Match the param list structurally first: a destructured default
+        # (`{ title }: {...} = {}`) puts a `{` inside the parens, and taking
+        # the first `{` after the name captured the params as the body.
+        close = _match_paren(masked, match.end() - 1)
+        if close == -1:
+            continue
+        brace = masked.find("{", close)
+        if brace == -1:
+            continue
+        end = _matched_brace_end(masked, brace)
+        if end != -1:
+            bodies[match.group(1)] = source[match.start():end]
+
+    for match in _FUNC_CONST_RE.finditer(masked):
+        if match.group(2).startswith("("):
+            close = _match_paren(masked, match.start(2))
+            if close == -1:
                 continue
-            depth = 0
-            end = -1
-            for i in range(brace, len(masked)):
-                if masked[i] == "{":
-                    depth += 1
-                elif masked[i] == "}":
-                    depth -= 1
-                    if depth == 0:
-                        end = i + 1
-                        break
-            if end != -1:
-                bodies[name] = source[match.start():end]
+            arrow = masked.find("=>", close)
+            if arrow == -1:
+                continue
+            # Only whitespace or a TS return-type annotation may sit between
+            # the params and the arrow; anything else is not this function.
+            gap = masked[close:arrow].strip()
+            if gap and not gap.startswith(":"):
+                continue
+            after = arrow + 2
+        else:
+            after = match.end()
+
+        brace = after + (len(masked[after:]) - len(masked[after:].lstrip()))
+        if brace >= len(masked) or masked[brace] != "{":
+            continue  # Concise arrow body — nothing to inline.
+        end = _matched_brace_end(masked, brace)
+        if end != -1:
+            bodies[match.group(1)] = source[match.start():end]
 
     return bodies
 
@@ -422,7 +531,63 @@ def effective_source(block: TestBlock, known: dict[str, str]) -> str:
     return combined
 
 
-def resolve_flow_ids(block: TestBlock, source: str) -> list[str]:
+# Helper-module sources read while resolving imported tag constants. The audit
+# calls resolve_flow_ids once per test block, so a shared flow-tags module would
+# otherwise be re-read for every block in the suite.
+_MODULE_TEXT_CACHE: dict[str, str | None] = {}
+
+
+def _module_text(path: Path) -> str | None:
+    key = str(path)
+    if key not in _MODULE_TEXT_CACHE:
+        try:
+            _MODULE_TEXT_CACHE[key] = (
+                path.read_text(encoding="utf-8", errors="replace")
+                if path.is_file() else None
+            )
+        except OSError:
+            _MODULE_TEXT_CACHE[key] = None
+    return _MODULE_TEXT_CACHE[key]
+
+
+def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[str] | None:
+    """
+    Flow ids declared by a tag constant imported from a relative module.
+
+    Returns None when the module (or the constant's declaration inside it)
+    cannot be resolved, so the caller can fall back to the name-derived hint.
+    A resolved declaration wins even when it carries no `@flow:` entries —
+    same semantics as a locally defined constant.
+    """
+    if spec_path is None:
+        return None
+    imp = re.search(
+        rf"import\s*(?:type\s+)?\{{[^}}]*\b{re.escape(const)}\b[^}}]*\}}\s*"
+        rf"from\s*['\"](\.[^'\"]+)['\"]",
+        source,
+    )
+    if not imp:
+        return None
+
+    target = (spec_path.parent / imp.group(1)).resolve()
+    candidates = [target] if target.suffix else []
+    candidates += [target.with_suffix(ext) for ext in (".ts", ".js", ".tsx")]
+
+    for candidate in candidates:
+        text = _module_text(candidate)
+        if text is None:
+            continue
+        decl = re.search(
+            rf"\b{re.escape(const)}\s*=\s*\[([^\]]*)\]", text, flags=re.DOTALL
+        )
+        if decl:
+            return re.findall(r"@flow:([\w.-]+)", decl.group(1))
+    return None
+
+
+def resolve_flow_ids(
+    block: TestBlock, source: str, spec_path: Path | None = None
+) -> list[str]:
     """
     Resolve flow ids for a test, following tag constants defined in the file.
 
@@ -430,20 +595,37 @@ def resolve_flow_ids(block: TestBlock, source: str) -> list[str]:
     instead of a literal `@flow:` string. Without this the tag looks absent and
     every flow rule silently no-ops — the same failure mode that let the junk
     accumulate in the first place.
+
+    `spec_path` lets an imported constant be resolved to the actual ids its
+    module declares (a name-derived guess like `d3-obs` credits nothing when
+    the real id is `d3-anchored-observations`). Without it, or when the module
+    is unresolvable, the constant name is still used as a flow-shaped hint.
     """
     if block.flow_ids:
         return block.flow_ids
 
+    if spec_path is None and block.file and Path(block.file).is_file():
+        spec_path = Path(block.file)
+
     ids: list[str] = []
-    for const in re.findall(r"\.\.\.([A-Z][A-Z0-9_]*)", block.source):
+    # Spreads count as flow tags only inside a `tag: [...]` option. Scanning
+    # the whole body read data spreads in mocks (`{ ...DOC, ...patchBody }`)
+    # as tag constants and invented phantom flows like "doc". A block can
+    # carry more than one tag array, so every region is scanned.
+    tag_regions = re.findall(r"\btag\s*:\s*\[([^\]]*)\]", block.source)
+    for const in re.findall(r"\.\.\.([A-Z][A-Z0-9_]*)", "\n".join(tag_regions)):
         # Constant defined locally in this file?
         local = re.search(
             rf"\b{const}\s*=\s*\[([^\]]*)\]", source, flags=re.DOTALL
         )
         if local:
             ids.extend(re.findall(r"@flow:([\w.-]+)", local.group(1)))
+            continue
+        imported = _imported_flow_ids(const, source, spec_path)
+        if imported is not None:
+            ids.extend(imported)
         else:
-            # Imported: fall back to the constant name as a flow-shaped hint.
+            # Unresolvable: fall back to the name as a flow-shaped hint.
             ids.append(const.lower().replace("_", "-"))
     return ids
 
@@ -876,7 +1058,7 @@ def analyze_e2e_source(source: str, file: str, spec_path: Path | None = None) ->
 
     for block in extract_test_blocks(source, file):
         block.expanded = effective_source(block, known)
-        flow_ids = resolve_flow_ids(block, source)
+        flow_ids = resolve_flow_ids(block, source, spec_path)
 
         no_interaction = detect_no_user_interaction(block)
         if no_interaction:

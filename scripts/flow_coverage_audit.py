@@ -123,7 +123,7 @@ def audit(repo_root: Path) -> dict:
 
         for block in extract_test_blocks(source, rel):
             total_tests += 1
-            flow_ids = resolve_flow_ids(block, source)
+            flow_ids = resolve_flow_ids(block, source, spec)
             if not flow_ids:
                 untagged.append({"file": rel, "line": block.start_line, "test": block.name})
                 continue
@@ -141,13 +141,22 @@ def audit(repo_root: Path) -> dict:
     for flow_id, definition in definitions.items():
         needed = required_outcomes(definition)
         seen = evidence.get(flow_id, {})
+        declared = definition.get("outcomes")
 
-        satisfied = [o for o in needed if seen.get(o, {}).get("qualifying", 0) > 0]
-        junk_only = [
-            o for o in needed
-            if seen.get(o, {}).get("qualifying", 0) == 0
-            and seen.get(o, {}).get("disqualified", 0) > 0
-        ]
+        if needed and not (isinstance(declared, list) and declared):
+            # Legacy fallback (no `outcomes:` declared): keep the expectedSpecs
+            # semantics — a qualifying test of ANY class (or untagged) satisfies it.
+            has_qualifying = any(c.get("qualifying", 0) > 0 for c in seen.values())
+            has_junk = any(c.get("disqualified", 0) > 0 for c in seen.values())
+            satisfied = list(needed) if has_qualifying else []
+            junk_only = list(needed) if has_junk and not has_qualifying else []
+        else:
+            satisfied = [o for o in needed if seen.get(o, {}).get("qualifying", 0) > 0]
+            junk_only = [
+                o for o in needed
+                if seen.get(o, {}).get("qualifying", 0) == 0
+                and seen.get(o, {}).get("disqualified", 0) > 0
+            ]
 
         if not needed:
             # Declared exempt (expectedSpecs: 0) — no required outcomes.
@@ -245,6 +254,17 @@ def print_report(result: dict) -> None:
             print(f"    - {flow_id}")
         if len(junk_only) > 20:
             print(f"    ... and {len(junk_only) - 20} more")
+
+    missing = sorted(
+        (k for k, v in result["flows"].items() if v["status"] == "missing"),
+        key=lambda k: (result["flows"][k].get("priority") or "P4", k),
+    )
+    if missing:
+        print(f"\n  MISSING FLOWS ({len(missing)}) — declared but no qualifying test found:")
+        for flow_id in missing[:20]:
+            print(f"    - {flow_id}")
+        if len(missing) > 20:
+            print(f"    ... and {len(missing) - 20} more")
 
     if result["undeclared_flows"]:
         print(f"\n  UNDECLARED FLOWS ({len(result['undeclared_flows'])}) — tagged but not in flow-definitions.json:")

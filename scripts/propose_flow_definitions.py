@@ -123,7 +123,7 @@ def _spec_outcomes(repo: Path, e2e_dir: str) -> dict[str, set[str]]:
         except OSError:
             continue
         for block in extract_test_blocks(src, spec.name):
-            for fid in resolve_flow_ids(block, src):
+            for fid in resolve_flow_ids(block, src, spec):
                 m.setdefault(fid, set()).update(o.lower() for o in block.outcomes)
     return m
 

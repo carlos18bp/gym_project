@@ -423,6 +423,9 @@ class FrontendE2EAnalyzer:
                     category=IssueCategory.PARSE_ERROR,
                     line=1,
                     suggestion="Install frontend dependencies and ensure Node.js is available",
+                    # Explicit id so the summary can count this as an infra
+                    # error (missing tooling), not a test-quality finding.
+                    rule_id="ast_bridge_unavailable",
                 )],
             ))
             if self.verbose:

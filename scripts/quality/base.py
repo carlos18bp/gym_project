@@ -209,7 +209,12 @@ class Config:
         }
     )
     py_test_file_glob: str = "test_*.py"
-    js_unit_suffixes: tuple[str, ...] = (".test.js", ".spec.js", ".test.ts", ".spec.ts")
+    # .tsx/.jsx included by default: Next/React colocated tests use them, and a
+    # suffix list without them silently skipped those suites entirely.
+    js_unit_suffixes: tuple[str, ...] = (
+        ".test.js", ".spec.js", ".test.ts", ".spec.ts",
+        ".test.tsx", ".spec.tsx", ".test.jsx", ".spec.jsx",
+    )
     js_e2e_suffixes: tuple[str, ...] = (".spec.js", ".spec.ts")
     
     # Frontend paths
