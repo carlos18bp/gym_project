@@ -106,6 +106,13 @@ ALLOW_MARKERS: dict[str, str] = {
     "allow-duplicate": "duplicate_coverage",
     "allow-mock-only": "mock_only_assertion",
     "allow-reimpl": "reimplements_sut",
+    # flow_tag_mismatch was the only suppressible-class rule WITHOUT an escape
+    # hatch. A structurally atypical but excellent test — an OAuth login that
+    # authenticates through a popup and so never types into the page itself —
+    # had no way to opt out, leaving the finding as a permanent CI-breaker.
+    # Same contract as every other marker: a written reason is required and
+    # the gate surfaces the active exception.
+    "allow-flow-tag-mismatch": "flow_tag_mismatch",
 }
 
 # `test`/`it` must be a standalone identifier, never a method. A plain \b here
@@ -120,6 +127,22 @@ _NON_TEST_MODIFIERS: frozenset[str] = frozenset({
     "use", "step", "slow", "settimeout", "info", "extend",
 })
 
+# Suite headers. Playwright applies a describe's `{ tag: [...] }` option to
+# every test inside its callback, but extract_test_blocks rightly skips
+# describes as non-tests — so suite-level tags simply vanished, and a spec
+# that tags only at describe level (kore tags 100% of its suites this way)
+# read as fully untagged: covered fell to 0/104. Matches the plain call and
+# the `.serial` / `.parallel` / `.only` chains, plus bare jest/vitest
+# `describe(`.
+_DESCRIBE_CALL_RE = re.compile(r"(?<![.\w$])(?:(?:test|it)\.)?describe((?:\.\w+)*)\s*\(")
+
+# `test('name', TAGS, fn)` — the whole options OBJECT passed as an identifier.
+# Matched against the masked argument list (string contents blanked, delimiters
+# kept), so the title collapses to `'   '` and cannot fake the shape. Requires
+# a comma after the identifier: a function-reference body (`test('n', fn)`) has
+# none, so it never reads as options.
+_OPTIONS_IDENT_RE = re.compile(r"\s*(['\"`])\s*\1\s*,\s*([A-Za-z_$][\w$]*)\s*,")
+
 
 @dataclass
 class TestBlock:
@@ -133,6 +156,14 @@ class TestBlock:
     flow_ids: list[str] = field(default_factory=list)
     outcomes: list[str] = field(default_factory=list)
     allow_markers: set[str] = field(default_factory=set)
+    # Options-object source of every enclosing tag-carrying describe, outermost
+    # first — plus, when the test passes its options as an identifier
+    # (`test('n', TAGS, fn)`), the resolved object's own source. Playwright
+    # semantics: suite-level tags apply to every test inside.
+    # Literal `@flow:`/`@outcome:` entries are merged into flow_ids/outcomes at
+    # extraction; the spread constants in these regions are resolved lazily by
+    # resolve_flow_ids (they may need the module an object is imported from).
+    inherited_tags: list[str] = field(default_factory=list)
     # Test body plus the helper bodies it reaches; set by the analyze_* entry
     # points. Behavioral rules read this, line-attributed rules read `source`.
     expanded: str = ""
@@ -168,23 +199,15 @@ class TestBlock:
         but assert different things; merging them would delete real coverage.
         Only the test title is excluded, so a test copied under a new name is
         still caught.
+
+        Each string/template literal becomes a token derived from its exact
+        content, applied BEFORE collapsing whitespace. Keeps distinct values
+        distinct (the whole point) and stops the whitespace collapse from
+        turning `''` and `'   '` into the same token — isNonEmpty('') and
+        isNonEmpty('   ') are different tests, and merging them deletes real
+        coverage of the whitespace case.
         """
-        body = self.body_source()
-        # Replace each string/template literal with a token derived from its
-        # exact content, BEFORE collapsing whitespace. Keeps distinct values
-        # distinct (the whole point) and stops the whitespace collapse below from
-        # turning `''` and `'   '` into the same token — isNonEmpty('') and
-        # isNonEmpty('   ') are different tests, and merging them deletes real
-        # coverage of the whitespace case.
-        body = re.sub(
-            r"(['\"`])((?:\\.|(?!\1).)*)\1",
-            lambda m: "S" + hashlib.md5(m.group(2).encode("utf-8")).hexdigest()[:8],
-            body,
-            flags=re.DOTALL,
-        )
-        body = re.sub(r"//[^\n]*", "", body)
-        body = re.sub(r"/\*.*?\*/", "", body, flags=re.DOTALL)
-        body = re.sub(r"\s+", "", body)
+        body = re.sub(r"\s+", "", _fingerprint_normalize(self.body_source()))
         return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
     def body_source(self) -> str:
@@ -323,6 +346,79 @@ def _strip_for_scanning(source: str) -> str:
     return "".join(out)
 
 
+def _fingerprint_normalize(body: str) -> str:
+    """
+    Normalize a test body for fingerprinting in ONE positional pass: comments
+    are dropped, each string/template literal becomes a token derived from its
+    exact content, regex literals and code are kept verbatim.
+
+    The single pass is the point. An earlier version masked strings globally
+    FIRST and stripped comments SECOND, so an apostrophe inside a `// comment`
+    opened a phantom string that paired with the next real quote. The phantom's
+    token swallowed the newlines after it, gluing the rest of the body onto the
+    comment's line — which the subsequent `//` removal then deleted whole.
+    Neighbouring tests whose differences lived in that tail collapsed into one
+    fingerprint and reported each other as ERROR-level duplicates (measured on
+    kore). Same failure class that motivated _strip_for_scanning: strings,
+    comments and regex literals must be decided in the same positional pass,
+    never strings-first-globally.
+    """
+    aligned = list(body)  # positional shadow for _regex_literal_end lookbacks
+    pieces: list[str] = []
+    i = 0
+    n = len(body)
+    while i < n:
+        ch = body[i]
+        if ch in "\"'`":
+            quote = ch
+            j = i + 1
+            while j < n:
+                if body[j] == "\\":
+                    aligned[j] = " "
+                    if j + 1 < n:
+                        aligned[j + 1] = " "
+                    j += 2
+                    continue
+                if body[j] == quote:
+                    break
+                aligned[j] = " "
+                j += 1
+            # Token over the raw content between the delimiters — byte-for-byte
+            # what the pre-2026-07 global substitution hashed, so fingerprints
+            # of bodies without pathological comments do not move.
+            content = body[i + 1:j]
+            pieces.append("S" + hashlib.md5(content.encode("utf-8")).hexdigest()[:8])
+            i = j + 1
+            continue
+        if ch == "/" and i + 1 < n and body[i + 1] == "/":
+            while i < n and body[i] != "\n":
+                aligned[i] = " "
+                i += 1
+            continue
+        if ch == "/" and i + 1 < n and body[i + 1] == "*":
+            while i + 1 < n and not (body[i] == "*" and body[i + 1] == "/"):
+                if body[i] != "\n":
+                    aligned[i] = " "
+                i += 1
+            if i + 1 < n:
+                aligned[i] = " "
+                aligned[i + 1] = " "
+            i += 2
+            continue
+        if ch == "/":
+            # Kept verbatim, unlike _strip_for_scanning: two tests differing
+            # only in a regex literal are different tests, and blanking the
+            # pattern would merge them into a false duplicate.
+            end = _regex_literal_end(body, aligned, i)
+            if end != -1:
+                pieces.append(body[i:end])
+                i = end
+                continue
+        pieces.append(ch)
+        i += 1
+    return "".join(pieces)
+
+
 def _match_paren(masked: str, open_idx: int) -> int:
     """Index just past the paren that closes the one at `open_idx`, or -1."""
     depth = 0
@@ -336,6 +432,59 @@ def _match_paren(masked: str, open_idx: int) -> int:
     return -1
 
 
+def _describe_tag_options(source: str, masked: str) -> list[tuple[int, int, str]]:
+    """
+    `(span_start, span_end, options_source)` for each tag-carrying describe.
+
+    Only the describe's OPTIONS object is captured, never its callback body:
+    a test's own `tag:` (or a data spread like `{ ...DOC }`) inside the suite
+    must not leak onto sibling tests. The two are told apart positionally — an
+    object ARGUMENT follows `(` or `,`, while a callback body's `{` follows
+    `=>` or the `)` of a `function ()` header. Structure is read off `masked`,
+    so a brace or paren inside the suite title cannot desynchronize the walk;
+    the options text is sliced from the real source because the tags ARE
+    string content, which masking blanks.
+    """
+    regions: list[tuple[int, int, str]] = []
+    for match in _DESCRIBE_CALL_RE.finditer(masked):
+        open_idx = match.end() - 1
+        close_idx = _match_paren(masked, open_idx)
+        if close_idx == -1:
+            continue
+
+        options: list[str] = []
+        depth = 0    # ( ) nesting relative to the describe's own parens
+        bracket = 0  # [ ] nesting — an object inside an array is data, not options
+        i = open_idx + 1
+        while i < close_idx - 1:
+            ch = masked[i]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            elif ch == "[":
+                bracket += 1
+            elif ch == "]":
+                bracket -= 1
+            elif ch == "{" and depth == 0 and bracket == 0:
+                end = _matched_brace_end(masked, i)
+                if end == -1:
+                    break
+                j = i - 1
+                while j > open_idx and masked[j] in " \t\r\n":
+                    j -= 1
+                if masked[j] not in ">)":
+                    options.append(source[i:end])
+                i = end
+                continue
+            i += 1
+
+        tagged = [o for o in options if re.search(r"\btag\s*:", o)]
+        if tagged:
+            regions.append((match.start(), close_idx, "\n".join(tagged)))
+    return regions
+
+
 def extract_test_blocks(source: str, file: str = "") -> list[TestBlock]:
     """
     Find every test invocation in a spec file.
@@ -345,6 +494,7 @@ def extract_test_blocks(source: str, file: str = "") -> list[TestBlock]:
     real source for content.
     """
     masked = _strip_for_scanning(source)
+    suite_tags = _describe_tag_options(source, masked)
     blocks: list[TestBlock] = []
 
     for match in _TEST_CALL_RE.finditer(masked):
@@ -377,18 +527,49 @@ def extract_test_blocks(source: str, file: str = "") -> list[TestBlock]:
         name_match = re.search(r"(['\"`])((?:\\.|(?!\1).)*)\1", raw, flags=re.DOTALL)
         name = name_match.group(2) if name_match else ""
 
+        # Union of every enclosing describe's tags (Playwright applies them to
+        # each test inside): literals merge here, spreads wait for
+        # resolve_flow_ids, which can follow the module they come from.
+        flow_ids = re.findall(r"@flow:([\w.-]+)", raw)
+        outcomes = re.findall(r"@outcome:([\w.-]+)", raw)
+        inherited = [opts for s, e, opts in suite_tags if s < match.start() < e]
+
+        # Options passed as an identifier — `test('n', TAGS, fn)` where
+        # `const TAGS = { tag: [...] }`. No `tag:` appears in the call source,
+        # so without resolving the declaration both the literal scan above and
+        # resolve_flow_ids read the test as untagged (real case: four
+        # process-alert specs reported "missing" around excellent tests). The
+        # resolved object joins `inherited`, which gives it exactly the
+        # describe-options treatment: literals merge below, spreads and nested
+        # identifiers resolve lazily. Local declarations only — the shape
+        # observed in the wild; an unresolvable identifier contributes nothing.
+        opts_ref = _OPTIONS_IDENT_RE.match(masked, open_idx + 1)
+        if opts_ref and opts_ref.end() <= close_idx:
+            decl = re.search(rf"\b{re.escape(opts_ref.group(2))}\s*=\s*\{{", masked)
+            if decl:
+                obj_end = _matched_brace_end(masked, decl.end() - 1)
+                if obj_end != -1:
+                    opts_source = source[decl.end() - 1:obj_end]
+                    if re.search(r"\btag\s*:", opts_source):
+                        inherited = inherited + [opts_source]
+
+        for opts in inherited:
+            flow_ids += [f for f in re.findall(r"@flow:([\w.-]+)", opts) if f not in flow_ids]
+            outcomes += [o for o in re.findall(r"@outcome:([\w.-]+)", opts) if o not in outcomes]
+
         blocks.append(TestBlock(
             name=name,
             start_line=start_line,
             end_line=end_line,
             source=raw,
             file=file,
-            flow_ids=re.findall(r"@flow:([\w.-]+)", raw),
-            outcomes=re.findall(r"@outcome:([\w.-]+)", raw),
+            flow_ids=flow_ids,
+            outcomes=outcomes,
             allow_markers={
                 rule for marker, rule in ALLOW_MARKERS.items()
                 if re.search(rf"quality:\s*{re.escape(marker)}", raw, re.IGNORECASE)
             },
+            inherited_tags=inherited,
         ))
 
     return blocks
@@ -550,6 +731,23 @@ def _module_text(path: Path) -> str | None:
     return _MODULE_TEXT_CACHE[key]
 
 
+def _import_candidates(name: str, source: str, spec_path: Path | None) -> list[Path]:
+    """Module files a relative named import of `name` may resolve to, in probe order."""
+    if spec_path is None:
+        return []
+    imp = re.search(
+        rf"import\s*(?:type\s+)?\{{[^}}]*\b{re.escape(name)}\b[^}}]*\}}\s*"
+        rf"from\s*['\"](\.[^'\"]+)['\"]",
+        source,
+    )
+    if not imp:
+        return []
+    target = (spec_path.parent / imp.group(1)).resolve()
+    candidates = [target] if target.suffix else []
+    candidates += [target.with_suffix(ext) for ext in (".ts", ".js", ".tsx")]
+    return candidates
+
+
 def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[str] | None:
     """
     Flow ids declared by a tag constant imported from a relative module.
@@ -559,21 +757,7 @@ def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[
     A resolved declaration wins even when it carries no `@flow:` entries —
     same semantics as a locally defined constant.
     """
-    if spec_path is None:
-        return None
-    imp = re.search(
-        rf"import\s*(?:type\s+)?\{{[^}}]*\b{re.escape(const)}\b[^}}]*\}}\s*"
-        rf"from\s*['\"](\.[^'\"]+)['\"]",
-        source,
-    )
-    if not imp:
-        return None
-
-    target = (spec_path.parent / imp.group(1)).resolve()
-    candidates = [target] if target.suffix else []
-    candidates += [target.with_suffix(ext) for ext in (".ts", ".js", ".tsx")]
-
-    for candidate in candidates:
+    for candidate in _import_candidates(const, source, spec_path):
         text = _module_text(candidate)
         if text is None:
             continue
@@ -585,6 +769,81 @@ def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[
     return None
 
 
+# Masked variants of module/spec texts scanned for object-literal declarations.
+# resolve_flow_ids runs per test block, so without this the same flow-tags
+# catalog (and the spec itself) would be re-masked for every block in a suite.
+_MASKED_TEXT_CACHE: dict[str, str] = {}
+
+
+def _masked_text(text: str) -> str:
+    masked = _MASKED_TEXT_CACHE.get(text)
+    if masked is None:
+        masked = _MASKED_TEXT_CACHE[text] = _strip_for_scanning(text)
+    return masked
+
+
+def _object_member_flow_ids(text: str, obj: str, member: str) -> list[str] | None:
+    """
+    `@flow:` ids in the MEMBER array of `<obj> = { ..., MEMBER: [...], ... }`.
+
+    This is the namespaced-catalog shape suites spread as
+    `tag: [...FlowTags.AUTH_LOGIN]`, where the module declares one big object
+    (`export const FlowTags = { AUTH_LOGIN: ['@flow:auth-login', ...], ... }`)
+    instead of loose constants. Returns None when the object declaration or
+    that member cannot be found in `text`. The declaration and its brace span
+    are located on masked text (a brace inside a string must not cut the
+    object short, and a decoy `X = {` inside a string must not match at all);
+    the ids come from the original slice because tags are string content.
+    """
+    masked = _masked_text(text)
+    decl = re.search(rf"\b{re.escape(obj)}\s*=\s*\{{", masked)
+    if not decl:
+        return None
+    end = _matched_brace_end(masked, decl.end() - 1)
+    if end == -1:
+        return None
+    body = text[decl.end() - 1:end]
+    entry = re.search(rf"\b{re.escape(member)}\s*:\s*\[([^\]]*)\]", body, flags=re.DOTALL)
+    if entry is None:
+        return None
+    return re.findall(r"@flow:([\w.-]+)", entry.group(1))
+
+
+def _imported_object_member_flow_ids(
+    obj: str, member: str, source: str, spec_path: Path | None
+) -> list[str] | None:
+    """
+    Flow ids for `...Obj.MEMBER` where Obj is imported from a relative module.
+
+    None when the import, the module, the object or the member is unresolvable.
+    """
+    for candidate in _import_candidates(obj, source, spec_path):
+        text = _module_text(candidate)
+        if text is None:
+            continue
+        ids = _object_member_flow_ids(text, obj, member)
+        if ids is not None:
+            return ids
+    return None
+
+
+# A spread reference inside a tag array: a bare constant (`...ADMIN_LOGIN`) or
+# one namespaced member deep (`...FlowTags.AUTH_LOGIN`). The old pattern
+# required ALL_CAPS and could not cross the dot, so a namespaced spread
+# captured just its first capital letter (`F`) and resolved to garbage.
+_SPREAD_REF_RE = re.compile(r"\.\.\.([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)")
+# Bare spreads keep the original ALL_CAPS tag-constant contract: widening them
+# to any identifier would mint name-hints out of lowercase data spreads.
+_PLAIN_TAG_CONST_RE = re.compile(r"[A-Z][A-Z0-9_]*\Z")
+# The whole `tag:` option VALUE as one identifier (`tag: TAGS`,
+# `tag: FlowTags.MINUTAS`) instead of an array literal. The bracket-based
+# region scan cannot see these at all, so suites tagged this way read as
+# fully untagged (real case: two minutas specs reported "missing").
+_TAG_VALUE_IDENT_RE = re.compile(
+    r"\btag\s*:\s*([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?)"
+)
+
+
 def resolve_flow_ids(
     block: TestBlock, source: str, spec_path: Path | None = None
 ) -> list[str]:
@@ -594,40 +853,115 @@ def resolve_flow_ids(
     Specs commonly tag with an imported constant (`tag: [...ADMIN_LOGIN]`)
     instead of a literal `@flow:` string. Without this the tag looks absent and
     every flow rule silently no-ops — the same failure mode that let the junk
-    accumulate in the first place.
+    accumulate in the first place. Two shapes on top of the test's own tags:
+
+    * Suite-level tags (`block.inherited_tags`): a describe's `{ tag: [...] }`
+      applies to every test inside it, so those regions are scanned exactly
+      like the test's own — the union of all enclosing describes and the test.
+    * Namespaced spreads (`...FlowTags.AUTH_LOGIN`): resolved to the member
+      array of the object literal, local or imported. No name-derived hint for
+      these — a fallback like `flowtags.auth-login` credits nothing real, so an
+      unresolvable namespaced spread contributes nothing.
+    * Identifier tag values (`tag: TAGS`): the identifier's array declaration
+      is the region — its literals count and its nested spreads resolve. An
+      unresolvable identifier contributes nothing: names like `TAGS` derive
+      no flow anyone declared.
+    * Alias arrays: a spread whose local declaration itself spreads other
+      constants (`tag: [...TAGS]` over `const TAGS = [...DOCS_COLS, '@role:x']`)
+      resolves transitively, cycle-safe.
+
+    Literals and constants always UNION. There is deliberately no early return
+    on `block.flow_ids`: a mixed array `{ tag: [...MY_CONST, '@flow:other'] }`
+    used to short-circuit on the literal and never resolve the spread, so the
+    flow behind MY_CONST read as missing while a qualified test carried it
+    (real case: tuhuella my-applications-list).
 
     `spec_path` lets an imported constant be resolved to the actual ids its
     module declares (a name-derived guess like `d3-obs` credits nothing when
     the real id is `d3-anchored-observations`). Without it, or when the module
-    is unresolvable, the constant name is still used as a flow-shaped hint.
+    is unresolvable, a bare constant's name is still used as a flow-shaped hint.
     """
-    if block.flow_ids:
-        return block.flow_ids
-
     if spec_path is None and block.file and Path(block.file).is_file():
         spec_path = Path(block.file)
 
-    ids: list[str] = []
+    # Literal tags first: the test's own plus the ones every enclosing
+    # describe already merged into flow_ids at extraction.
+    ids: list[str] = list(block.flow_ids)
     # Spreads count as flow tags only inside a `tag: [...]` option. Scanning
     # the whole body read data spreads in mocks (`{ ...DOC, ...patchBody }`)
     # as tag constants and invented phantom flows like "doc". A block can
-    # carry more than one tag array, so every region is scanned.
-    tag_regions = re.findall(r"\btag\s*:\s*\[([^\]]*)\]", block.source)
-    for const in re.findall(r"\.\.\.([A-Z][A-Z0-9_]*)", "\n".join(tag_regions)):
+    # carry more than one tag array (its own and each suite's), so every
+    # region is scanned.
+    option_sources = [block.source, *block.inherited_tags]
+    tag_regions: list[str] = []
+    for text in option_sources:
+        tag_regions += re.findall(r"\btag\s*:\s*\[([^\]]*)\]", text)
+
+    # Identifier tag values: `tag: TAGS` (array constant) or
+    # `tag: FlowTags.MINUTAS` (namespaced member). A dotted reference behaves
+    # exactly like a spread of the member, so it is handed to the spread loop
+    # below; a bare one resolves to its local array declaration — whose content
+    # becomes a region, so `const TAGS = [...IMPORTED, '@role:x']` still
+    # follows the import — or to the imported constant's declared ids.
+    for text in option_sources:
+        for ref in _TAG_VALUE_IDENT_RE.findall(text):
+            if "." in ref:
+                tag_regions.append("..." + ref)
+                continue
+            local = re.search(
+                rf"\b{re.escape(ref)}\s*=\s*\[([^\]]*)\]", source, flags=re.DOTALL
+            )
+            if local:
+                ids.extend(re.findall(r"@flow:([\w.-]+)", local.group(1)))
+                tag_regions.append(local.group(1))
+                continue
+            imported = _imported_flow_ids(ref, source, spec_path)
+            if imported:
+                ids.extend(imported)
+            # Unresolvable: nothing. Unlike a bare SPREAD constant (usually
+            # flow-shaped, e.g. ADMIN_LOGIN), a whole-value identifier is
+            # generically named — a hint like "tags" credits no real flow.
+
+    # Worklist, because spreads resolve TRANSITIVELY through local alias
+    # arrays: `{ tag: [...TAGS] }` with `const TAGS = [...DOCS_COLS, '@role:x']`
+    # reaches the imported constant two hops away (real case: gym
+    # minutas-columns, which read as missing while every hop was declared).
+    # A resolved local declaration is itself a tag region — its literals count
+    # and its nested spreads are enqueued; the seen-set terminates cycles.
+    pending: list[str] = _SPREAD_REF_RE.findall("\n".join(tag_regions))
+    seen_refs: set[str] = set()
+    while pending:
+        ref = pending.pop(0)
+        if ref in seen_refs:
+            continue
+        seen_refs.add(ref)
+        if "." in ref:
+            obj, member = ref.split(".", 1)
+            resolved = _object_member_flow_ids(source, obj, member)
+            if resolved is None:
+                resolved = _imported_object_member_flow_ids(obj, member, source, spec_path)
+            ids.extend(resolved or [])
+            continue
+        if not _PLAIN_TAG_CONST_RE.fullmatch(ref):
+            continue
         # Constant defined locally in this file?
         local = re.search(
-            rf"\b{const}\s*=\s*\[([^\]]*)\]", source, flags=re.DOTALL
+            rf"\b{ref}\s*=\s*\[([^\]]*)\]", source, flags=re.DOTALL
         )
         if local:
             ids.extend(re.findall(r"@flow:([\w.-]+)", local.group(1)))
+            pending += _SPREAD_REF_RE.findall(local.group(1))
             continue
-        imported = _imported_flow_ids(const, source, spec_path)
+        imported = _imported_flow_ids(ref, source, spec_path)
         if imported is not None:
             ids.extend(imported)
         else:
             # Unresolvable: fall back to the name as a flow-shaped hint.
-            ids.append(const.lower().replace("_", "-"))
-    return ids
+            ids.append(ref.lower().replace("_", "-"))
+
+    # A flow tagged at both suite and test level (or reached via two spreads)
+    # must count once.
+    return list(dict.fromkeys(ids))
 
 
 # ---------------------------------------------------------------------------
@@ -673,9 +1007,29 @@ def detect_no_user_interaction(block: TestBlock) -> Finding | None:
     )
 
 
+# Hyphen-glued qualifiers that name a state, not an action: in "post-login
+# visit" the token `login` describes the session the test STARTS from, not a
+# login it performs — requiring fill/type there flagged correct tests (real
+# case: a post-login redirect spec, baselined). The compound is dropped whole
+# BEFORE tokenizing, so `post-login` contributes neither token; a standalone
+# "login" anywhere else in the name still claims the verb. The lookbehind
+# keeps the qualifier reading to the START of a hyphen chain: mid-compound
+# the word is a noun, not a prefix — `blog-post-created` is a created blog
+# post, and dropping "post-created" there would unclaim a real creation.
+_QUALIFIED_COMPOUND_RE = re.compile(r"(?<!-)\b(?:post|pre|re|after|non)-[a-z]+")
+
+
 def _action_tokens(parts: list[str]) -> set[str]:
-    """Split flow ids and test names into lowercase word tokens."""
-    return {t for t in re.split(r"[^a-zA-Z]+", " ".join(parts).lower()) if t}
+    """
+    Split flow ids and test names into lowercase word tokens.
+
+    Temporal/negation compounds (`post-login`, `pre-delete`, `non-payment`)
+    are removed first: the hyphen-glued word is a qualifier of state, never
+    the action itself. Ordinary hyphenated ids (`user-login-flow`) keep every
+    token — only the five glued prefixes are qualifiers.
+    """
+    text = _QUALIFIED_COMPOUND_RE.sub(" ", " ".join(parts).lower())
+    return {t for t in re.split(r"[^a-zA-Z]+", text) if t}
 
 
 def _claims_verb(verb: str, tokens: set[str]) -> bool:
@@ -706,6 +1060,8 @@ def detect_flow_tag_mismatch(block: TestBlock, flow_ids: list[str]) -> Finding |
       changed as a result. This is what catches the common shape of mocking the
       DELETE endpoint, navigating, and asserting the list is still on screen.
     """
+    if "flow_tag_mismatch" in block.allow_markers:
+        return None
     interactions = block.interactions()
     if not interactions:
         # Already reported, and more severely, by no_user_interaction.
@@ -728,7 +1084,11 @@ def detect_flow_tag_mismatch(block: TestBlock, flow_ids: list[str]) -> Finding |
             file=block.file,
             line=block.start_line,
             identifier=block.name,
-            suggestion=f"Perform the {verb} through the UI, or retag the test to the flow it truly covers",
+            suggestion=(
+                f"Perform the {verb} through the UI, retag the test to the flow it "
+                "truly covers, or justify a genuine exception with "
+                "`// quality: allow-flow-tag-mismatch (reason)`"
+            ),
         )
 
     for verb in sorted(MUTATING_VERBS):
@@ -748,7 +1108,8 @@ def detect_flow_tag_mismatch(block: TestBlock, flow_ids: list[str]) -> Finding |
             identifier=block.name,
             suggestion=(
                 f"Assert what {verb} changed: the row is gone, the count dropped, "
-                "the confirmation appeared, or the URL moved on"
+                "the confirmation appeared, or the URL moved on. Justify a genuine "
+                "exception with `// quality: allow-flow-tag-mismatch (reason)`"
             ),
         )
 

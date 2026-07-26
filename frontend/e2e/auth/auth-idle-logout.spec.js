@@ -1,6 +1,8 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
+import { installAuthSignInApiMocks } from "../helpers/authSignInMocks.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
@@ -79,40 +81,44 @@ async function installIdleLogoutMocks(page, { userId, role = "lawyer" }) {
   });
 }
 
-test("useIdleLogout composable is initialized and listens for activity events", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
-  const userId = 8100;
+test("idle timeout logs the user out and redirects to sign_in without any activity", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
+  const userId = 8103;
+  const email = `lawyer.${userId}@test.local`;
 
-  await installIdleLogoutMocks(page, { userId });
+  await installAuthSignInApiMocks(page, { userId, role: "lawyer", signInStatus: 200 });
 
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: {
-      id: userId,
-      role: "lawyer",
-      is_gym_lawyer: true,
-      is_profile_completed: true,
-    },
+  // Install the fake clock before the SPA boots: useIdleLogout's
+  // setTimeout(handleIdle, timeout) is only scheduled by App.vue's real
+  // router/authStore wiring (watch(authStore.token) -> subscribe()) once
+  // login succeeds, well after this call — so the clock must already be
+  // active by then to capture it instead of a real 15-minute native timer.
+  await page.clock.install();
+
+  await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({
+    timeout: 15_000,
   });
 
-  await page.goto("/dashboard");
+  await page.locator('[id="email"]').fill(email);
+  await page.locator('[id="password"]').fill("password");
+  await bypassCaptcha(page);
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("token")), { timeout: 10_000 })
+    .toBe("e2e-access-token");
 
-  // Verify the idle logout composable is active by checking that
-  // activity event listeners are registered on the window
-  const hasActivityListeners = await page.evaluate(() => {
-    // Dispatch a mousemove event — if idle logout is wired up, it will be handled
-    // We can verify by checking that the app is still on dashboard after interaction
-    window.dispatchEvent(new MouseEvent("mousemove", { clientX: 100, clientY: 100 }));
-    return true;
-  });
-  expect(hasActivityListeners).toBe(true);
+  // No further interaction from here on: jump the clock past the
+  // composable's 15-minute idle threshold. If useIdleLogout never receives
+  // the real router/authStore in production wiring (only in its own unit
+  // test's mocks), this timer never fires and the assertions below time out.
+  await page.clock.fastForward(16 * 60 * 1000);
 
-  // User should remain on dashboard after activity
-  await expect(page).toHaveURL(/\/dashboard/);
-
-  // Token should still be present
+  await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
   const token = await page.evaluate(() => localStorage.getItem("token"));
-  expect(token).toBe("e2e-token");
+  expect(token).toBeNull();
 });
 
 test("unauthenticated user accessing dashboard is redirected to sign_in", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {

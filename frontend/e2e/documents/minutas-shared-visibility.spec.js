@@ -75,7 +75,7 @@ async function openMinutasTab(page) {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("a lawyer sees colleague minutas with the informational 'Creado por' column", { tag: TAGS }, async ({ page }) => {
+test("a lawyer sees colleague minutas with the informational 'Creado por' column", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   // Shared visibility: the colleague's minuta is listed alongside the own one.
@@ -97,7 +97,7 @@ test("a lawyer sees colleague minutas with the informational 'Creado por' column
   await expect(table.getByText("Compartida", { exact: true })).toBeVisible();
 });
 
-test("the 'Mías' filter scopes minutas to the current lawyer", { tag: TAGS }, async ({ page }) => {
+test("the 'Mías' filter scopes minutas to the current lawyer", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta Propia")).toBeVisible({ timeout: 10_000 });
@@ -113,7 +113,7 @@ test("the 'Mías' filter scopes minutas to the current lawyer", { tag: TAGS }, a
   await expect(page.getByText("Minuta De Colega")).toBeVisible({ timeout: 10_000 });
 });
 
-test("the 'Compartidas' filter scopes minutas to shared-edit ones", { tag: TAGS }, async ({ page }) => {
+test("the 'Compartidas' filter scopes minutas to shared-edit ones", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta Colaborativa")).toBeVisible({ timeout: 10_000 });
@@ -125,7 +125,7 @@ test("the 'Compartidas' filter scopes minutas to shared-edit ones", { tag: TAGS 
   await expect(page.getByText("Minuta Colaborativa")).toBeVisible();
 });
 
-test("a colleague's non-shared minuta only offers use actions", { tag: TAGS }, async ({ page }) => {
+test("a colleague's non-shared minuta only offers use actions", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta De Colega")).toBeVisible({ timeout: 10_000 });
@@ -142,7 +142,7 @@ test("a colleague's non-shared minuta only offers use actions", { tag: TAGS }, a
   await expect(modal.getByTestId("document-action-toggleSharedEdit")).toHaveCount(0);
 });
 
-test("a colleague's shared minuta allows editing but not delete or state change", { tag: TAGS }, async ({ page }) => {
+test("a colleague's shared minuta allows editing but not delete or state change", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta Colaborativa")).toBeVisible({ timeout: 10_000 });
@@ -158,7 +158,7 @@ test("a colleague's shared minuta allows editing but not delete or state change"
   await expect(modal.getByTestId("document-action-toggleSharedEdit")).toHaveCount(0);
 });
 
-test("an own minuta keeps full management actions including the share toggle", { tag: TAGS }, async ({ page }) => {
+test("an own minuta keeps full management actions including the share toggle", { tag: [...TAGS] }, async ({ page }) => {
   await openMinutasTab(page);
 
   await expect(page.getByText("Minuta Propia")).toBeVisible({ timeout: 10_000 });

@@ -38,7 +38,7 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   test("sync status shows last successful sync time and process count", {
     tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer'],
   }, async ({ page }) => {
-    // audit: load-only flow (SyncStatus renders straight from GET secop/sync/;
+    // quality: allow-no-interaction (SyncStatus renders straight from GET secop/sync/;
     // its only control is the Sincronizar button, covered by
     // @flow:secop-trigger-sync in secop-admin-sync-flow.spec.js)
     await page.goto("/secop");

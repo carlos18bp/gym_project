@@ -8,10 +8,10 @@ import { DOCS_MINUTAS_COLUMNS } from "../helpers/flow-tags.js";
 
 const TAGS = [...DOCS_MINUTAS_COLUMNS, "@role:lawyer"];
 
-test.describe("Minutas table — summary columns hidden", { tag: TAGS }, () => {
+test.describe("Minutas table — summary columns hidden", { tag: [...TAGS] }, () => {
   test(
     "summary columns are absent from Minutas tab header",
-    { tag: TAGS },
+    { tag: [...TAGS] },
     async ({ page }) => {
       const userId = 8001;
       const documents = [

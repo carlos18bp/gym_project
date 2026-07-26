@@ -12,10 +12,6 @@ import {
  *  - ProcessHistoryModal.vue badge tooltip reflects notify_clients
  */
 
-const TAGS = {
-  tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'],
-};
-
 function buildProcessWithAlert({ notifyClients, isActive = true }) {
   const lawyerId = 9100;
   const clientId = 9101;
@@ -63,7 +59,7 @@ function buildProcessWithAlert({ notifyClients, isActive = true }) {
 
 test(
   "alert indicator shows lawyer-and-clients copy when notify_clients=true",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: true,
@@ -108,7 +104,7 @@ test(
 
 test(
   "alert indicator shows lawyer-only copy when notify_clients=false",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: false,
@@ -149,7 +145,7 @@ test(
 
 test(
   "history modal badge tooltip reflects notify_clients",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: true,

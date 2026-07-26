@@ -13,15 +13,6 @@ import {
  * submitted mainData must persist the chosen alert configuration.
  */
 
-const TAGS = {
-  tag: [
-    "@flow:process-alert-configure",
-    "@module:processes",
-    "@priority:P2",
-    "@role:lawyer",
-  ],
-};
-
 const buildAuthPayload = ({ id, role, isGymLawyer }) => ({
   token: "e2e-token",
   userAuth: {
@@ -128,7 +119,14 @@ function parseMainData(request) {
 
 test(
   "lawyer enables client notifications and custom description on the stage alert",
-  TAGS,
+  {
+    tag: [
+      "@flow:process-alert-configure",
+      "@module:processes",
+      "@priority:P2",
+      "@role:lawyer",
+    ],
+  },
   async ({ page }) => {
     test.setTimeout(60_000);
     const submitted = await setupCreateForm(page, { lawyerId: 1500, clientId: 1501 });
@@ -166,7 +164,14 @@ test(
 
 test(
   "lawyer can deactivate the stage alert before saving",
-  TAGS,
+  {
+    tag: [
+      "@flow:process-alert-configure",
+      "@module:processes",
+      "@priority:P2",
+      "@role:lawyer",
+    ],
+  },
   async ({ page }) => {
     test.setTimeout(60_000);
     const submitted = await setupCreateForm(page, { lawyerId: 1502, clientId: 1503 });

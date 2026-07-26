@@ -309,6 +309,19 @@ class FrontendUnitAnalyzer:
     ) -> SuiteResult:
         """Analyze all unit test files."""
         result = SuiteResult(suite_name="frontend_unit")
+
+        # `frontend_unit_dir: ""` means the project HAS no unit layer: the
+        # suite is disabled on purpose — zero files, zero errors, and the
+        # report says so. Without this guard `Path("frontend") / ""` is a
+        # no-op and the scan silently de-scoped to ALL of frontend/ (vastago:
+        # 91 files analyzed under a config that meant "no unit suite").
+        # frontend/ itself is spelled ".", never "".
+        if self.config.frontend_unit_dir == "":
+            result.suite_findings["disabled_by_config"] = True
+            if self.verbose:
+                print(f"  {Colors.DIM}frontend_unit_dir is \"\" - suite disabled by config{Colors.RESET}")
+            return result
+
         bridge_ok = self.bridge.is_available()
 
         if not bridge_ok:

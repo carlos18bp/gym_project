@@ -78,6 +78,7 @@ test(
   "explicit ?tab= URL param overrides auto-redirect",
   { tag: [...LEGAL_FILES_AUTO_REDIRECT, "@role:client"] },
   async ({ page }) => {
+    // quality: allow-no-interaction (deep-link tab param IS the behavior under test)
     const userId = 9102;
     const docs = [buildPendingDoc(userId, 5002, "Contrato Pendiente Override")];
 

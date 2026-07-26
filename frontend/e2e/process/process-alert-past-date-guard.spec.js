@@ -12,18 +12,16 @@ import {
  * shows the warning, forces the alert off and blocks re-activation.
  */
 
-const TAGS = {
-  tag: [
-    "@flow:process-alerts",
-    "@module:processes",
-    "@priority:P2",
-    "@role:lawyer",
-  ],
-};
-
 test(
   "past stage date deactivates the alert and blocks the toggle",
-  TAGS,
+  {
+    tag: [
+      "@flow:process-alerts",
+      "@module:processes",
+      "@priority:P2",
+      "@role:lawyer",
+    ],
+  },
   async ({ page }) => {
     test.setTimeout(60_000);
     const lawyerId = 9400;

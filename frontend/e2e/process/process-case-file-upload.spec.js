@@ -100,3 +100,100 @@ test("lawyer sees process with empty case files", { tag: ['@flow:process-case-fi
   await expect(page.getByRole("heading", { name: "Expediente", exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("No hay expedientes registrados")).toBeVisible();
 });
+
+test("lawyer uploads a new case file while editing: it reaches update_case_file/ and shows up back on the process detail's Expediente list", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  test.setTimeout(60_000);
+  const userId = 8812;
+  const lawyer = buildMockUser({ id: userId, role: "lawyer" });
+  const client = buildMockUser({ id: userId + 1, role: "client" });
+
+  const existingProcess = buildMockProcess({
+    id: 503,
+    clients: [client],
+    lawyer,
+    caseType: "Civil",
+    subcase: "Contractual",
+    ref: "RAD-503",
+    authority: "Juzgado 1",
+    plaintiff: "Nueva Demandante",
+    defendant: "Nuevo Demandado",
+    stages: [{ status: "Radicación", date: "2025-01-01" }],
+    progress: 15,
+    caseFiles: [],
+  });
+
+  await installProcessApiMocks(page, {
+    userId,
+    role: "lawyer",
+    processes: [existingProcess],
+    users: [lawyer, client],
+  });
+
+  // installProcessApiMocks doesn't mock either endpoint, so these narrow
+  // routes (registered after it) both win and let the save succeed.
+  await page.route(`**/update_process/${existingProcess.id}/`, async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+
+  const uploadedFileNames = [];
+  await page.route("**/update_case_file/", async (route) => {
+    const body = route.request().postData() || "";
+    const match = body.match(/name="file";\s*filename="([^"]+)"/);
+    const fileName = match ? match[1] : "unknown";
+    uploadedFileNames.push(fileName);
+    // Mutates the same object referenced by installProcessApiMocks' closure,
+    // so the next processes/ GET (fetchProcessesData, right before the app
+    // navigates back to the detail view) serves the file that was "saved".
+    existingProcess.case_files.push({
+      id: 9101,
+      file: `/media/case_files/${fileName}`,
+      created_at: "2026-07-01T10:00:00Z",
+    });
+    await route.fulfill({ status: 201, contentType: "application/json", body: "{}" });
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/process_list");
+  await expect(page.getByText("Nueva Demandante", { exact: true })).toBeVisible({ timeout: 15_000 });
+
+  // Real navigation: list -> detail -> edit.
+  await page.getByText("Nueva Demandante", { exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/process_detail/${existingProcess.id}`), { timeout: 10_000 });
+
+  await page.getByRole("button", { name: "Editar" }).click();
+  await expect(page.getByRole("heading", { name: "Información del proceso" })).toBeVisible({ timeout: 15_000 });
+
+  // The Documento table starts empty for this process — add a row (its own
+  // "Nuevo" button, scoped away from the stages table's identical label)
+  // and upload into it.
+  const caseFilesTable = page.locator("table", { hasText: "Documento" });
+  await caseFilesTable.getByRole("button", { name: "Nuevo" }).click();
+
+  await page.locator("#file-0").setInputFiles({
+    name: "expediente-nuevo-e2e.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n%PDF-MOCK\n", "utf-8"),
+  });
+
+  await page.getByRole("button", { name: "Guardar Proceso" }).click();
+
+  const successDialog = page.getByRole("dialog");
+  await expect(successDialog).toBeVisible({ timeout: 15_000 });
+  await expect(successDialog).toContainText("Exitoso");
+  await page.getByRole("button", { name: /^(OK!?|Aceptar)$/i }).click();
+
+  // Saving an edit navigates back to the detail (router.back()) once the
+  // update and the file upload both resolve.
+  await expect(page).toHaveURL(new RegExp(`/process_detail/${existingProcess.id}`), { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Expediente", exact: true })).toBeVisible({ timeout: 10_000 });
+
+  // The upload actually happened (real setInputFiles reached the backend
+  // call), and the file the user just added — not a stale/empty list — is
+  // what the detail view the user lands on actually shows.
+  expect(uploadedFileNames).toEqual(["expediente-nuevo-e2e.pdf"]);
+  await expect(page.getByText("expediente-nuevo-e2e.pdf")).toBeVisible({ timeout: 10_000 });
+});

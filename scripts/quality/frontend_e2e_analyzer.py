@@ -400,6 +400,18 @@ class FrontendE2EAnalyzer:
     ) -> SuiteResult:
         """Analyze all E2E test files."""
         result = SuiteResult(suite_name="frontend_e2e")
+
+        # `frontend_e2e_dir: ""` disables the layer on purpose (same contract
+        # as frontend_unit_dir: see FrontendUnitAnalyzer.analyze_suite): zero
+        # files, zero errors, `disabled_by_config` in the report — instead of
+        # `Path("frontend") / ""` silently de-scoping the scan to all of
+        # frontend/. frontend/ itself is spelled ".", never "".
+        if self.config.frontend_e2e_dir == "":
+            result.suite_findings["disabled_by_config"] = True
+            if self.verbose:
+                print(f"  {Colors.DIM}frontend_e2e_dir is \"\" - suite disabled by config{Colors.RESET}")
+            return result
+
         bridge_ok = self.bridge.is_available()
 
         if not bridge_ok:
