@@ -38,6 +38,10 @@ function outlookCallbackDevPage() {
 
         res.setHeader('Content-Type', 'text/html; charset=utf-8')
         res.setHeader('Cache-Control', 'no-store')
+        // Same COOP as the backend page: anything stricter puts the popup in a
+        // new browsing context group on its way back from Microsoft and severs
+        // window.opener, so MSAL can never close it. See gym_app/views/spa.py.
+        res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none')
         res.end(OUTLOOK_CALLBACK_HTML)
       })
     },

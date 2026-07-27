@@ -36,6 +36,14 @@ def test_outlook_callback_is_never_cached(client):
     assert response["Cache-Control"] == "no-store"
 
 
+def test_outlook_callback_does_not_sever_the_popup_opener(client):
+    """A stricter COOP moves the popup to a new browsing context group on its way
+    back from Microsoft, severing window.opener so MSAL can never close it."""
+    response = client.get(CALLBACK_URL)
+
+    assert response["Cross-Origin-Opener-Policy"] == "unsafe-none"
+
+
 def test_outlook_callback_with_trailing_slash_returns_200(client):
     """Accept the trailing-slash variant so APPEND_SLASH cannot break the popup."""
     response = client.get(f"{CALLBACK_URL}/")

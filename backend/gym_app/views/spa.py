@@ -87,7 +87,19 @@ def outlook_callback(request):
 
     Registered in Azure as the SPA redirect URI for the Microsoft login popup.
     The response is never cached so the popup always gets a clean document.
+
+    COOP is deliberately relaxed to 'unsafe-none' here, overriding
+    SECURE_CROSS_ORIGIN_OPENER_POLICY (SecurityMiddleware only applies its value
+    with setdefault). The popup arrives from login.microsoftonline.com, whose
+    documents are 'unsafe-none': serving this page with a different COOP puts it
+    in a new browsing context group, which severs window.opener. The opener then
+    cannot read popup.closed ("Cross-Origin-Opener-Policy policy would block the
+    window.closed call") and MSAL never closes the popup nor completes the login.
+    Safe here because the page carries no script, no data and no session — the
+    only capability it grants is our own tab keeping a handle to the window it
+    opened. Do not "harden" this back to same-origin-allow-popups.
     """
     response = HttpResponse(OUTLOOK_CALLBACK_HTML, content_type="text/html; charset=utf-8")
     response["Cache-Control"] = "no-store"
+    response["Cross-Origin-Opener-Policy"] = "unsafe-none"
     return response
