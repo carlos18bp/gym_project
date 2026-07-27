@@ -186,6 +186,23 @@ test("outlook login signs in existing user and redirects to dashboard", { tag: [
     .toBe("/dashboard");
 });
 
+test("outlook button stays disabled while the Microsoft popup is open", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  await installOutlookAuthMocks(page, { scenario: "existing_user_success" });
+
+  // Hold the popup open so the in-flight state is observable. A second click
+  // here would orphan the real MSAL interaction and lock the tab out.
+  await page.addInitScript(() => {
+    window.__e2eOutlookAuth = () => new Promise(() => {});
+  });
+
+  await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
+
+  await triggerOutlookLogin(page);
+
+  await expect(page.getByTestId("outlook-login-button")).toBeDisabled();
+});
+
 test("outlook login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-outlook', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   await installOutlookAuthMocks(page, { scenario: "login_failure" });
 

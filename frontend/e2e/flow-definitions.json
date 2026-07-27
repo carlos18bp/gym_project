@@ -30,7 +30,10 @@
       ],
       "priority": "P1",
       "description": "Usuario inicia sesión o se registra con cuenta de Microsoft (Outlook) vía MSAL + verificación de ID token server-side",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "knownGaps": [
+        "Synthetic by necessity — Playwright cannot drive the real Microsoft popup, so outlook-login-flow.spec.js stubs it through the window.__e2eOutlookAuth seam. The MSAL layer itself (single in-flight popup, interaction_in_progress recovery, prompt=select_account) is covered by test/shared/msal_config.test.js, and the popup redirect page by backend gym_app/tests/views/test_outlook_callback.py."
+      ]
     },
     "auth-register": {
       "name": "Registro de usuario",
