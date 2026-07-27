@@ -204,3 +204,7 @@
 ### Global App Zoom (80% desktop / 75% mobile)
 - `frontend/src/style.css` applies a global `zoom` (commit `cc92301`, 2026-07-15) to widen the UI
 - Pixel-based assertions (screenshots, `boundingBox()` checks) in E2E/unit tests see the zoomed geometry — prefer role/testid-based assertions over pixel math
+- **Viewport units must be compensated.** CSS `zoom` scales the used value of lengths, but `vh`/`vw`/`dvh` resolve against the *unzoomed* viewport — so a bare `100vh` paints at only 80% (desktop) / 75% (phone) of the screen. Measured in Chrome 148 on a 900px viewport at `zoom: 0.8`: `100vh` → 720px, `100dvh` → 720px, `calc(100vh / var(--app-zoom))` → 900px
+- Write every full-viewport length as `calc(100vh / var(--app-zoom, 1))`. The `*-screen` Tailwind utilities (`h-screen`, `min-h-screen`, `max-h-screen`, `w-screen`) already do this via `tailwind.config.js`; hand-written `vh`/`vw` values and lengths passed to JS libraries (e.g. the TinyMCE `height` option in `DocumentEditor.vue`) do not, and must divide explicitly
+- `position: fixed; inset: 0` is **not** affected and needs no compensation — modal backdrops written that way already cover the full viewport
+- `--app-zoom` is the single source of truth: `@media print` and the `@supports not (zoom: 1)` fallback reset the custom property rather than overriding `zoom` directly, so the compensated lengths stay correct in both cases

@@ -159,6 +159,7 @@
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"
+        data-testid="auth-illustration"
         class="w-full h-full object-cover"
       />
     </div>
