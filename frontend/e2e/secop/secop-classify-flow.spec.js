@@ -33,7 +33,7 @@ test.describe("SECOP Classify Flows", () => {
   });
 
   test("lawyer can view My Classifications tab with classified processes", {
-    tag: ['@flow:secop-classify-process', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-classify-process', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();

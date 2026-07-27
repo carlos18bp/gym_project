@@ -16,7 +16,7 @@ import {
  * - process.js store (41%) — fetchProcessById, processesWithClosedStatus getter
  */
 
-test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer opens ProcessHistoryModal from detail page and sees sorted stages", { tag: ['@flow:process-history', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const lawyerId = 7100;
   const clientId = 7101;
   const nowIso = new Date().toISOString();

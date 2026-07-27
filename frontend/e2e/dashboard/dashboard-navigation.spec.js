@@ -3,7 +3,7 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installDashboardNavApiMocks } from "../helpers/dashboardNavMocks.js";
 
-test("dashboard loads and sidebar navigation works (processes, legal requests, dynamic documents)", { tag: ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("dashboard loads and sidebar navigation works (processes, legal requests, dynamic documents)", { tag: ['@flow:dashboard-navigation', '@module:dashboard', '@priority:P2', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 1300;
 
   await installDashboardNavApiMocks(page, {

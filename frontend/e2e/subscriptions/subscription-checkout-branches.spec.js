@@ -112,7 +112,7 @@ test("free plan activation posts plan_type and redirects to dashboard", { tag: [
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
 });
 
-test("paid plan checkout requires a payment method before confirming", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("paid plan checkout requires a payment method before confirming", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 9003;
 
   await installWompiStubs(page);
@@ -146,7 +146,7 @@ test("paid plan checkout requires a payment method before confirming", { tag: ['
   await expect(page.getByRole("button", { name: "Confirmar Suscripción" })).toBeDisabled();
 });
 
-test("lawyer selects the corporate plan and reaches its checkout", { tag: ['@flow:subscriptions-view-plans', '@module:subscriptions', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer selects the corporate plan and reaches its checkout", { tag: ['@flow:subscriptions-view-plans', '@module:subscriptions', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 9004;
 
   await installWompiStubs(page);

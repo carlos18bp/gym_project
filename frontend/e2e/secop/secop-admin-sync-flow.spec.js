@@ -23,7 +23,7 @@ test.describe("SECOP Admin Sync Flow", () => {
   // nothing beyond the panel still rendering. It is covered by the assertions
   // below without the conditional.
   test("triggering a manual sync puts the sync button in its in-flight state", {
-    tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer'],
+    tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
 

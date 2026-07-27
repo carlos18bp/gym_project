@@ -42,7 +42,7 @@ async function installProcessWithFilesMocks(page, { userId, processes }) {
   });
 }
 
-test("lawyer navigates to process detail and sees case files section", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer navigates to process detail and sees case files section", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8810;
   const lawyer = buildMockUser({ id: userId, role: "lawyer" });
   const processes = [
@@ -105,7 +105,7 @@ test("lawyer sees process with empty case files", { tag: ['@flow:process-case-fi
   await expect(page.getByText("No hay expedientes registrados")).toBeVisible();
 });
 
-test("lawyer uploads a new case file while editing: it reaches update_case_file/ and shows up back on the process detail's Expediente list", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer uploads a new case file while editing: it reaches update_case_file/ and shows up back on the process detail's Expediente list", { tag: ['@flow:process-case-file-upload', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   const userId = 8812;
   const lawyer = buildMockUser({ id: userId, role: "lawyer" });

@@ -59,7 +59,7 @@ function buildProcessWithAlert({ notifyClients, isActive = true }) {
 
 test(
   "alert indicator shows lawyer-and-clients copy when notify_clients=true",
-  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:display'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: true,

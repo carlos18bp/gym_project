@@ -19,7 +19,7 @@ async function resetSignInState(page) {
 }
 
 
-test("client can sign in and is redirected to dashboard", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("client can sign in and is redirected to dashboard", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 1000;
   const email = authEmailForRole("client", userId);
 
@@ -85,7 +85,7 @@ test("lawyer can sign in and is redirected to dashboard", { tag: ['@flow:auth-lo
   expect(userAuth.role).toBe("lawyer");
 });
 
-test("invalid credentials shows warning", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("invalid credentials shows warning", { tag: ['@flow:auth-login-email', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 1200;
   const email = authEmailForRole("client", userId);
 

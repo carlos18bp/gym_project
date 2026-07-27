@@ -87,7 +87,7 @@ async function installDashboardWithLegalUpdatesMocks(page, { userId, role, legal
   });
 }
 
-test("clicking a legal update link opens the external source in a new tab", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("clicking a legal update link opens the external source in a new tab", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 4200;
 
   const updates = [

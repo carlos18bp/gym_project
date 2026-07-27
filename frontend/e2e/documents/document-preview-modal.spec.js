@@ -35,7 +35,7 @@ async function setupLawyerDashboard(page, { userId, documents }) {
 }
 
 test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
-  test("lawyer opens document preview and sees title and content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("lawyer opens document preview and sees title and content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 3000;
     const docId = 201;
     const docTitle = "Contrato de Prueba";

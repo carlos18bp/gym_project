@@ -36,7 +36,7 @@ function buildPendingDoc(userId, id, title) {
 
 test(
   "first post-login visit with pending signatures auto-selects Dcs. Por Firmar tab",
-  { tag: [...LEGAL_FILES_AUTO_REDIRECT, "@role:lawyer"] },
+  { tag: [...LEGAL_FILES_AUTO_REDIRECT, "@role:lawyer", '@outcome:display'] },
   async ({ page }) => {
     const userId = 9101;
     const docs = [buildPendingDoc(userId, 5001, "Contrato Pendiente Auto")];

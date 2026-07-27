@@ -71,7 +71,7 @@ function installLegalRequestDeepMocks(page, { userId, role, detail, statusUpdate
   });
 }
 
-test("lawyer completes status update cycle — exercises store.updateRequestStatus", { tag: ['@flow:legal-status-update', '@module:legal-requests', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer completes status update cycle — exercises store.updateRequestStatus", { tag: ['@flow:legal-status-update', '@module:legal-requests', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 9850;
   const detail = buildMockLegalRequestDetail({
     id: REQUEST_ID, userId, requestNumber: "REQ-1001", status: "PENDING",

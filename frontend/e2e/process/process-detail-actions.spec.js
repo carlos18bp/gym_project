@@ -8,7 +8,7 @@ import {
   buildMockUser,
 } from "../helpers/processMocks.js";
 
-test("lawyer sees multiple case types and can navigate to detail", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees multiple case types and can navigate to detail", { tag: ['@flow:process-detail', '@module:processes', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const lawyerId = 7000;
   const clientId = 7001;
 
@@ -135,7 +135,7 @@ test("lawyer can search processes by plaintiff name", { tag: ['@flow:process-det
   await expect(rowMaria).toBeHidden({ timeout: 5_000 });
 });
 
-test("lawyer opens the participants modal from the process detail", { tag: ['@flow:process-users-modal', '@module:processes', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer opens the participants modal from the process detail", { tag: ['@flow:process-users-modal', '@module:processes', '@priority:P3', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const lawyerId = 7000;
   const client = {
     id: 7001,

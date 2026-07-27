@@ -6,7 +6,7 @@ import {
   PNG_1X1_BASE64,
 } from "../helpers/electronicSignatureMocks.js";
 
-test("upload electronic signature from Profile", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("upload electronic signature from Profile", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 123;
 
   await installElectronicSignatureApiMocks(page, { userId });

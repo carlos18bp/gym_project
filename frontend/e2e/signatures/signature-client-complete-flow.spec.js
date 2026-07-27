@@ -150,7 +150,7 @@ async function installSignatureClientMocks(page, { userId, lawyerId, hasSignatur
   });
 }
 
-test("client reaches the documents dashboard from the sidebar", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client reaches the documents dashboard from the sidebar", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 8300;
   const lawyerId = 8301;
 
@@ -173,7 +173,7 @@ test("client reaches the documents dashboard from the sidebar", { tag: ['@flow:s
   await expect(page.getByRole("button", { name: "Dcs. Por Firmar" })).toBeVisible({ timeout: 15_000 });
 });
 
-test("client sees pending signatures section with document awaiting their signature", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees pending signatures section with document awaiting their signature", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 8302;
   const lawyerId = 8303;
 
@@ -193,7 +193,7 @@ test("client sees pending signatures section with document awaiting their signat
   await expect(page.getByText("Pendiente", { exact: true })).toBeVisible();
 });
 
-test("client with signature clicks pending document and sees sign action", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client with signature clicks pending document and sees sign action", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 8306;
   const lawyerId = 8307;
 
@@ -217,7 +217,7 @@ test("client with signature clicks pending document and sees sign action", { tag
   await expect(page.getByRole("button", { name: /Firmar documento/i })).toBeVisible({ timeout: 10_000 });
 });
 
-test("client without signature is prompted to create one when signing", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client without signature is prompted to create one when signing", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 8304;
   const lawyerId = 8305;
 

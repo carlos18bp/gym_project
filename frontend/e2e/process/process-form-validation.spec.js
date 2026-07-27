@@ -107,7 +107,7 @@ test("save button becomes enabled when all required fields are filled", { tag: [
   await expect(saveBtn).toBeEnabled();
 });
 
-test("clicking Guardar Proceso with missing case type shows validation warning", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("clicking Guardar Proceso with missing case type shows validation warning", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:error'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {
@@ -149,7 +149,7 @@ test("clicking Guardar Proceso with missing case type shows validation warning",
   await expect(validationDialog).toContainText("obligatorio");
 });
 
-test("lawyer can add process stages", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer can add process stages", { tag: ['@flow:process-form-validation', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const { lawyerId, lawyer, client } = setupLawyerAndClient();
 
   await installProcessFormApiMocks(page, {

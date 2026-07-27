@@ -182,6 +182,7 @@ def audit(repo_root: Path) -> dict:
             unvalidated_out = (
                 list(needed) if has_draft and not has_qualifying and not has_junk else []
             )
+            stray = []
         else:
             satisfied = [o for o in needed if seen.get(o, {}).get("qualifying", 0) > 0]
             junk_only = [
@@ -195,6 +196,16 @@ def audit(repo_root: Path) -> dict:
                 and seen.get(o, {}).get("disqualified", 0) == 0
                 and seen.get(o, {}).get("unvalidated", 0) > 0
             ]
+            # Evidence credited to a class the flow never declared. The common
+            # cause is a flow-tagged test with no `@outcome` tag defaulting to
+            # `success` on a display/error/failure-only flow: the report then
+            # says `missing`/`partial` when the truth may be masked junk or
+            # masked coverage (proven live on tuhuella's shelter-browse, F47).
+            stray = sorted(
+                o for o, c in seen.items()
+                if o not in needed and any(c.get(k, 0) for k in
+                                           ("qualifying", "disqualified", "unvalidated"))
+            )
 
         if not needed:
             # Declared exempt (expectedSpecs: 0) — no required outcomes.
@@ -223,6 +234,10 @@ def audit(repo_root: Path) -> dict:
             "satisfied_outcomes": satisfied,
             "junk_only_outcomes": junk_only,
             "unvalidated_outcomes": unvalidated_out,
+            # Suspect only while a required class is unsatisfied — on a fully
+            # covered flow stray evidence is a tagging nit, not a masked state,
+            # and an exempt flow is intentionally uncovered by declaration.
+            "stray_evidence_outcomes": stray if status not in ("covered", "exempt") else [],
             "declares_outcomes": isinstance(definition.get("outcomes"), list),
         }
 
@@ -253,6 +268,7 @@ def _summarize(flows: dict, total_tests: int, spec_count: int) -> dict:
         "unvalidated": counts["unvalidated"],
         "missing": counts["missing"],
         "exempt": counts["exempt"],
+        "suspect": sum(1 for f in flows.values() if f["stray_evidence_outcomes"]),
         "declaring_outcomes": sum(1 for f in flows.values() if f["declares_outcomes"]),
     }
 
@@ -323,6 +339,21 @@ def print_report(result: dict) -> None:
             print(f"    - {flow_id}")
         if len(missing) > 20:
             print(f"    ... and {len(missing) - 20} more")
+
+    suspect = sorted(
+        (k for k, v in result["flows"].items() if v.get("stray_evidence_outcomes")),
+        key=lambda k: (result["flows"][k].get("priority") or "P4", k),
+    )
+    if suspect:
+        print(f"\n  SUSPECT FLOWS ({len(suspect)}) — evidence exists only in undeclared "
+              "classes (untagged tests default to `success`):")
+        print("    the reported status may mask junk or real coverage — apply the "
+              "@outcome tagging pass before trusting it")
+        for flow_id in suspect[:20]:
+            v = result["flows"][flow_id]
+            print(f"    - {flow_id} ({v['status']}; stray: {', '.join(v['stray_evidence_outcomes'])})")
+        if len(suspect) > 20:
+            print(f"    ... and {len(suspect) - 20} more")
 
     if result["undeclared_flows"]:
         print(f"\n  UNDECLARED FLOWS ({len(result['undeclared_flows'])}) — tagged but not in flow-definitions.json:")

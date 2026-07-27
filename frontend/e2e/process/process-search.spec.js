@@ -44,7 +44,7 @@ function buildLawyerProcesses(userId) {
   ];
 }
 
-test("lawyer searches processes by plaintiff name", { tag: ['@flow:process-search', '@module:processes', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer searches processes by plaintiff name", { tag: ['@flow:process-search', '@module:processes', '@priority:P3', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8820;
   const processes = buildLawyerProcesses(userId);
 

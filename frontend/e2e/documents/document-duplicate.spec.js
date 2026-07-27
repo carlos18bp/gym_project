@@ -124,7 +124,7 @@ test("lawyer sees original document in dashboard with action options", { tag: ['
   await expect(page.getByTestId("document-action-copy")).toBeVisible();
 });
 
-test("lawyer duplicates a document and the copy appears as Draft in the list", { tag: ['@flow:docs-duplicate', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer duplicates a document and the copy appears as Draft in the list", { tag: ['@flow:docs-duplicate', '@module:documents', '@priority:P3', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 8701;
 
   await installDuplicateDocMocks(page, { userId });

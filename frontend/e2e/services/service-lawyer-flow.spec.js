@@ -17,6 +17,7 @@ test(
       "@module:services",
       "@priority:P1",
       "@role:lawyer",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {

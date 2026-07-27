@@ -16,7 +16,7 @@ import { LEGAL_FILES_TABLE_PULSE } from "../helpers/flow-tags.js";
 
 test(
   "pending-signature rows pulse on mount and stop after ~8 seconds",
-  { tag: [...LEGAL_FILES_TABLE_PULSE, "@role:lawyer"] },
+  { tag: [...LEGAL_FILES_TABLE_PULSE, "@role:lawyer", '@outcome:display'] },
   async ({ page }) => {
     const userId = 9201;
     const docs = [

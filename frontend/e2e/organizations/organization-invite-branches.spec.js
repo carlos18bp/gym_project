@@ -32,7 +32,7 @@ test("corporate user sees invite form on organization dashboard", { tag: ['@flow
   await expect(page.getByPlaceholder("cliente@ejemplo.com")).toBeVisible();
 });
 
-test("corporate user with active organization sees members list", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
+test("corporate user with active organization sees members list", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate', '@outcome:display'] }, async ({ page }) => {
   const userId = 9401;
 
   await installOrganizationsDashboardApiMocks(page, {
@@ -58,7 +58,7 @@ test("corporate user with active organization sees members list", { tag: ['@flow
   await expect(membersModal.getByText("Client Two")).toBeVisible();
 });
 
-test("client user switches from their organizations to their requests tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client user switches from their organizations to their requests tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 9402;
 
   await installOrganizationsDashboardApiMocks(page, {

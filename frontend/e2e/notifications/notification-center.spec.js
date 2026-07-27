@@ -108,7 +108,7 @@ async function installNotificationsMocks(
 
 test(
   "bell shows unread badge and navigates to notification center",
-  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared"] },
+  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared", "@outcome:display"] },
   async ({ page }) => {
     const userId = 5000;
 
@@ -140,7 +140,7 @@ test(
 
 test(
   "notification center renders empty state when there are no notifications",
-  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared"] },
+  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared", "@outcome:display"] },
   async ({ page }) => {
     const userId = 5001;
 
@@ -210,7 +210,7 @@ test(
 
 test(
   "service request highlight does not fade the text (B2 regression for animate-pulse)",
-  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared"] },
+  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared", "@outcome:display"] },
   async ({ page }) => {
     // Regression: the previous implementation used Tailwind's ``animate-pulse``
     // which animates the element's ``opacity`` from 1 to 0.5 — fading text
@@ -299,7 +299,7 @@ test(
 
 test(
   "notification center lists notifications and switches tabs",
-  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared"] },
+  { tag: ["@flow:notification-center", "@module:notifications", "@priority:P2", "@role:shared", "@outcome:display"] },
   async ({ page }) => {
     const userId = 5002;
 

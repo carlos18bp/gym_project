@@ -90,7 +90,7 @@ test("document form renders all 6 field types with labels", { tag: ['@flow:docs-
   await expect(page.locator("#field-5")).toBeVisible(); // quality: allow-fragile-selector (stable DOM id)
 });
 
-test("document form generate button disabled until all fields filled", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("document form generate button disabled until all fields filled", { tag: ['@flow:docs-form-field-types', '@module:documents', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
   await openTemplateNameStep(page);
   await page.getByRole("button", { name: "Continuar" }).click();
 

@@ -198,7 +198,7 @@ test("lawyer sees signature modal with draw and upload options", { tag: ['@flow:
   await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
 });
 
-test("lawyer sees pending signatures tab with documents awaiting signatures", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees pending signatures tab with documents awaiting signatures", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8202;
   const clientId = 8203;
 

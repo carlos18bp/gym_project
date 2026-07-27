@@ -13,7 +13,7 @@ import {
  * - "Regresar" button navigates back
  */
 
-test("lawyer continuing with an empty document is blocked with a warning", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("lawyer continuing with an empty document is blocked with a warning", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 9300;
   const documentId = 301;
 

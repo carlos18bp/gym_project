@@ -29,7 +29,7 @@ async function setupLawyerDashboard(page, { userId, documents = [], folders = []
 }
 
 test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, () => {
-  test("lawyer navigates all dashboard tabs and sees correct content", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer navigates all dashboard tabs and sees correct content", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
     const userId = 9000;
     const docs = [
       buildMockDocument({ id: 101, title: "Minuta Contrato", state: "Draft", createdBy: userId }),
@@ -82,7 +82,7 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Minuta Beta")).toBeHidden();
   });
 
-  test("lawyer opens folder detail and sees Contraparte/Objeto/Fechas columns populated", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer opens folder detail and sees Contraparte/Objeto/Fechas columns populated", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
     const userId = 9002;
     const counterparty = "Acme Industrial S.A.S.";
     const objectDesc = "Prestación de servicios jurídicos de representación";

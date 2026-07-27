@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client posts section: opens the pinned post link in a new tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client posts section: opens the pinned post link in a new tab", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3590;
 
   await installOrganizationsClientApiMocks(page, {
@@ -61,7 +61,7 @@ test("client posts section: opens the pinned post link in a new tab", { tag: ['@
   await expect(popup).toHaveURL("https://example.com/");
 });
 
-test("client posts section: empty state when organization has no posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client posts section: empty state when organization has no posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3591;
 
   await installOrganizationsClientApiMocks(page, {
@@ -96,7 +96,7 @@ test("client posts section: empty state when organization has no posts", { tag: 
   ).toBeVisible();
 });
 
-test("client posts section: access denied friendly empty state when 403", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client posts section: access denied friendly empty state when 403", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:error'] }, async ({ page }) => {
   const userId = 3592;
 
   await installOrganizationsClientApiMocks(page, {

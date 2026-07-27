@@ -19,7 +19,7 @@ test.describe("SECOP Browse Flows", () => {
   });
 
   test("changing the page size re-queries the SECOP list", {
-    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -43,7 +43,7 @@ test.describe("SECOP Browse Flows", () => {
   });
 
   test("lawyer can navigate to process detail page", {
-    tag: ['@flow:secop-process-detail', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-process-detail', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -62,7 +62,7 @@ test.describe("SECOP Browse Flows", () => {
   // (same route, same testids), so it was removed instead of rewritten.
 
   test("lawyer can expand advanced filters and see UNSPSC filter", {
-    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();

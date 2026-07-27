@@ -89,7 +89,7 @@ test("process list renders existing process data with correct fields", { tag: ['
   await expect(page.getByText("RAD-EDIT-002").or(page.getByText("Laboral"))).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer edits an existing process via the UI: the update PUT carries the real process id, the new plaintiff and the edited stage date", { tag: ['@flow:process-edit', '@module:processes', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer edits an existing process via the UI: the update PUT carries the real process id, the new plaintiff and the edited stage date", { tag: ['@flow:process-edit', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:success', '@outcome:display'] }, async ({ page }) => {
   const lawyerId = 8904;
   const clientId = 8905;
 

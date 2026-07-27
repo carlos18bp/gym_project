@@ -8,7 +8,7 @@ import { installDashboardNavApiMocks } from "../helpers/dashboardNavMocks.js";
  * - QuickActionButtons.vue
  */
 
-test("lawyer quick action Todos los Procesos opens the general process list", { tag: ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("lawyer quick action Todos los Procesos opens the general process list", { tag: ['@flow:dashboard-quick-actions', '@module:dashboard', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 9830;
 
   await installDashboardNavApiMocks(page, { userId, role: "lawyer", isGymLawyer: true });

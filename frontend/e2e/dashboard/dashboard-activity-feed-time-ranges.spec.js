@@ -42,7 +42,7 @@ async function installDashboardDeepMocks(page, { userId, role, activities = [], 
   });
 }
 
-test("activity feed renders entries with varied time ranges and formatTimeAgo branches", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("activity feed renders entries with varied time ranges and formatTimeAgo branches", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 4010;
   const now = Date.now();
 

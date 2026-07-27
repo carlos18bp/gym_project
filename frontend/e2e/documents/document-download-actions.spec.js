@@ -86,7 +86,7 @@ async function installDownloadMocks(page, { userId, documents }) {
   });
 }
 
-test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF store action", { tag: ['@flow:docs-download', '@module:documents', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("lawyer clicks Descargar PDF on Published document — triggers downloadPDF store action", { tag: ['@flow:docs-download', '@module:documents', '@priority:P2', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 9840;
   const doc = buildMockDocument({ id: 901, title: "Doc Descargar PDF", state: "Published", createdBy: userId });
 

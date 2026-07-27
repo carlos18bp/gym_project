@@ -86,7 +86,7 @@ test("client clicks pending document and sees sign and reject actions", { tag: [
   await expect(page.getByTestId("document-action-reject")).toBeVisible();
 });
 
-test("client rejects pending document and it moves to archived tab", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client rejects pending document and it moves to archived tab", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const userId = 8604;
   await setupClientPendingTab(page, { userId, lawyerId: 8605 });
 

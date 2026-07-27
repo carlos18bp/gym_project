@@ -113,7 +113,7 @@ test("lawyer sees existing folders on Carpetas tab", { tag: ['@flow:docs-folders
   await expect(page.getByRole("row", { name: /Contratos/ }).getByText("1 documento", { exact: true })).toBeVisible();
 });
 
-test("lawyer creates a new folder via modal", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer creates a new folder via modal", { tag: ['@flow:docs-folders', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 7601;
   const documents = [
     buildMockDocument({ id: 6010, title: "Doc Alpha", state: "Draft", createdBy: userId }),

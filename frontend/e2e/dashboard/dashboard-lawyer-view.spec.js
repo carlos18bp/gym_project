@@ -7,7 +7,7 @@ import {
 import { installDashboardNavApiMocks } from "../helpers/dashboardNavMocks.js";
 
 test.describe("dashboard: lawyer view", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, () => {
-  test("lawyer replaces the welcome card profile photo", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer replaces the welcome card profile photo", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
     const userId = 8000;
 
     await installDashboardNavApiMocks(page, { userId, role: "lawyer", isGymLawyer: true });
@@ -43,7 +43,7 @@ test.describe("dashboard: lawyer view", { tag: ['@flow:dashboard-welcome-card', 
     await expect(page.getByText("Foto de perfil actualizada correctamente")).toBeVisible({ timeout: 10_000 });
   });
 
-  test("lawyer returns to the welcome card through the sidebar Inicio link", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer returns to the welcome card through the sidebar Inicio link", { tag: ['@flow:dashboard-welcome-card', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
     const userId = 8001;
 
     await installDashboardNavApiMocks(page, { userId, role: "lawyer", isGymLawyer: true });

@@ -147,7 +147,7 @@ test("subscription sign-in returns the visitor to the plans page", { tag: ['@flo
   await expect(page.getByRole("heading", { name: "Servicios Legales" })).toBeVisible();
 });
 
-test("user signs in successfully and is redirected to checkout", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("user signs in successfully and is redirected to checkout", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 901;
 
   await installSubscriptionSignInMocks(page, { signInResponse: "success", userId });
@@ -176,7 +176,7 @@ test("user signs in successfully and is redirected to checkout", { tag: ['@flow:
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });
 
-test("user sees error notification on invalid credentials", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("user sees error notification on invalid credentials", { tag: ['@flow:auth-subscription-signin', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 902;
 
   await installSubscriptionSignInMocks(page, { signInResponse: "invalid_credentials", userId });

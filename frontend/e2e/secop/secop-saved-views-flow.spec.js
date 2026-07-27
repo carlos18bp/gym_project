@@ -19,7 +19,7 @@ test.describe("SECOP Saved Views Flow", () => {
   });
 
   test("lawyer can navigate to saved views tab", {
-    tag: ['@flow:secop-save-view', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-save-view', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -33,7 +33,7 @@ test.describe("SECOP Saved Views Flow", () => {
   });
 
   test("lawyer can apply a saved view to load filters", {
-    tag: ['@flow:secop-apply-saved-view', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-apply-saved-view', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

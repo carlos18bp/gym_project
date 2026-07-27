@@ -50,7 +50,7 @@ async function dismissNotification(page, expectedText) {
   });
 }
 
-test("registration form shows validation error on bad sign-on request", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("registration form shows validation error on bad sign-on request", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   await installAuthSignOnApiMocks(page, {

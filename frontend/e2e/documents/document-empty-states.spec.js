@@ -6,7 +6,7 @@ import {
 } from "../helpers/dynamicDocumentMocks.js";
 
 test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, () => {
-  test("lawyer sees empty state when no documents", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  test("lawyer sees empty state when no documents", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 5000;
 
     await installDynamicDocumentApiMocks(page, {

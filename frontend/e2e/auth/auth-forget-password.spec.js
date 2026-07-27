@@ -19,7 +19,7 @@ async function dismissSwalDialog(page) {
 }
 
 
-test("user can request password reset code and reset password", { tag: ['@flow:auth-forgot-password', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user can request password reset code and reset password", { tag: ['@flow:auth-forgot-password', '@module:auth', '@priority:P2', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   await installForgetPasswordApiMocks(page, {
     sendPasscodeStatus: 200,
@@ -66,7 +66,7 @@ test("user can request password reset code and reset password", { tag: ['@flow:a
   await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
 });
 
-test("password reset with invalid passcode shows error", { tag: ['@flow:auth-forgot-password', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("password reset with invalid passcode shows error", { tag: ['@flow:auth-forgot-password', '@module:auth', '@priority:P2', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   test.setTimeout(60_000);
   await installForgetPasswordApiMocks(page, {
     sendPasscodeStatus: 200,

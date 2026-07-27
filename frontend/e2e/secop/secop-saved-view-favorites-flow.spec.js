@@ -38,7 +38,7 @@ test.describe("SECOP Saved View Favorites Flow", () => {
   });
 
   test("favorite saved view shows star icon filled", {
-    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -75,7 +75,7 @@ test.describe("SECOP Saved View Favorites Flow", () => {
   });
 
   test("lawyer can toggle favorite on a saved view", {
-    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-saved-view-favorites', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

@@ -71,7 +71,7 @@ async function openActionsModal(page) {
 
 test(
   "client uploads the first installment and sees it under review",
-  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:client"] },
+  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:client", '@outcome:success'] },
   async ({ page }) => {
     const userId = 9401;
     const paymentPlan = { documentId: DOC_ID, totalInstallments: 3, records: [] };
@@ -168,7 +168,7 @@ test(
 
 test(
   "lawyer rejects with a mandatory reason and the slot can be re-uploaded",
-  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:lawyer"] },
+  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:lawyer", '@outcome:error'] },
   async ({ page }) => {
     const userId = 9403;
     const paymentPlan = {

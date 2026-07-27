@@ -174,7 +174,7 @@ test("visitor without an account switches from subscription sign-in to sign-up",
   await expect(page.locator("#confirm_password")).toBeVisible();
 });
 
-test("subscription sign-up sends verification code and completes registration", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("subscription sign-up sends verification code and completes registration", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 8001;
 
   await installSubscriptionSignUpMocks(page, { userId });
@@ -218,7 +218,7 @@ test("subscription sign-up sends verification code and completes registration", 
   await expect(page).toHaveURL(/checkout/, { timeout: 15_000 });
 });
 
-test("subscription sign-up with existing email shows error", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("subscription sign-up with existing email shows error", { tag: ['@flow:auth-subscription-signup', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 8002;
 
   await installSubscriptionSignUpMocks(page, { userId, signUpResponse: "email_exists" });

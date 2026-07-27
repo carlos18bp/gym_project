@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client posts section: refresh button shows loading and updates rendered post", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client posts section: refresh button shows loading and updates rendered post", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3593;
 
   await installOrganizationsClientApiMocks(page, {

@@ -8,7 +8,7 @@ import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dy
  */
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
-test("lawyer sees pending-signature documents on Dcs. Por Firmar tab", { tag: ['@flow:sign-pending-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees pending-signature documents on Dcs. Por Firmar tab", { tag: ['@flow:sign-pending-documents', '@module:signatures', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8700;
   const docs = [
     buildMockDocument({

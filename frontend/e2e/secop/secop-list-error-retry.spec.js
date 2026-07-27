@@ -9,7 +9,7 @@ import { installSecopApiMocks } from "./secopMocks.js";
 
 test(
   "failed SECOP load recovers through the retry button",
-  { tag: ["@flow:secop-list-error-retry", "@module:secop", "@priority:P4", "@role:lawyer"] },
+  { tag: ["@flow:secop-list-error-retry", "@module:secop", "@priority:P4", "@role:lawyer", "@outcome:failure"] },
   async ({ page }) => {
     await installSecopApiMocks(page);
 

@@ -14,7 +14,7 @@ import { LEGAL_FILES_MENU_PULSE } from "../helpers/flow-tags.js";
 
 test(
   "lawyer follows the pulsing Archivos Juridicos badge to the documents module",
-  { tag: [...LEGAL_FILES_MENU_PULSE, "@role:lawyer"] },
+  { tag: [...LEGAL_FILES_MENU_PULSE, "@role:lawyer", '@outcome:display'] },
   async ({ page }) => {
     const userId = 9001;
 
@@ -51,7 +51,7 @@ test(
 
 test(
   "navigating to Archivos Juridicos persists the alerted-flag in sessionStorage",
-  { tag: [...LEGAL_FILES_MENU_PULSE, "@role:client"] },
+  { tag: [...LEGAL_FILES_MENU_PULSE, "@role:client", '@outcome:success'] },
   async ({ page }) => {
     const userId = 9002;
 

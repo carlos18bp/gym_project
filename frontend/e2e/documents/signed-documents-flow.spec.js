@@ -8,7 +8,7 @@ import {
   buildMockSignedDocument,
 } from "../helpers/signedDocumentsMocks.js";
 
-test("lawyer can view signed documents list", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("lawyer can view signed documents list", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 1700;
 
   const documents = [
@@ -105,7 +105,7 @@ test("lawyer sees multiple signed documents with different signature counts", { 
 });
 
 
-test("lawyer downloads the signatures certificate PDF of a formalized document", { tag: ['@flow:sign-download-signatures-pdf', '@module:signatures', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("lawyer downloads the signatures certificate PDF of a formalized document", { tag: ['@flow:sign-download-signatures-pdf', '@module:signatures', '@priority:P3', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 1700;
 
   const documents = [

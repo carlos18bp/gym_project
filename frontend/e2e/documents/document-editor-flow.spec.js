@@ -6,7 +6,7 @@ import {
   installTinyMceCloudStub,
 } from "../helpers/documentEditorMocks.js";
 
-test("lawyer can open DocumentEditor and save draft", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("lawyer can open DocumentEditor and save draft", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 1500;
   const documentId = 101;
 

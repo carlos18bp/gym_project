@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client sees an expired organization invitation and cannot accept or reject", { tag: ['@flow:org-client-invitations', '@module:organizations', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees an expired organization invitation and cannot accept or reject", { tag: ['@flow:org-client-invitations', '@module:organizations', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3520;
 
   await installOrganizationsClientApiMocks(page, {

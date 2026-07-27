@@ -75,7 +75,7 @@ async function openRejectedDocumentActions(page) {
   await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
 }
 
-test("lawyer sees rejected document in archived documents section", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees rejected document in archived documents section", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   await setupLawyerDashboard(page, 8400);
 
   await page.getByTestId("lawyer-tab-archived-documents").click();
@@ -88,7 +88,7 @@ test("lawyer sees rejected document in archived documents section", { tag: ['@fl
   await expect(page.getByText("Minuta Borrador")).toHaveCount(0);
 });
 
-test("rejected document exposes its rejection reason from the actions modal", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("rejected document exposes its rejection reason from the actions modal", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   await setupLawyerDashboard(page, 8401);
 
   await openRejectedDocumentActions(page);
@@ -99,7 +99,7 @@ test("rejected document exposes its rejection reason from the actions modal", { 
   await expect(page.getByText("Datos incorrectos")).toBeVisible();
 });
 
-test("lawyer reopens rejected document via editar y reenviar para firma", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer reopens rejected document via editar y reenviar para firma", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   await setupLawyerDashboard(page, 8402);
 
   await openRejectedDocumentActions(page);
@@ -113,7 +113,7 @@ test("lawyer reopens rejected document via editar y reenviar para firma", { tag:
   await expect(page.getByRole("button", { name: "Guardar y reenviar para firma" })).toBeVisible();
 });
 
-test("draft and rejected documents live on their respective tabs", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("draft and rejected documents live on their respective tabs", { tag: ['@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   await setupLawyerDashboard(page, 8403);
 
   // Default "Minutas" tab (Draft/Published scope) shows only the draft.

@@ -14,7 +14,7 @@ import {
  * - ResponseThread.vue — response display
  */
 
-test("client sees request detail with empty files and can open AddFilesModal", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees request detail with empty files and can open AddFilesModal", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 9880;
 
   await installLegalRequestsApiMocks(page, {
@@ -147,7 +147,7 @@ test("client sees request detail with attached files listed", { tag: ['@flow:leg
   await expect(page.getByText("No hay archivos adjuntos")).toBeHidden();
 });
 
-test("client posts a reply on the response thread", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client posts a reply on the response thread", { tag: ['@flow:legal-detail-client', '@module:legal-requests', '@priority:P1', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const userId = 9882;
 
   await installLegalRequestsApiMocks(page, {

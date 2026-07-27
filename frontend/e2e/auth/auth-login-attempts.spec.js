@@ -76,7 +76,7 @@ async function failLoginAttempt(page, expectedTries) {
     .toBe(expectedTries);
 }
 
-test("after 3 failed login attempts, user sees lockout timer", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("after 3 failed login attempts, user sees lockout timer", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(90_000);
 
   await seedSignInState(page);
@@ -108,7 +108,7 @@ test("after 3 failed login attempts, user sees lockout timer", { tag: ['@flow:au
   expect(secondsRemaining).toBeLessThanOrEqual(60);
 });
 
-test("user can submit again once the lockout countdown runs out", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("user can submit again once the lockout countdown runs out", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   await installLoginAttemptsMocks(page);
 
   // Land on the page mid-lockout: 3 failures, 2 seconds left on the timer
@@ -139,7 +139,7 @@ test("user can submit again once the lockout countdown runs out", { tag: ['@flow
   await expect(page.locator('[class~="swal2-popup"]')).toContainText("Credenciales inválidas", { timeout: 10_000 });
 });
 
-test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("lockout doubles after 6 failed attempts (60s then 120s)", { tag: ['@flow:auth-login-attempts', '@module:auth', '@priority:P2', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   await installLoginAttemptsMocks(page);
 

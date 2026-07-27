@@ -19,7 +19,7 @@ const lawyerAuth = (userId) => ({
   userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
 });
 
-test("lawyer fills email form and submits — triggers useSendEmail.sendEmail", { tag: ['@flow:docs-send-email', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer fills email form and submits — triggers useSendEmail.sendEmail", { tag: ['@flow:docs-send-email', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 9830;
   const doc = buildMockDocument({ id: 801, title: "Doc para Enviar Email", state: "Published", createdBy: userId });
 

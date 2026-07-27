@@ -6,7 +6,7 @@ import {
   installTinyMceCloudStub,
 } from "../helpers/documentEditorMocks.js";
 
-test("lawyer can go from DocumentEditor to Variables Config and save draft", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer can go from DocumentEditor to Variables Config and save draft", { tag: ['@flow:docs-variables-config', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 1600;
   const documentId = 555;
 

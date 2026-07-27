@@ -19,7 +19,7 @@ async function stubPendingDocumentsFull(page) {
 }
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
-test("lawyer clicks document on Dcs. Por Firmar and sees signature status info", { tag: ['@flow:sign-status-modal', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer clicks document on Dcs. Por Firmar and sees signature status info", { tag: ['@flow:sign-status-modal', '@module:signatures', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8720;
   const docs = [
     buildMockDocument({

@@ -4,7 +4,7 @@ import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   const userId = 2000;
 
@@ -116,7 +116,7 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   await expect(page).toHaveURL(/\/sign_on/);
 });
 
-test("registration with existing email shows error", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("registration with existing email shows error", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 2002;
 
   await installAuthSignOnApiMocks(page, {

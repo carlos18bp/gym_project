@@ -157,7 +157,7 @@ test.describe("error handling: 403 forbidden", { tag: ['@flow:misc-error-handlin
 });
 
 test.describe("error handling: 500 server error", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("sign-in answered with 500 clears the password and keeps the form usable", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("sign-in answered with 500 clears the password and keeps the form usable", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
     await installSignInMocks(page, { signInStatus: 500, userId: 4030 });
 
     await page.goto("/sign_in");
@@ -177,7 +177,7 @@ test.describe("error handling: 500 server error", { tag: ['@flow:misc-error-hand
 });
 
 test.describe("error handling: network errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("dropped sign-in request shows the error and stores no session", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("dropped sign-in request shows the error and stores no session", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
     await installSignInMocks(page, { userId: 4040 });
     // Registered after the base mocks so it wins: the transport itself fails.
     await page.route("**/api/sign_in/", (route) => route.abort("failed"));
@@ -193,7 +193,7 @@ test.describe("error handling: network errors", { tag: ['@flow:misc-error-handli
     await expect(page).toHaveURL(/\/sign_in/);
   });
 
-  test("app recovers from temporary network failure", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("app recovers from temporary network failure", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared', '@outcome:success'] }, async ({ page }) => {
     await installSignInMocks(page, { userId: 4041 });
     // Only the first submission is dropped; the retry reaches the API.
     await page.route("**/api/sign_in/", (route) => route.abort("failed"), { times: 1 });
@@ -238,7 +238,7 @@ test.describe("error handling: form validation errors", { tag: ['@flow:misc-erro
     await expect(page).toHaveURL(/\/sign_in/);
   });
 
-  test("form shows server validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("form shows server validation errors", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared', '@outcome:error'] }, async ({ page }) => {
     await mockApi(page, async ({ route, apiPath }) => {
       if (apiPath === "google-captcha/site-key/") return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
       if (apiPath === "google-captcha/verify/") return { status: 200, contentType: "application/json", body: JSON.stringify({ success: true }) };

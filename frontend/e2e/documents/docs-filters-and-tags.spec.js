@@ -224,7 +224,7 @@ test("lawyer opens tag filter and sees available tags", { tag: ['@flow:docs-tags
   await expect(page.getByRole("menuitem", { name: "Civil" })).toBeVisible();
 });
 
-test("lawyer creates a new tag via tag management", { tag: ['@flow:docs-tags', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer creates a new tag via tag management", { tag: ['@flow:docs-tags', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 7511;
   const documents = [
     buildMockDocument({ id: 5040, title: "Doc Para Tags", state: "Draft", createdBy: userId }),

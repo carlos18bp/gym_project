@@ -83,7 +83,7 @@ async function installLegalUpdateMocks(page, { userId, role, updates = [] }) {
 }
 
 test.describe("legal updates: display and CRUD", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, () => {
-  test("lawyer advances the carousel to the second active legal update", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("lawyer advances the carousel to the second active legal update", { tag: ['@flow:dashboard-legal-updates', '@module:dashboard', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 1200;
 
     const updates = [

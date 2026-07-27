@@ -84,7 +84,7 @@ async function openReportsTab(page) {
 
 test.describe("ReportsWidget Advanced Filters", () => {
   test("advanced filter dropdowns appear when Usuarios Registrados report type is selected", {
-    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     const userId = 5100;
     await installDashboardWithReportsMocks(page, { userId });
@@ -111,7 +111,7 @@ test.describe("ReportsWidget Advanced Filters", () => {
   });
 
   test("lawyer filters report by role and generates Excel", {
-    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:dashboard-reports-advanced-filters', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     const userId = 5101;
     await installDashboardWithReportsMocks(page, { userId });

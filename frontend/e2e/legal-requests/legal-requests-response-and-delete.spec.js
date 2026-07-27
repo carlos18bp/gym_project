@@ -15,7 +15,7 @@ import {
  * - LegalRequestDetail.vue — lawyer response flow, delete completion
  */
 
-test("lawyer submits a response on a legal request detail page", { tag: ['@flow:legal-response-thread', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("lawyer submits a response on a legal request detail page", { tag: ['@flow:legal-response-thread', '@module:legal-requests', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 9890;
 
   await installLegalRequestsApiMocks(page, {

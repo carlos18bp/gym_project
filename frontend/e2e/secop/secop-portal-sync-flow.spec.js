@@ -19,7 +19,7 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   });
 
   test("process detail shows Ver en SECOP link to external portal", {
-    tag: ['@flow:secop-view-in-portal', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-view-in-portal', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -36,7 +36,7 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
   });
 
   test("sync status shows last successful sync time and process count", {
-    tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     // quality: allow-no-interaction (SyncStatus renders straight from GET secop/sync/;
     // its only control is the Sincronizar button, covered by

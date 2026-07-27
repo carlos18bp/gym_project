@@ -16,6 +16,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {
@@ -70,6 +71,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {

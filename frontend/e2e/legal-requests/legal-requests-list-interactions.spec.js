@@ -28,7 +28,7 @@ const LAWYER_AUTH = (userId) => ({
 // ---------- Client view ----------
 
 test.describe("LegalRequestsList client view", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, () => {
-  test("client narrows the list with the top search bar", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("client narrows the list with the top search bar", { tag: ['@flow:legal-list-client', '@module:legal-requests', '@priority:P1', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 2400;
 
     await installLegalRequestsApiMocks(page, {

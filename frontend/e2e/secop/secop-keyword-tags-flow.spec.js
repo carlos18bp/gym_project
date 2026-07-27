@@ -36,7 +36,7 @@ test.describe("SECOP Keyword Tags Flow", () => {
   });
 
   test("saved view with keywords displays keyword tags", {
-    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -70,7 +70,7 @@ test.describe("SECOP Keyword Tags Flow", () => {
   });
 
   test("applying a saved view with keywords activates keyword filters", {
-    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-keyword-tags', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

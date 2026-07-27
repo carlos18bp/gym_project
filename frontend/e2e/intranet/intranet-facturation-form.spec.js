@@ -29,7 +29,7 @@ async function setupPage(page) {
   });
 }
 
-test("facturation form: save button disabled until all required fields filled", { tag: ['@flow:intranet-facturation-form', '@module:intranet', '@priority:P2', '@role:lawyer-gym'] }, async ({ page }) => {
+test("facturation form: save button disabled until all required fields filled", { tag: ['@flow:intranet-facturation-form', '@module:intranet', '@priority:P2', '@role:lawyer-gym', '@outcome:error'] }, async ({ page }) => {
   await setupPage(page);
   await page.goto("/intranet_g_y_m");
 
@@ -71,7 +71,7 @@ test("facturation form: file upload shows file in list and unsupported type is r
   await expect(page.getByText("contract.pdf")).toBeVisible();
 });
 
-test("facturation form: successful submission closes modal", { tag: ['@flow:intranet-facturation-form', '@module:intranet', '@priority:P2', '@role:lawyer-gym'] }, async ({ page }) => {
+test("facturation form: successful submission closes modal", { tag: ['@flow:intranet-facturation-form', '@module:intranet', '@priority:P2', '@role:lawyer-gym', '@outcome:success'] }, async ({ page }) => {
   await setupPage(page);
   await page.goto("/intranet_g_y_m");
 

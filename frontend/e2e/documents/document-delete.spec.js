@@ -78,7 +78,7 @@ test("lawyer sees delete option when clicking a draft document row", { tag: ['@f
   await expect(page.getByTestId("document-action-delete")).toBeVisible();
 });
 
-test("confirming the delete alert removes the document from the list", { tag: ['@flow:docs-delete', '@module:documents', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("confirming the delete alert removes the document from the list", { tag: ['@flow:docs-delete', '@module:documents', '@priority:P3', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 8831;
   const documents = [
     buildMockDocument({ id: 8010, title: "Doc Único", state: "Draft", createdBy: userId }),

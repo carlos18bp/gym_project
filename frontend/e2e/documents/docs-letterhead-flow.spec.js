@@ -102,7 +102,7 @@ test("letterhead modal shows specifications toggle and Word template section", {
   await expect(page.getByRole("heading", { name: "Especificaciones del Membrete para PDF" })).toBeHidden();
 });
 
-test("lawyer uploads a global Word letterhead template", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer uploads a global Word letterhead template", { tag: ['@flow:docs-letterhead', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 8604;
   const docs = [
     buildMockDocument({ id: 3040, title: "Doc Word Template", state: "Published", createdBy: userId }),

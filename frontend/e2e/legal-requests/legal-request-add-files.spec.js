@@ -17,7 +17,7 @@ const CLIENT_AUTH = (userId) => ({
 });
 
 test.describe("Add files to a legal request", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:client'] }, () => {
-  test("client uploads a file and the request lists it", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:client'] }, async ({ page }) => {
+  test("client uploads a file and the request lists it", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
     const userId = 2300;
 
     await installLegalRequestsApiMocks(page, {

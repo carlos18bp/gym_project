@@ -13,7 +13,7 @@ import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dy
  */
 
 // quality: allow-fragile-test-data (mock recipient email in send-email test double)
-test("backend 500 on send-email surfaces the error notification to the user", { tag: ['@flow:docs-send-email', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("backend 500 on send-email surfaces the error notification to the user", { tag: ['@flow:docs-send-email', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:failure'] }, async ({ page }) => {
   const userId = 9840;
   const doc = buildMockDocument({ id: 810, title: "Doc Falla Envio", state: "Published", createdBy: userId });
 

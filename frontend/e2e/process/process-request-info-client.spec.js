@@ -45,7 +45,7 @@ test("client sees their processes in process list", { tag: ['@flow:process-reque
   await expect(page.getByText("RAD-INFO-001").or(page.getByText("Cliente E2E"))).toBeVisible({ timeout: 10_000 });
 });
 
-test("client process list shows Solicitar Información button for requesting information", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client process list shows Solicitar Información button for requesting information", { tag: ['@flow:process-request-info', '@module:processes', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const clientId = 9002;
   const lawyerId = 9003;
 

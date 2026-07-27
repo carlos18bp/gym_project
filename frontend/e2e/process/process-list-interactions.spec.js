@@ -94,7 +94,7 @@ async function installProcessMocks(page, { userId, role = "lawyer", processes = 
 // ---------- Tab navigation ----------
 
 test.describe("ProcessList tab navigation", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, () => {
-  test("switching to Todos los Procesos tab reveals another lawyer's process", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+  test("switching to Todos los Procesos tab reveals another lawyer's process", { tag: ['@flow:process-list-view', '@module:processes', '@priority:P1', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 3200;
     const processes = [
       buildProcess({ id: 1, lawyerId: userId, clientId: 999, ref: "RAD-200", progress: 40, plaintiff: "Proceso Propio" }),

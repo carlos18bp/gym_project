@@ -90,7 +90,7 @@ test.describe("formalize document in-place (Completed → PendingSignatures)", {
     await expect(page.getByText("Seleccionar usuarios que deben firmar")).toBeVisible();
   });
 
-  test("formalize endpoint returns same document ID with PendingSignatures state", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("formalize endpoint returns same document ID with PendingSignatures state", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
     const userId = 9202;
     const docs = [
       buildMockDocument({
@@ -372,7 +372,7 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await expect(page.getByTestId("correction-signature-due-date")).toHaveValue(dueDate);
   });
 
-  test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
     const userId = 9212;
 
     const docs = [
@@ -428,7 +428,7 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     expect(docs[0].state).toBe("PendingSignatures");
   });
 
-  test("formalize error shows notification and stays on page", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("formalize error shows notification and stays on page", { tag: ['@flow:formalize-in-place', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:failure'] }, async ({ page }) => {
     const userId = 9213;
     const docs = [
       buildMockDocument({
@@ -462,7 +462,7 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     expect(page.url()).toContain("/document/use/formalize/704");
   });
 
-  test("correct error shows notification and stays on page", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("correct error shows notification and stays on page", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:failure'] }, async ({ page }) => {
     const userId = 9214;
     const docs = [
       buildMockDocument({

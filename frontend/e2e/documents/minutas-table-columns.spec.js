@@ -11,7 +11,7 @@ const TAGS = [...DOCS_MINUTAS_COLUMNS, "@role:lawyer"];
 test.describe("Minutas table — summary columns hidden", { tag: [...TAGS] }, () => {
   test(
     "summary columns are absent from Minutas tab header",
-    { tag: [...TAGS] },
+    { tag: [...TAGS, '@outcome:display'] },
     async ({ page }) => {
       const userId = 8001;
       const documents = [

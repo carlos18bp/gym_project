@@ -270,7 +270,7 @@ test.describe("DocumentForm complete button", { tag: ['@flow:docs-form-interacti
 // ---------- Save draft flow ----------
 
 test.describe("DocumentForm save draft", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, () => {
-  test("clicking Guardar Borrador with all fields filled triggers save and shows notification", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
+  test("clicking Guardar Borrador with all fields filled triggers save and shows notification", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, {
       mode: "editor",
       doc: buildDocWithVariables({ id: 962, title: "Minuta Guardar" }),
@@ -297,7 +297,7 @@ test.describe("DocumentForm save draft", { tag: ['@flow:docs-form-interactions',
     await expect(page.locator(".swal2-title")).toContainText(/Documento/i);
   });
 
-  test("clicking Guardar Borrador with empty fields shows validation warning", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
+  test("clicking Guardar Borrador with empty fields shows validation warning", { tag: ['@flow:docs-form-interactions', '@module:documents', '@priority:P2', '@role:client', '@outcome:error'] }, async ({ page }) => {
     const doc = await setupDocumentForm(page, {
       mode: "editor",
       doc: buildDocWithVariables({ id: 963, title: "Minuta Validar" }),

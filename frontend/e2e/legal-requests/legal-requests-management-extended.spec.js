@@ -97,7 +97,7 @@ async function installExtendedLegalRequestsMocks(page, { userId, role, requests,
   });
 }
 
-test("lawyer filters the list down to the pending requests", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer filters the list down to the pending requests", { tag: ['@flow:legal-management-lawyer', '@module:legal-requests', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 6100;
   const nowIso = new Date().toISOString();
 

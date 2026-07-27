@@ -49,7 +49,7 @@ async function loginAsAdmin(page, mockOverrides = {}) {
 
 test(
   "admin transfers processes and documents, archiving the source lawyer",
-  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin"] },
+  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin", "@outcome:success"] },
   async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto("/data_reassignment");
@@ -123,7 +123,7 @@ test(
 
 test(
   "execute failure surfaces the backend reason",
-  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin"] },
+  { tag: [...ADMIN_DATA_REASSIGNMENT, "@role:admin", "@outcome:error"] },
   async ({ page }) => {
     await loginAsAdmin(page, {
       executeError: { status: 400, detail: "El abogado destino está archivado." },

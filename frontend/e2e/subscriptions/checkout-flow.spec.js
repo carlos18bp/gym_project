@@ -94,7 +94,7 @@ test("selecting the free plan opens its checkout with the buyer's own data", { t
   await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toBeVisible();
 });
 
-test("selecting the corporate plan opens a paid checkout with the card form", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("selecting the corporate plan opens a paid checkout with the card form", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 9101;
   const userEmail = buildCheckoutEmail(userId);
 
@@ -121,7 +121,7 @@ test("selecting the corporate plan opens a paid checkout with the card form", { 
   await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toHaveCount(0);
 });
 
-test("free plan checkout activates subscription successfully", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("free plan checkout activates subscription successfully", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   const userId = 9102;
   const userEmail = buildCheckoutEmail(userId);
 

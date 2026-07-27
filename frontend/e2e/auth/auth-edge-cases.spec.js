@@ -130,7 +130,7 @@ test("user signs in from the Google OAuth callback route", { tag: ['@flow:auth-e
   expect(await page.evaluate(() => localStorage.getItem("token"))).toBe("e2e-token-new");
 });
 
-test("sign-in with invalid credentials shows error notification", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("sign-in with invalid credentials shows error notification", { tag: ['@flow:auth-edge-cases', '@module:auth', '@priority:P2', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   await installAuthEdgeCaseMocks(page, { scenario: "invalid_credentials" });
 
   await page.goto("/sign_in");

@@ -102,7 +102,7 @@ test("existing visibility permission pre-populates the summary when modal opens"
 });
 
 // quality: allow-fragile-test-data (mock client email in permissions test double)
-test("saving after granting visibility POSTs manage endpoint with that user_id", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("saving after granting visibility POSTs manage endpoint with that user_id", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const captured = { body: null };
   await setup(page, { capturedManagePayload: captured });
   await openPermissionsModal(page);

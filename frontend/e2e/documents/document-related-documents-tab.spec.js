@@ -263,7 +263,7 @@ test.describe("RelatedDocumentsTab empty state", { tag: ['@flow:docs-relationshi
 // ---------- RelatedDocumentsTab Desrelacionar button ----------
 
 test.describe("RelatedDocumentsTab unrelate button", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
-  test("Desrelacionar drops the relationship and removes the document from the list", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("Desrelacionar drops the relationship and removes the document from the list", { tag: ['@flow:docs-relationships', '@module:documents', '@priority:P3', '@role:shared', '@outcome:success'] }, async ({ page }) => {
     const state = await setupWithRelationships(page);
     await openRelationshipsModal(page);
     await switchToRelatedTab(page);

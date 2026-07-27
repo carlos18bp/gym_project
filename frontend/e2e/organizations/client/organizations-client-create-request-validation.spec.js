@@ -59,7 +59,7 @@ test("client create request modal: submit disabled until form valid", { tag: ['@
   await expect(submitBtn).toBeEnabled();
 });
 
-test("client create request modal: shows validation errors on 400 and stays open", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client create request modal: shows validation errors on 400 and stays open", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client', '@outcome:error'] }, async ({ page }) => {
   const userId = 3581;
 
   await installOrganizationsClientApiMocks(page, {

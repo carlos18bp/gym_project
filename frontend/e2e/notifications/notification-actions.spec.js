@@ -202,7 +202,7 @@ test(
 
 test(
   "pagination navigates between notification pages",
-  { tag: ["@flow:notification-pagination", "@module:notifications", "@priority:P4", "@role:shared"] },
+  { tag: ["@flow:notification-pagination", "@module:notifications", "@priority:P4", "@role:shared", "@outcome:display"] },
   async ({ page }) => {
     const many = [1, 2, 3, 4, 5].map((id) => buildNotification(id));
     await openNotifications(page, { notifications: many, pageSize: 3 });
