@@ -100,6 +100,7 @@
       <div class="flex flex-col items-center justify-center text-center">
         <SocialLoginButtons
           show-divider
+          :outlook-loading="isOutlookLoading"
           @google="handleLoginWithGoogle"
           @outlook="handleLoginWithOutlook"
         />
@@ -123,6 +124,7 @@
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"
+        data-testid="auth-illustration"
         class="w-full h-full object-cover"
       />
     </div>
@@ -244,10 +246,18 @@ const handleLoginWithGoogle = (response) => {
   loginWithGoogle(response, router, authStore);
 };
 
+// Keeps the Microsoft button disabled while its popup is open
+const isOutlookLoading = ref(false);
+
 /**
  * Handles login with Microsoft (Outlook)
  */
-const handleLoginWithOutlook = () => {
-  loginWithOutlook(router, authStore);
+const handleLoginWithOutlook = async () => {
+  isOutlookLoading.value = true;
+  try {
+    await loginWithOutlook(router, authStore);
+  } finally {
+    isOutlookLoading.value = false;
+  }
 };
 </script>

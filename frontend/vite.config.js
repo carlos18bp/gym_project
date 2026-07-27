@@ -9,6 +9,41 @@ import crypto from 'node:crypto'
 const isE2ECoverage = process.env.E2E_COVERAGE === '1'
 const isProduction = process.env.NODE_ENV === 'production'
 
+// Microsoft (MSAL) popup redirect URI. In production the backend serves this
+// path as a minimal page (see gym_app/views/spa.py); the dev server must do the
+// same so the popup does not boot the SPA and race with MSAL for the URL
+// fragment. Kept in sync with msalConfig.auth.redirectUri.
+const OUTLOOK_CALLBACK_PATH = '/auth/outlook/callback'
+const OUTLOOK_CALLBACK_HTML = `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Autenticacion con Microsoft</title>
+  </head>
+  <body style="font-family: system-ui, sans-serif; text-align: center; padding: 2rem;">
+    <p>Autenticacion completada. Puede cerrar esta ventana.</p>
+  </body>
+</html>
+`
+
+function outlookCallbackDevPage() {
+  return {
+    name: 'outlook-callback-dev-page',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const pathname = (req.url || '').split('?')[0]
+        if (pathname !== OUTLOOK_CALLBACK_PATH && pathname !== `${OUTLOOK_CALLBACK_PATH}/`) {
+          return next()
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(OUTLOOK_CALLBACK_HTML)
+      })
+    },
+  }
+}
+
 let coverageDepsPromise
 async function loadCoverageDeps() {
   if (!coverageDepsPromise) {
@@ -118,14 +153,20 @@ function e2eCoverageCollector() {
 
 const plugins = [
   vue(),
+  outlookCallbackDevPage(),
   VitePWA({
     registerType: 'autoUpdate',
     workbox: {
       skipWaiting: true,
       clientsClaim: true,
+      // The MSAL popup redirect URI must always come from the server: serving
+      // it from the SW (fallback or cache) would boot the SPA inside the popup.
+      navigateFallbackDenylist: [new RegExp(`^${OUTLOOK_CALLBACK_PATH}`)],
       runtimeCaching: [
         {
-          urlPattern: ({ request }) => request.destination === 'document',
+          urlPattern: ({ request, url }) =>
+            request.destination === 'document' &&
+            !url.pathname.startsWith(OUTLOOK_CALLBACK_PATH),
           handler: 'NetworkFirst',
         },
       ],

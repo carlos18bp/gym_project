@@ -20,7 +20,11 @@
         select-account
         :auto-login="false"
       />
-      <OutlookLoginButton class="sm:w-[240px]" @click="emit('outlook')" />
+      <OutlookLoginButton
+        class="sm:w-[240px]"
+        :loading="outlookLoading"
+        @click="emit('outlook')"
+      />
     </div>
   </div>
 </template>
@@ -31,6 +35,12 @@ import OutlookLoginButton from "@/components/auth/OutlookLoginButton.vue";
 defineProps({
   // Whether to render the "O continuar con" separator above the buttons.
   showDivider: {
+    type: Boolean,
+    default: false,
+  },
+  // A Microsoft sign-in popup is in flight: disables the button so a second
+  // click cannot start a competing MSAL interaction.
+  outlookLoading: {
     type: Boolean,
     default: false,
   },

@@ -171,6 +171,7 @@
 
           <SocialLoginButtons
             class="mt-6"
+            :outlook-loading="isOutlookLoading"
             @google="handleLoginWithGoogle"
             @outlook="handleLoginWithOutlook"
           />
@@ -367,13 +368,21 @@ const handleLoginWithGoogle = async (response) => {
   }
 };
 
-const handleLoginWithOutlook = () => {
+// Keeps the Microsoft button disabled while its popup is open
+const isOutlookLoading = ref(false);
+
+const handleLoginWithOutlook = async () => {
   // Redirect to checkout instead of dashboard after Microsoft registration
   const plan = route.query.plan || 'basico';
-  loginWithOutlook(router, authStore, {
-    redirect: { name: 'checkout', params: { plan } },
-    successMessageCreated: "¡Registro exitoso con Microsoft!",
-    successMessageLoggedIn: "¡Inicio de sesión exitoso con Microsoft!",
-  });
+  isOutlookLoading.value = true;
+  try {
+    await loginWithOutlook(router, authStore, {
+      redirect: { name: 'checkout', params: { plan } },
+      successMessageCreated: "¡Registro exitoso con Microsoft!",
+      successMessageLoggedIn: "¡Inicio de sesión exitoso con Microsoft!",
+    });
+  } finally {
+    isOutlookLoading.value = false;
+  }
 };
 </script>

@@ -91,6 +91,57 @@ describe("login_with_outlook.js", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  test("warns that a Microsoft window is already open when MSAL reports an interaction", async () => {
+    const router = { push: jest.fn() };
+    const authStore = { login: jest.fn() };
+
+    mockSignInWithMicrosoft.mockRejectedValueOnce({
+      errorCode: "interaction_in_progress",
+    });
+
+    await loginWithOutlook(router, authStore);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "Ya hay una ventana de Microsoft abierta. Ciérrala e inténtalo de nuevo.",
+      "warning"
+    );
+  });
+
+  test("explains how to unblock the popup when the browser blocks it", async () => {
+    const router = { push: jest.fn() };
+    const authStore = { login: jest.fn() };
+
+    mockSignInWithMicrosoft.mockRejectedValueOnce({
+      errorCode: "popup_window_error",
+    });
+
+    await loginWithOutlook(router, authStore);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "Tu navegador bloqueó la ventana de Microsoft. Permite las ventanas emergentes e inténtalo de nuevo.",
+      "error"
+    );
+  });
+
+  test("shows the backend message when the token is rejected by the API", async () => {
+    const router = { push: jest.fn() };
+    const authStore = { login: jest.fn() };
+
+    mockAxiosPost.mockRejectedValueOnce({
+      response: {
+        status: 401,
+        data: { error_message: "No se pudo verificar el correo de tu cuenta de Microsoft." },
+      },
+    });
+
+    await loginWithOutlook(router, authStore);
+
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "No se pudo verificar el correo de tu cuenta de Microsoft.",
+      "error"
+    );
+  });
+
   test("shows an error notification when the backend call fails", async () => {
     const router = { push: jest.fn() };
     const authStore = { login: jest.fn() };

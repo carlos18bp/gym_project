@@ -49,13 +49,49 @@ export const loginWithOutlook = async (router, authStore, options = {}) => {
 };
 
 /**
+ * User-facing message for each MSAL error code we can act on. Anything not
+ * listed here falls through to the backend message or the generic error.
+ */
+const MSAL_ERROR_MESSAGES = {
+  // User closed or cancelled the Microsoft popup
+  user_cancelled: {
+    message: "Autenticación con Microsoft cancelada",
+    type: "warning",
+  },
+  // Another Microsoft window is still open for this tab
+  interaction_in_progress: {
+    message:
+      "Ya hay una ventana de Microsoft abierta. Ciérrala e inténtalo de nuevo.",
+    type: "warning",
+  },
+  // The browser refused to open the popup
+  popup_window_error: {
+    message:
+      "Tu navegador bloqueó la ventana de Microsoft. Permite las ventanas emergentes e inténtalo de nuevo.",
+    type: "error",
+  },
+  empty_window_error: {
+    message:
+      "Tu navegador bloqueó la ventana de Microsoft. Permite las ventanas emergentes e inténtalo de nuevo.",
+    type: "error",
+  },
+};
+
+/**
  * Handles errors during the Microsoft login process.
  * @param {Object} error - The error object caught during login.
  */
 const handleOutlookError = (error) => {
-  // User closed or cancelled the Microsoft popup
-  if (error && error.errorCode === "user_cancelled") {
-    showNotification("Autenticación con Microsoft cancelada", "warning");
+  const msalError = error && MSAL_ERROR_MESSAGES[error.errorCode];
+  if (msalError) {
+    showNotification(msalError.message, msalError.type);
+    return;
+  }
+
+  // Validation errors from /api/outlook_login/ already carry a readable message
+  const backendMessage = error?.response?.data?.error_message;
+  if (backendMessage) {
+    showNotification(backendMessage, "error");
     return;
   }
 

@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    :disabled="disabled"
+    :disabled="disabled || loading"
     data-testid="outlook-login-button"
     class="flex items-center justify-center gap-3 w-full max-w-[240px] h-[40px] px-4 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
     @click="$emit('click')"
@@ -18,13 +18,19 @@
       <rect x="1" y="12" width="10" height="10" fill="#00A4EF" />
       <rect x="12" y="12" width="10" height="10" fill="#FFB900" />
     </svg>
-    <span>Continuar con Microsoft</span>
+    <span>{{ loading ? "Conectando…" : "Continuar con Microsoft" }}</span>
   </button>
 </template>
 
 <script setup>
 defineProps({
   disabled: {
+    type: Boolean,
+    default: false,
+  },
+  // A Microsoft popup is already running: keeps the button unclickable so a
+  // second click cannot orphan the MSAL interaction.
+  loading: {
     type: Boolean,
     default: false,
   },

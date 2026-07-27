@@ -196,7 +196,11 @@ test("outlook login failure shows error and keeps user on sign in", { tag: ['@fl
 
   const errorDialog = page.locator(".swal2-popup"); // quality: allow-fragile-selector (class selector targets stable UI structure)
   await expect(errorDialog).toBeVisible({ timeout: 15_000 });
-  await expect(errorDialog).toContainText("Error durante el inicio de sesión con Microsoft");
+  // The backend explains why the token was rejected; that message is surfaced
+  // verbatim instead of the generic Microsoft login error.
+  await expect(errorDialog).toContainText(
+    "No se pudo verificar el correo de tu cuenta de Microsoft."
+  );
 
   expect(await page.evaluate(() => localStorage.getItem("token"))).toBeNull();
   await expect(page).toHaveURL(/\/sign_in/);

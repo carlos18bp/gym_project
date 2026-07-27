@@ -87,9 +87,11 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 
 **Pasos:**
 1. Navega a `/sign_in` (o `/sign_on`, o el flujo de suscripción)
-2. Click "Continuar con Microsoft"
-3. Autentica en el popup de Microsoft
-4. El backend verifica el ID token y el correo
+2. Click "Continuar con Microsoft" (el botón queda deshabilitado mientras el popup está abierto)
+3. Elige la cuenta en el selector de Microsoft (`prompt: select_account`)
+4. El popup vuelve a `/auth/outlook/callback`, servido como página mínima por el backend
+   (no monta la SPA), y MSAL lo cierra
+5. El backend verifica el ID token y el correo
 
 **Ramificaciones:**
 - ├── **Usuario existente:** Redirect a `/dashboard` (o checkout en suscripción)
