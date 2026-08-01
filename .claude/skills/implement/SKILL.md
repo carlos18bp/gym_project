@@ -9,6 +9,12 @@ a. Read and understand the documentation in `docs/` and `tasks/`
 b. Get required code context from `backend/` and `frontend/` — o el layout que
    exista en el repo (ver [[methodology-setup]])
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la tarea a implementar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+
+Sin picker por diseño: no hay flags de modo — el argumento es la feature o el fix a implementar.
+
 ---
 
 ## Preflight (obligatorio)

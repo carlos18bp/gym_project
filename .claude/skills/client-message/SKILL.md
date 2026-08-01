@@ -74,7 +74,7 @@ detrás) y **el flujo de reporte se desactiva**. El tema se pide siempre.
 
 ---
 
-## Phase 1 — Gating de preguntas
+## Cómo invocar este skill (gating de preguntas)
 
 Reglas, evaluadas **en este orden**. Son el corazón de la skill:
 
@@ -139,7 +139,7 @@ que dice cómo cambiarlo, y es sobreescribible per-cliente. Una pregunta menos e
 
 ---
 
-## Phase 2 — Persistir el perfil (sólo si Phase 1 preguntó la firma)
+## Phase 2 — Persistir el perfil (sólo si el gating preguntó la firma)
 
 ```bash
 mkdir -p "$TOOLKIT/config/client-comms/clients"
@@ -179,7 +179,7 @@ no la tiene, **no entra**.
 
 ---
 
-## Phase 4 — Reporte de cambios (opcional, sólo si Phase 1 dijo que sí)
+## Phase 4 — Reporte de cambios (opcional, sólo si el gating dijo que sí)
 
 > **Orden no negociable: esta fase va ANTES del correo**, porque el correo
 > referencia el reporte ("te envié el reporte con…") y necesita su nombre real.

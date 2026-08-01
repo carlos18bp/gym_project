@@ -50,6 +50,28 @@ La detección usa `resolve_server_alias` + `is_dev_machine` de `scripts/lib/boot
 | `--cutover --confirm-downtime` | Paso 16: stop origin → final delta dump → start target → DNS guidance → smoke tests → commit `projects.yml` flip | **Sí, ≤5 min HTTP / ≈0 min si SSL blue-green** |
 | `--rollback` | Restart origin services, deja target en warm spare. DNS flip back es manual. | Reversión |
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4), en DOS niveles porque hay args posicionales:
+(1) posicionales + modo explícitos → directo, sin menú; (2) intención clara por contexto
+→ proponer el comando en una línea y esperar confirmación; (3) posicionales resueltos y
+sin modo → UNA AskUserQuestion (Q1); (4) nunca en fleet/headless/cron. **Posicionales
+primero:** si faltan `<proyecto>` y/o `<target_vps>`, pedirlos en TEXTO plano una sola
+vez (son datos, no flags — no van en un picker); recién con la coordenada resuelta
+entra Q1.
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| --check (Recommended) | preflight read-only de los 20 pasos, sin mutaciones | `bash scripts/maintenance/migrate-project.sh --check <proyecto> <target_vps>` |
+| --apply | snapshot + transfer + warm spare en target; origin sigue vivo, sin downtime | `bash scripts/maintenance/migrate-project.sh --apply <proyecto> <target_vps>` |
+
+**Qué NO se pregunta:** `--cutover` NUNCA es opción clickeable (blocklist §4: exige
+`--confirm-downtime` TIPEADO — un click no es confirmación de downtime); `--rollback`
+se tipea tras leer el runbook (`docs/migrate-project-runbook.md`). La continuación
+post-corrida vive en el menú position-aware de `## Acciones disponibles`.
+
 ## Flujo recomendado
 
 ```bash

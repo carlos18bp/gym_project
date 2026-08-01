@@ -57,6 +57,27 @@ hay venv, `node_modules` ni base de datos.
 
 ---
 
+## Cómo invocar este skill (picker condicional — §4)
+
+Gating ([[_output-protocol]] §4): la invocación normal corre **directo, sin
+menú** — con o sin flags, la intención de levantar el entorno ya es clara
+(reglas 1/2). El único picker es condicional: SOLO si Phase 5 detecta un puerto
+ocupado sin `--restart` pasado (conflicto: entorno ya corriendo), disparar UNA
+`AskUserQuestion` (Q1) en sesión interactiva. Con `--restart` explícito no se
+pregunta (regla 1); nunca en modo fleet/headless/cron.
+
+**Q1 — Conflicto detectado** (single-select):
+
+| label | description | preview |
+|---|---|---|
+| Dejar lo que corre (Recommended) | reusa el server que ya escucha en el puerto y sigue con el resto de las fases | `/dev-up` (default: reusa y sigue) |
+| Relanzar (`--restart`) | mata el proceso viejo (PID file + `fuser -k`) y vuelve a subirlo en el mismo puerto | `/dev-up --restart` |
+
+**Qué NO se pregunta:** `--backend-port=`/`--frontend-port=` y `--frontend-cmd=`
+— tuning aditivo que el operador tipea cuando lo necesita.
+
+---
+
 ## Phase 0 — Discovery
 
 ```bash
@@ -333,6 +354,16 @@ EOF
 - Para detener: `/dev-down`.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Bajar los servers | apaga backend + frontend (PID file + fallback por puerto); los logs se conservan | `/dev-down` |
+| Relanzar en otro puerto | si el default choca con otro proyecto en dev: baja lo levantado y sube en puertos alternos | `/dev-up --restart --backend-port=8001 --frontend-port=3001` |
 
 ## Output final
 

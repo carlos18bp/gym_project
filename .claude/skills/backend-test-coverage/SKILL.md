@@ -1,6 +1,7 @@
 ---
 name: backend-test-coverage
 description: "Backend test coverage — cover untested behavior in models, serializers, views, utils and tasks with tests that would fail if the behavior broke. Coverage is the readout, not the goal."
+argument-hint: "[--apply (escribe los tests; default dry-run: describe el diff)] [--files=<a,b> (acota el lote)] [--semantic-rules strict] [--junk-severity=error]"
 ---
 
 # Backend Test Coverage
@@ -8,6 +9,28 @@ description: "Backend test coverage — cover untested behavior in models, seria
 > **Cadena:** el conductor [[qa]] corre esta skill como Fase 4 (subagente
 > `qa-engineer-backend`, que la precarga vía `skills:`). Invocable suelta para
 > trabajo puntual de una capa.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara en la sesión ("cubrí el serializer de pagos") →
+proponer el comando en una línea y esperar confirmación; (3) sin argumentos en
+sesión interactiva → UNA sola AskUserQuestion (Q1).
+
+> **Invocada como subagente por [[qa]] (el conductor) o en un barrido fleet:
+> NUNCA pregunta — hereda el gating del conductor (regla 4 de §4).**
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Análisis (Recommended) | enumera behaviors sin test y describe el diff propuesto; no escribe archivos | `/backend-test-coverage` |
+| Escribir los tests | implementa al DoD de 3 puntos y valida el lote con el gate; bajo `/qa --apply` quedan staged sin commitear | `/backend-test-coverage --apply` |
+| Lote acotado | escribe sólo sobre los archivos indicados | `/backend-test-coverage --apply --files=<a,b>` |
+
+**Qué NO se pregunta:** el tuning del gate se tipea (`--files=`, `--suite
+backend`, `--semantic-rules`, `--junk-severity=`); `DJANGO_ENV=production` no es
+opcional (Execution rules); bajo [[qa]] el modo lo fija el conductor.
 
 ## Goal
 
@@ -158,6 +181,20 @@ declared abstention **is not a failure**.
    # equivalente crudo (fallback): python3 scripts/test_quality_gate.py --repo-root . \
    #   --suite backend --semantic-rules strict --junk-severity=error --include-file <archivo>
    ```
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Re-correr el gate sobre el lote | valida los archivos tocados contra las reglas anti-basura | `bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proyecto> --files=<a,b>` |
+| Correr sólo los tests nuevos | con el selector de producción, desde `backend/` | `DJANGO_ENV=production pytest <archivos> -v` |
+| Pasar a escritura | implementar los tests que el análisis dejó descritos | `/backend-test-coverage --apply` |
+
+Nunca ofrecer como fila clickeable `--write-junk-baseline` (el baseline sólo se
+congela tipeado) ni `/deploy-and-check` (manual-only).
 
 ---
 

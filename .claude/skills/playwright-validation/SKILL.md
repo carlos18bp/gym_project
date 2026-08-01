@@ -11,6 +11,12 @@ Esta skill estandariza el uso de **Playwright MCP** (instalado en Claude Code) p
 
 > **Autorización del operador (Gustavo):** Playwright MCP queda autorizado a correr lo que necesite sin pedir permiso paso a paso, **excepto** cualquier mutación contra un proyecto production (ver §5).
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión (los disparadores de §1) → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por qué validar y dónde (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+
+Sin picker por diseño: los flags son parámetros de la corrida (URL, usuario, viewport); se tipean. El proyecto, si falta y no se infiere del cwd, se pregunta en texto.
+
 ---
 
 ## 1. Cuándo activarse
@@ -407,6 +413,8 @@ drafts que mutan se validan sólo en staging/dev.
 ---
 
 ## Output final
+
+Sin menú por diseño (§4): la validación visual ES el entregable; acciones mutantes exigen autorización explícita del operador.
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
 (una fila por garantía verificada en el run):

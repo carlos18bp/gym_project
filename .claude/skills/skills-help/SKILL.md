@@ -20,6 +20,12 @@ nuevas aparecen solas y ninguna queda hardcodeada/obsoleta.
 >
 > Claude Code substituye `$ARGUMENTS` con los flags/términos pasados (vacío si se omiten).
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → directo, sin menú; (2) intención clara → proponer el comando en una línea; (3) sin args → UNA AskUserQuestion; (4) nunca en fleet/headless/cron.
+
+Sin picker por diseño: los flags son filtros aditivos de un catálogo read-only; se tipean (--all, término de filtro).
+
 ---
 
 ## Phase 0 — Discovery

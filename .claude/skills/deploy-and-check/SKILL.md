@@ -2,7 +2,7 @@
 name: deploy-and-check
 description: "VPS-only — Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
 disable-model-invocation: true
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 ---
 
@@ -44,6 +44,29 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-
 > - Con argumento: `/deploy-and-check release/may-2026` → hace checkout a esa rama y despliega.
 >
 > Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name (empty if omitted).
+
+---
+
+## Cómo invocar este skill (picker pre-run — §4)
+
+Skill **manual-only por política** (`disable-model-invocation: true`): no es
+auto-invocable ni ofrecible como opción clickeable por otras skills — este picker
+aplica sólo cuando el operador la invoca por slash. Gating ([[_output-protocol]] §4):
+
+1. Con argumento (`/deploy-and-check <rama>`) → ejecutar directo, sin menú.
+2. Rama clara por el contexto de la sesión → proponer el comando en una línea y
+   esperar confirmación.
+3. Sin argumento e intención difusa → UNA `AskUserQuestion` (Q1). Nunca en modo
+   fleet/headless/cron.
+
+**Q1 — Rama** (single-select):
+
+| label | description | preview |
+|---|---|---|
+| Rama actual del clon (Recommended) | despliega la rama en que está parado el repo (`git rev-parse --abbrev-ref HEAD`, el default de Phase 0) | `/deploy-and-check` |
+| Otra rama | elegir Other y tipear el nombre — hace checkout a esa rama y despliega | `/deploy-and-check <rama>` |
+
+**Qué NO se pregunta:** nada oculto — el único argumento es la rama.
 
 ---
 
@@ -289,6 +312,20 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 - Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Re-correr sólo el check (Recommended) | read-only: re-valida servicios + health del proyecto sin redeployar | `bash ~/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh <proyecto>` |
+| Ver logs del servicio | últimas 50 líneas del journal de gunicorn/huey (Phase 5) | `sudo journalctl -u <gunicorn_svc> --no-pager -n 50` |
+| Re-probar health endpoint | curl a /api/health/ del dominio (Phase 4, paso 10) | `curl -s https://<dominio>/api/health/` |
+
+Blocklist §4: ningún restart de servicio se ofrece como fila — los restarts ya
+corrieron en Phase 3 y cualquier restart extra exige leer el journal antes.
 
 ## Output final
 

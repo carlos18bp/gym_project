@@ -1,7 +1,6 @@
 ---
 name: merge-when-green
-description: "Integra la rama actual cuando el CI está en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (con fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Si la rama ya está contenida en la base (mergeada, incluso por squash), lo verifica, deja la base local al día y termina sin PR ni espera de CI. Defaults seguros; flags para override."
-disable-model-invocation: true
+description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni para mergear ramas release (--allow-release-merge se tipea, jamás se ofrece), ni en cron/headless. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
 allowed-tools: Bash, AskUserQuestion
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] [--allow-release-merge] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
@@ -62,6 +61,30 @@ argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] 
 > total es ≈ el del CI más lento, no la suma. Invocarlo desde un repo de proyecto
 > es **error duro**. No existe eje `--all-vps`: no se mergea a ciegas en clones de
 > otros VPS.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara en la sesión ("mergealo cuando esté verde" tras un
+commit reciente de esta conversación) → proponer el comando en una línea y
+esperar confirmación; (3) invocación ambigua (no está claro qué rama/repo se
+integra) → UNA sola AskUserQuestion; (4) nunca en cron/headless ni dentro del
+barrido Path C (los repos del barrido no re-preguntan).
+
+**Q1 — Método de merge** (`multiSelect: false`; sólo Path A y sólo si el
+operador no lo indicó):
+
+| label | description | preview |
+|---|---|---|
+| Squash (Recommended) | default del fleet: un commit limpio en la base y borra la rama | `/merge-when-green` |
+| Merge commit | conserva los commits de la rama como ancestros en la base | `/merge-when-green --merge-method=merge` |
+| Rebase | reescribe los commits de la rama sobre la base, sin merge commit | `/merge-when-green --merge-method=rebase` |
+
+**Qué NO se pregunta:** `--allow-release-merge` (mergear una release se TIPEA
+— blocklist §4), `--autonomous` (quita la pausa de aprobación del fix loop) y
+`--no-verify` (salta el green gate del toolkit) son overrides deliberadamente
+incómodos y jamás se ofrecen. `--fix-nontest`, `--max-iterations=N`,
+`--no-propagate`, `--no-ci-watch`: tuning simétrico al default, se tipean.
 
 ## Phase 0 — Preflight + ruteo
 

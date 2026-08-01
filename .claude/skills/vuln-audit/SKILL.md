@@ -43,6 +43,35 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 - **Sin `Co-Authored-By: Claude`** ni footers de atribución de IA en los commits (regla explícita en los `CLAUDE.md` del repo).
 - Si un pre-commit hook falla, investigar y arreglar la causa raíz; no bypass.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): si el operador pasó cualquier argumento
+(`backend`/`frontend`/`--apply`) → ejecutar directo, sin menú. Si la intención
+es clara por la sesión (p.ej. acaba de llegar el aviso de un CVE puntual) →
+proponer el comando en una línea y esperar confirmación. Sin argumentos → UNA
+sola `AskUserQuestion` con Q1+Q2 fusionadas. Nunca preguntar en modo
+fleet/headless/cron ni dentro de un barrido.
+
+**Q1 — Modo** (selección única):
+
+| label | description | preview |
+|---|---|---|
+| Auditar *(Recommended)* | read-only: escanea y arma el plan de bumps, no escribe nada | `/vuln-audit` |
+| Aplicar (`--apply`) | aplica upgrades de dependencias — puede romper builds; corre tests después | `/vuln-audit --apply` |
+
+**Q2 — Capa** (selección única):
+
+| label | description | preview |
+|---|---|---|
+| Ambas *(Recommended)* | backend (pip-audit) + frontend (npm audit) | `/vuln-audit` |
+| Sólo backend | pip-audit + pip outdated sobre el venv | `/vuln-audit backend` |
+| Sólo frontend | npm audit + npm outdated | `/vuln-audit frontend` |
+
+**Qué NO se pregunta:** no hay más flags que estos dos ejes. Los majors nunca
+tienen opción de aplicarse (no existe flag; se evalúan aparte vía el menú
+post-reporte), y el `git push` + PR no se ofrece pre-run — queda al operador
+tras un `--apply` (ver `## Acciones disponibles`).
+
 ## Detección de entorno (Fase 0)
 0. Parsear `$ARGUMENTS`: superficie (vacío/`backend`/`frontend`) y `APPLY=true` si trae `--apply`. Sin `--apply` la corrida es **solo auditoría**: los pasos marcados "(solo `--apply`)" en todas las fases se saltan.
 1. (solo `--apply`) `git status --porcelain` → si imprime cualquier línea, abortar con: "Working tree no está limpio. Commitea o stashea antes de correr vuln-audit --apply."

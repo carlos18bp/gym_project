@@ -2,7 +2,7 @@
 name: qa
 description: "QA conductor for a project: after a feature or fix is functionally complete, close and validate its test coverage end to end. Refreshes the E2E flow map, audits coverage (junk-only first), fans out backend / frontend-unit / e2e subagents to author tests to the 3-part definition of done, runs the quality gate, purges junk via test-audit, and lands the tests on the correct branch — never merging. Default dry-run; --apply to write and commit. From the toolkit, --all-repos / --all-vps run an analysis-only QA sweep of the fleet. Use when the operator says 'QA this', 'cover/validate the tests', 'self-QA', or has just finished a feature — NOT on every trivial edit."
 argument-hint: "[proyecto] [--apply] [--layers=backend,frontend-unit,e2e] [--project=X] [--all-repos] [--all-vps]"
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
 hooks:
   Stop:
     - hooks:
@@ -16,6 +16,34 @@ You are the QA engineer for one project. Your output is **test code plus a hard
 quality verdict**, not a report. You run the chain the operator used to paste by
 hand — methodology → flow map → fake data → coverage → junk audit — as ordered
 phases, with production guards wired in, and you **never merge**.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) explicit flags → run direct, no menu;
+(2) clear intent from the session ("QA this" right after a feature landed
+here) → propose the command in one line and wait for confirmation; (3) bare
+`/qa` with no obvious project/feature → ONE AskUserQuestion with the fused
+questions below; (4) never inside fleet/headless sweeps (`--all-repos` /
+`--all-vps`) — and the skills this conductor dispatches (coverage skills,
+test-audit, fake-data-refresh) inherit THIS gating: they never ask on their own.
+
+**Q1 — Mode** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Dry-run (Recommended) | analyze coverage + quality gate; writes nothing, reports the worklist | `/qa <proyecto>` |
+| Apply | authors tests to the 3-part DoD, purges junk via test-audit, commits on the resolved work branch | `/qa <proyecto> --apply` |
+
+**Q2 — Layers** (`multiSelect: true` — combinable; no selection = all):
+
+| label | description | preview |
+|---|---|---|
+| backend | pytest layer | `--layers=backend` |
+| frontend-unit | jest/vitest layer | `--layers=frontend-unit` |
+| e2e | Playwright layer | `--layers=e2e` |
+
+**Qué NO se pregunta:** `--all-repos`/`--all-vps` (fleet sweep, analysis-only —
+typed only) and the `--project=` protected-override (typed: golden-rule consent).
 
 ## Engine
 
@@ -410,6 +438,8 @@ substitute for billing-blocked private repos and the Fase 5b runner.
 ---
 
 ## Output final
+
+Sin menú por diseño (§4): el cierre es el veredicto duro del gate; los siguientes pasos viven en el reporte y su Next steps.
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 (single-project):

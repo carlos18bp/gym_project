@@ -2,7 +2,7 @@
 name: fake-data-refresh
 description: "Borra y recrea fake data en un proyecto Django. Refusa en producción. Detecta automáticamente las management commands del proyecto (delete_fake_data + create_fake_data) y las ejecuta con guardrails. Funciona en staging del fleet, dev local y proyectos no registrados."
 argument-hint: "[proyecto] [--records=N] [--skip-delete] [--dry-run]"
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, AskUserQuestion
 ---
 
 # Fake Data Refresh
@@ -10,6 +10,31 @@ allowed-tools: Bash, Read
 Skill para refrescar (`delete + create`) la fake data de un proyecto Django. Diseñada con un **gate inverso de producción**: detecta señales afirmativas de prod y refusa; en cualquier otro caso (staging del fleet, dev local, proyectos no registrados en `projects.yml`) procede.
 
 > **Autorización:** Gustavo autoriza ejecutar los management commands del proyecto sin confirmación adicional, **excepto** cuando se detecta producción — ahí el bloqueo es absoluto.
+
+---
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): flags/argumentos explícitos (`[proyecto]`,
+`--records=`, `--skip-delete`, `--dry-run`) → ejecutar directo, sin menú.
+Intención clara por la sesión (recién cambió un modelo y pide data fresca) →
+proponer el comando en una línea y esperar confirmación. Sin argumentos → UNA
+sola `AskUserQuestion` (Q1). Nunca preguntar en modo fleet/headless/cron ni
+dentro de un barrido.
+
+**Invocada por `/qa` (conductor): hereda su gating — dentro del barrido del
+conductor esta skill NUNCA pregunta** (regla 4 de §4).
+
+**Q1 — Modo** (selección única):
+
+| label | description | preview |
+|---|---|---|
+| Dry-run (`--dry-run`) *(Recommended)* | corre gate + detección + sondeo de signatures e imprime el plan exacto; no ejecuta nada | `/fake-data-refresh --dry-run` |
+| Aplicar | BORRA y recrea fake data; rehusado en producción por guard | `/fake-data-refresh` |
+
+**Qué NO se pregunta:** `--records=N` y `--skip-delete` son tuning (defaults:
+50 records, delete incluido) — se tipean a propósito. `[proyecto]` tampoco:
+default es el CWD; para otro proyecto se pasa el path tipeado.
 
 ---
 
@@ -268,6 +293,19 @@ de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 - **Adaptativo:** detecta los comandos del proyecto (no asume nombres fijos).
 - **Idempotente CUANDO hay delete cmd y no se usa `--skip-delete`** (delete + create da el mismo estado final). Sin delete, o con `--skip-delete`, los registros se acumulan.
 - **Reportable:** siempre imprime counts y warnings; el operador sabe qué pasó.
+
+---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Aplicar el plan del dry-run | ejecuta el delete + create exactos que mostró el plan (BORRA fake data; prod sigue bloqueada por el gate) | `/fake-data-refresh <proyecto>` |
+| Re-correr con más volumen | más registros por modelo para paginación E2E profunda; delete + create de nuevo | `/fake-data-refresh <proyecto> --records=200` |
+| Dry-run del hermano staging | plan read-only de otro target real (tuhuella/vastago/tenndalux/gym_project_staging) | `/fake-data-refresh ~/webapps/<hermano> --dry-run` |
 
 ---
 
