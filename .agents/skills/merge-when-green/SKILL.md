@@ -1,6 +1,6 @@
 ---
 name: merge-when-green
-description: "Integra la rama actual cuando el CI está en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (con fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Defaults seguros; flags para override."
+description: "Integra la rama actual cuando el CI está en verde. En repos de proyecto: commit + push + PR + espera el CI de GitHub Actions y mergea cuando pasa (con fix loop de tests rotos si falla). En vps-ops-toolkit (commit directo a master, sin PR): corre los validadores del CI localmente como green gate y, si pasan, hace commit + push a master, propaga al fleet y confirma el run de CI en master. Si la rama ya está contenida en la base (mergeada, incluso por squash), lo verifica, deja la base local al día y termina sin PR ni espera de CI. Defaults seguros; flags para override."
 disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] [--allow-release-merge] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
@@ -45,6 +45,15 @@ argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] 
 > - **Host equivocado** (`host_status=wrong-host`) → **aborta sin tocar nada**. El
 >   trabajo de ese proyecto vive en el clon de otro VPS; commitear en éste deja el
 >   fleet inconsistente.
+>
+> **Short-circuit "el trabajo ya está en la base" (A, B y C, siempre ON):** tras
+> commitear lo pendiente, si la rama ya está contenida en `main`/`master` —
+> verificado por **contenido**, así que vale también para un **squash merge**, donde
+> los commits de la rama no quedan como ancestros — se **verifica y se reporta dónde
+> aterrizó**, se deja la base local al día (`checkout` + `pull --ff-only`) y se
+> termina: **no se crea PR, no se espera el CI, no se mergea**. El verde que habilitó
+> ese merge ya es el veredicto. La rama local obsoleta se nombra, **no se borra**. No
+> hay flag: el reporte entrega el comando para mirar el CI a mano si querés.
 >
 > **Modo multi-repo (`--all-repos`, sólo desde `vps-ops-toolkit`) → Path C:**
 > recorre `LOCAL_PROJECTS` de este host + el toolkit en **dos fases** — primero
@@ -197,12 +206,121 @@ salida: el operador tiene que ver por qué se mergeó o por qué no.
 
 Reutilizá el flujo de `/git-commit` sobre la rama de trabajo:
 
-- `git status --porcelain` vacío → no hay nada que commitear; seguí a Phase 2 (la
-  rama ya debe estar pusheada).
+- `git status --porcelain` vacío → no hay nada que commitear; seguí a Phase 1.5
+  (la rama ya debe estar pusheada). **No** saltes directo a Phase 2: con el tree
+  limpio el caso más probable es que el trabajo ya esté en la base.
 - Con cambios → inspeccioná `git status` + `git diff`, generá un mensaje
   `FEAT/FIX/DOCS` propio, `git add` selectivo + `git commit -m "…"` + `git push`
   (con `-u origin <rama>` si no hay upstream). Mostrá cada comando antes de correrlo.
 - Si el push falla → reportá y **abortá** (sin PR pusheado no hay CI que esperar).
+
+## Phase 1.5 — ¿El trabajo ya está en la base?
+
+**El hueco que cierra:** con varias sesiones de Claude Code abiertas sobre el
+MISMO repo, comparten working tree y rama. La primera que corre `/merge-when-green`
+mergea y se lleva puesto el trabajo de las demás. Cuando le toca el turno a la
+sesión 2, su trabajo **ya está en `main`/`master`** — y esperar el CI ahí es tiempo
+muerto: ese contenido ya pasó los checks que gatearon aquel merge. Peor: si su rama
+nunca tuvo PR propio, Phase 2 abriría un **PR nuevo y vacío**.
+
+Corre acá y no antes porque Phase 1 ya commiteó y pusheó lo pendiente — evaluar
+antes leería trabajo sin commitear como "no hay nada nuevo". Y corre acá y no
+después porque Phase 2 es la que crea el PR.
+
+```bash
+# Las variables NO sobreviven entre bloques bash de una skill (sólo el cwd):
+# re-derivar todo acá, igual que Phase 0.5 y Phase 2.
+CURRENT="$(git rev-parse --abbrev-ref HEAD)"
+DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
+git fetch origin "$DEFAULT_BRANCH" --quiet 2>/dev/null || true
+BASE="origin/$DEFAULT_BRANCH"
+LANDED=0; LANDED_HOW=""
+
+# Precondición: sólo se evalúa con el tree limpio. Con cambios sin commitear hay
+# trabajo nuevo por definición — nunca cortocircuitar. Es el vector de falso
+# positivo más probable acá: el `git add` de Phase 1 es SELECTIVO, así que la
+# sesión de al lado pudo dejar archivos sin trackear.
+if [ "$CURRENT" = "HEAD" ] || ! git rev-parse --verify --quiet "$BASE" >/dev/null; then
+    # detached HEAD o sin base remota: no se puede afirmar NADA. Flujo normal.
+    echo "⚠️  no evaluable (detached HEAD o falta $BASE) — sigue el flujo normal."
+elif [ -n "$(git status --porcelain)" ]; then
+    echo "ℹ️  working tree con cambios — hay trabajo nuevo; sigue el flujo normal."
+elif [ "$CURRENT" = "$DEFAULT_BRANCH" ]; then
+    # La sesión quedó parada sobre la base (la rama anterior la borró --delete-branch
+    # + Phase 6 de la sesión que mergeó). No hay rama de trabajo que integrar.
+    LANDED=1; LANDED_HOW="la sesión ya está sobre $DEFAULT_BRANCH"
+else
+    # Capa 1 — fast path. Cubre --merge, --rebase y la rama ya integrada tal cual.
+    AHEAD="$(git rev-list --count "$BASE..HEAD" 2>/dev/null || echo -1)"
+    if [ "$AHEAD" = "0" ]; then
+        LANDED=1; LANDED_HOW="0 commits por delante de $BASE"
+    else
+        # Capa 2 — squash path. El default del fleet es --squash: la rama mergeada
+        # NO queda como ancestro y sus commits cambian de patch-id, así que
+        # is-ancestor/rev-list/cherry son todos ciegos acá. merge-tree hace el merge
+        # de 3 vías en memoria: si el árbol resultante ES el de la base, mergear
+        # sería un no-op ⇒ todo el trabajo de la rama ya está ahí.
+        # rc=0 limpio · rc=1 conflicto (⇒ NO landed) · rc>1 error//git<2.38.
+        # OJO: sin pipe en la asignación — con `| head -1` el $? sería el de head
+        # (siempre 0) y se perdería el rc de git, que es justo lo que distingue
+        # "merge limpio" de "conflicto".
+        MT_OUT="$(git merge-tree --write-tree "$BASE" HEAD 2>/dev/null)"; MT_RC=$?
+        MT="$(printf '%s\n' "$MT_OUT" | head -1)"
+        BASE_TREE="$(git rev-parse "$BASE^{tree}" 2>/dev/null || echo none)"
+        if [ "$MT_RC" -eq 0 ] && [ -n "$MT" ] && [ "$MT" = "$BASE_TREE" ]; then
+            LANDED=1; LANDED_HOW="mergear a $DEFAULT_BRANCH sería un no-op (mismo árbol)"
+        elif [ "$MT_RC" -gt 1 ]; then
+            # git < 2.38 no tiene --write-tree. Sin capa 2 no se puede afirmar nada
+            # sobre un squash ⇒ seguir el flujo normal (conservador, nunca al revés).
+            echo "ℹ️  git sin 'merge-tree --write-tree' — detección de squash no disponible."
+        fi
+        # Señal informativa: parte del trabajo ya está y parte no.
+        EQ="$(git cherry "$BASE" HEAD 2>/dev/null | grep -c '^-' || true)"
+        if [ "$LANDED" -eq 0 ] && [ "${EQ:-0}" -gt 0 ]; then
+            echo "⚠️  parcial: $EQ de $AHEAD commit(s) ya están en $DEFAULT_BRANCH, el resto no."
+            echo "    NO se cortocircuita — sigue el flujo normal para integrar lo que falta."
+        fi
+    fi
+fi
+
+if [ "$LANDED" -eq 1 ]; then
+    echo "✅ El trabajo de esta sesión YA está en $DEFAULT_BRANCH ($LANDED_HOW)."
+else
+    echo "→ Hay trabajo por integrar; sigue a Phase 2."
+fi
+```
+
+**Si `LANDED=1`:** el trabajo está completo y en la base. Ya pasó el CI que gateó
+aquel merge, así que **saltá Phases 2-5** — ni PR, ni `--watch`, ni merge.
+
+1. **Evidencia** (el operador quiere saber *dónde* aterrizó su trabajo, no sólo
+   que aterrizó). Buscá el PR que lo llevó y, si no hay, el commit de la base.
+   Bloque nuevo ⇒ re-derivar las variables (no persisten):
+   ```bash
+   CURRENT="$(git rev-parse --abbrev-ref HEAD)"
+   DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
+   gh pr list --state merged --head "$CURRENT" --limit 1 \
+     --json number,url,mergedAt,mergeCommit 2>/dev/null
+   git log "origin/$DEFAULT_BRANCH" --oneline -1
+   ```
+2. **Cierre** (equivalente a Phase 6) — dejar la sesión sobre la base al día.
+   Guardá el nombre de la rama obsoleta ANTES del checkout, que es lo que se
+   reporta:
+   ```bash
+   OLD_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+   DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
+   git checkout "$DEFAULT_BRANCH" && git pull --ff-only origin "$DEFAULT_BRANCH"
+   if [ "$OLD_BRANCH" != "$DEFAULT_BRANCH" ]; then
+       echo "⏭️  rama local obsoleta: $OLD_BRANCH (NO se borra)"
+   fi
+   ```
+   La rama local obsoleta se **reporta, NO se borra** — borrarla es decisión del
+   operador.
+3. Reportá con el veredicto `⏭️` (ver "Output final").
+
+**Rama release ya integrada:** si Phase 0.5 marcó `MERGE_ALLOWED=0` **y** acá da
+`LANDED=1`, también cortocircuita — el CI ya se pronunció sobre ese contenido y no
+hay nada que integrar. Se reporta igual, aclarando que sigue siendo release.
 
 ## Phase 2 — Asegurar el PR
 
@@ -212,6 +330,11 @@ PR_JSON="$(gh pr view "$CURRENT" --json number,url,state,baseRefName 2>/dev/null
 ```
 
 - Si existe un PR **abierto** para `CURRENT` → usalo (`number`, `url`).
+- Si `state` es **`MERGED`** o `CLOSED` → **no** cuenta como PR abierto. `gh pr view`
+  devuelve el PR más reciente de la rama aunque esté cerrado, así que hay que mirar
+  `state` (por eso se pide en el `--json`) y no sólo si vino algo. Llegar acá con un
+  `MERGED` significa que Phase 1.5 ya verificó que **hay trabajo nuevo** sobre una
+  rama reusada después de su merge → crear un PR nuevo es lo correcto.
 - Si no existe y `CREATE_PR=1` → `gh pr create --base "$DEFAULT_BRANCH" --fill`
   (título/cuerpo desde los commits). Capturá la URL.
 - Si no existe y `CREATE_PR=0` → **frená** y reportá: "rama sin PR abierto; pasá sin
@@ -380,10 +503,28 @@ fi
 ## Phase T2 — Commit + push a master
 
 Sólo con `GATE:GREEN` (o `--no-verify`). Reutilizá el flujo de `/git-commit` sobre
-`master` (sin rama feature ni PR):
+`master` (sin rama feature ni PR).
 
-- `git status --porcelain` vacío → nada que commitear; si hay algo ya pusheado
-  pendiente de propagar, saltá a T3; si no, terminá "0 cambios".
+Primero, el equivalente trunk-flow de Phase 1.5 — si `master` ya tiene todo, no hay
+commit, ni propagación, ni run de CI **de esta corrida** que mirar:
+
+```bash
+git fetch origin master --quiet 2>/dev/null || true
+if [ -z "$(git status --porcelain)" ] && git merge-base --is-ancestor HEAD origin/master; then
+    # Estaba atrás (otro host ya pusheó): dejar el clon al día igual.
+    [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)" ] \
+        || git pull --ff-only origin master
+    echo "✅ nada que integrar: master ya contiene todo ($(git rev-parse --short HEAD))."
+    echo "   No se commitea, no se propaga (T3) y no se vigila el CI (T4)."
+    exit 0
+fi
+```
+
+- Cortó el bloque de arriba → **terminá acá**, sin T3 ni T4, y andá al Output final.
+  Para confirmar que el fleet quedó al día:
+  `bash scripts/maintenance/propagate-toolkit-commit.sh --check`.
+- `git status --porcelain` vacío pero con commits sin pushear (`git log @{u}..HEAD`)
+  → pusheá y seguí a T3.
 - Con cambios → inspeccioná `git status` + `git diff`, generá un mensaje
   `FEAT/FIX/DOCS` propio, `git add` **selectivo** (sólo lo de este cambio) +
   `git commit -m "…"` + `git push`. Mostrá cada comando antes de correrlo. El hook
@@ -426,6 +567,11 @@ Con `--no-propagate` (`PROPAGATE=0`) → omitir esta fase y decirlo en el resume
 
 Con `CI_WATCH=1` (default), `gh` disponible + autenticado, y un push exitoso en T2:
 confirmá que `validation-coverage` quedó en verde para el SHA pusheado.
+
+**Si T2 cortó por "master ya contiene todo", esta fase NO corre.** El `git rev-parse
+HEAD` de abajo resolvería a un commit **ya pusheado hace rato**, y `gh run watch`
+quedaría mirando el run viejo de ese SHA como si fuera de esta corrida — un no-op se
+reportaría ✅ o ❌ sin que esta invocación haya tocado nada.
 
 ```bash
 SHA="$(git rev-parse HEAD)"
@@ -478,15 +624,22 @@ printf '   - %s\n' "${REPOS[@]}"
 Por cada repo en `REPOS`, con `cd "$HOME/webapps/<repo>"`:
 
 1. **Nada que hacer** — `git status --porcelain` vacío **y** sin commits sin
-   pushear (`git log @{u}..HEAD`) → ⏭️ `skipped:sin-cambios`. No generes mensaje
-   ni toques nada.
+   pushear (`git log @{u}..HEAD`). No generes mensaje ni toques nada; antes de
+   clasificar corré el chequeo de **Phase 1.5** (con su `git fetch` de la base):
+   - la rama ya está contenida en la base → ⏭️ `skipped:ya-en-base`. Nombrá la
+     rama obsoleta (**no la borres**) y dejá ese clon al día:
+     `git checkout <base> && git pull --ff-only origin <base>` (el tree está
+     limpio por la condición de este paso).
+   - no está → ⏭️ `skipped:sin-cambios`, como hasta ahora.
 2. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
    `skipped:wrong-host:<vps_work>`; ese repo se trabaja en otro VPS.
    `pr_state=single` → marcar `release-hold`.
 3. **Toolkit** → Path B completo (T1 green gate → T2 commit+push → T3
    propagación). Un `GATE:RED` marca `failed:green-gate` para **ese** repo y
    sigue con el resto.
-4. **Proyecto** → Path A Phases 1–2 (commit + push + asegurar PR). Sobre una
+4. **Proyecto** → Path A Phases 1 → 1.5 → 2 (commit + push + short-circuit
+   ya-en-base + asegurar PR). Sin la 1.5, un repo limpio parado sobre una rama ya
+   mergeada llega a Phase 2 y abre un PR vacío. Sobre una
    rama release **no se crea PR nuevo**: el del release ya existe y es el que
    `gh pr view "$CURRENT"` encuentra.
 5. **Registrar** una fila: `repo · rama · PR# · clasificación`, con clasificación
@@ -548,6 +701,28 @@ Reportar siguiendo [[_output-protocol]].
 ```
 
 Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps`:
+- **Trabajo ya en la base** (Phase 1.5) → veredicto `⏭️ merge-when-green — nada que
+  integrar: <rama> ya está en <base> (verificado)`. La tabla cambia de forma: el
+  valor de la corrida es **la verificación**, así que lleva fila propia y
+  PR/CI/Merge quedan en ⏭️:
+
+  | Dimensión | Estado | Detalle |
+  |---|---|---|
+  | Coordenada | ✅ | pr_state=<x> · host=on-work-host |
+  | Trabajo vs <base> | ✅ | <señal>: 0 commits por delante / merge no-op · PR #<n> |
+  | Commit + push | ⏭️ | working tree limpio, nada nuevo que commitear |
+  | PR / CI / Merge | ⏭️ | no se crea PR, no se espera CI, no se mergea |
+  | Base local | ✅ | <base> al día (`pull --ff-only`) · rama obsoleta: <rama> |
+
+  `## Next steps` (la rama obsoleta **no** se borra sola):
+  - `gh run list --branch <base> --limit 5` — mirar el CI de `<base>` igual, si querés.
+  - (manual) `git branch -D <rama>` — borrar la rama local. Va `-D` y **no** `-d`:
+    tras un **squash merge** los commits de la rama no son ancestros de `<base>`, así
+    que `-d` la rechaza aunque el trabajo esté 100% integrado.
+- **Rama release ya en la base** → mismo corte, pero mostrá las dos cosas:
+  `Coordenada` en ⏸️ (sigue siendo release) y `Trabajo vs <base>` en ✅. Un PR release
+  abierto sobre una rama ya mergeada es un dato que el operador quiere ver, con
+  `gh pr view <n> --web` en next steps.
 - **Rama release** (`pr_state=single`) → veredicto `⏸️ merge-when-green — release
   integrada y verde, sin mergear`, fila `Merge` en ⏸️ con "rama release; se mergea
   en el lanzamiento" y next step `/merge-when-green --allow-release-merge`.
@@ -575,6 +750,12 @@ Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps
 ```
 
 Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps`:
+- **Nada que integrar** (T2 cortó: tree limpio + `HEAD` ancestro de `origin/master`)
+  → veredicto `⏭️ merge-when-green (toolkit) — master ya contiene todo`, fila nueva
+  `Estado vs origin/master` en ✅ con el SHA corto, y `Commit + push` /
+  `Propagación fleet` / `CI master` en ⏭️. Next steps:
+  `bash scripts/maintenance/propagate-toolkit-commit.sh --check` (confirmar el fleet)
+  y `gh run list --branch master --limit 5` (mirar el CI igual).
 - Green gate rojo → ❌ + el validador que falló y su comando local (`bash scripts/ci/<x>.sh`).
 - Push falló → ❌ + causa (no upstream / conflicto remoto) + `/git-sync`.
 - Propagación con `CONFLICT_NEEDS_MANUAL_SYNC` → ⚠️ + los hosts que requieren `git-sync` manual.
@@ -588,7 +769,7 @@ de `Dimensión`. Es tabla grande (>15 filas con varios repos) → anteponer
 🟡 merge-when-green (--all-repos) OK con N warning(s) — 11 repos
 
 ### Resumen ejecutivo
-mergeados: N · release-hold: N · sin cambios: N · wrong-host: N · fallidos: N
+mergeados: N · release-hold: N · ya en base: N · sin cambios: N · wrong-host: N · fallidos: N
 
 | Repo | Rama | PR | CI | Resultado |
 |---|---|---|---|---|
@@ -596,8 +777,11 @@ mergeados: N · release-hold: N · sin cambios: N · wrong-host: N · fallidos: 
 | vastago_project_staging | release-may-2026-v2 | #12 | ✅ verde | ⏸️ release — no se mergea |
 | kore_project | — | — | — | ⏭️ wrong-host → vps-projectapp-staging |
 | mimittos_project | — | — | — | ⏭️ sin cambios |
+| taptag | fix/… | #41 | — | ⏭️ ya en base (lo llevó #41) |
 | vps-ops-toolkit | master | — | ✅ verde | ✅ push + fleet SYNCED |
 ```
 
 `## Next steps` sólo con lo accionable: los `failed:*`, los `release-hold` que ya
-estén listos para lanzar, y los `wrong-host` con el `tailscale ssh` de destino.
+estén listos para lanzar, y los `wrong-host` con el `tailscale ssh` de destino. Los
+`skipped:ya-en-base` **no** van a Next steps: la fila ya nombra la rama obsoleta y
+borrarla es decisión del operador, repo por repo.

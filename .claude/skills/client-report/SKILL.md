@@ -12,6 +12,11 @@ explica qué se hizo y le da una guía paso a paso para validarlo él mismo. Est
 skill crea esos reportes con el formato estándar del fleet, y también los lista
 y los busca.
 
+**Cadena:** [[client-message]] corre esta skill como su Phase 4 cuando el operador
+pide además el reporte. Invocable suelta para crear/listar/buscar reportes sin el par
+correo+WhatsApp. La coordenada del Gestor (`gestor:` en
+`config/client-comms/clients/<codebase>.yml`) se resuelve y persiste **acá**, no allá.
+
 **Convención de almacenamiento (fleet-wide):**
 - Carpeta: `docs/reports/` — **versionada en git** (a diferencia de `docs/tmp/`,
   que es para borradores efímeros y está gitignorada). Nota: en
@@ -193,7 +198,15 @@ Documentos: n/a en esta sesión`) y terminar con el reporte local. **Nunca falle
 esto.**
 
 1. **Carpeta destino según el prompt/proyecto.**
-   - Deducí el proyecto/cliente del contexto de la sesión y de `$FREEFORM` (p.ej.
+   - **Primero, la coordenada persistida.** Leé
+     `$HOME/webapps/vps-ops-toolkit/config/client-comms/clients/<codebase>.yml`
+     (donde `<codebase>` es `basename -s .git` del `remote.origin.url` de este repo).
+     Si trae un bloque `gestor:` con `folder_id`, **usalo sin preguntar** y saltá al
+     punto 2 — ya se resolvió una vez y se guardó. El campo `gestor.naming` dice qué
+     patrón de nombre usa esa carpeta; respetalo en vez de imponer el default.
+     Si el prompt nombra explícitamente otra carpeta, ESA manda igual.
+   - Si no hay coordenada guardada, deducí el proyecto/cliente del contexto de la
+     sesión y de `$FREEFORM` (p.ej.
      "Vastago Project", "Xpandia Project") — el nombre que ve el cliente, no el del
      directorio del repo. Si el prompt nombra explícitamente una carpeta/subcarpeta,
      ESA manda.
@@ -228,6 +241,24 @@ esto.**
 
 4. **Contenido.** El markdown que subís es el MISMO cuerpo del reporte de Phase 3 (la
    plantilla del cliente), no un resumen. El gestor lo convierte a PDF.
+
+5. **Persistí la coordenada** (sólo si en el punto 1 hubo que resolverla preguntando).
+   Escribí el bloque `gestor:` en
+   `$HOME/webapps/vps-ops-toolkit/config/client-comms/clients/<codebase>.yml`
+   (creando el archivo si falta) para que la próxima corrida no vuelva a preguntar
+   el destino:
+
+   ```yaml
+   gestor:
+     folder_id: <id real>
+     folder_path: "<Cliente> Project / <subcarpeta>"
+     naming: "<patrón observado en esa carpeta>"
+   ```
+
+   El `naming` se deriva de los títulos que ya viven en la carpeta (`list_documents`)
+   — la convención NO es uniforme entre clientes y se respeta, no se normaliza.
+   No commitees: dejá el cambio visible para `/git-commit`. Schema completo en
+   `config/client-comms/README.md`.
 
 ---
 
