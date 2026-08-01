@@ -1,6 +1,6 @@
 ---
 name: client-report
-description: "Gestiona los reportes de cambios del proyecto para el cliente (docs/reports/). Default: crea un reporte en español, no técnico, de lo hecho en la sesión actual (contexto + git log). --list tabula los reportes existentes; --find <descripción> busca reportes por tema. Tras crear el .md local, si el conector \"Gestor de Documentos\" (MCP) está disponible, valida la carpeta del proyecto y publica/actualiza el reporte allí (pregunta antes de crear, confirma antes de actualizar)."
+description: "Reportes de cambios para el cliente (docs/reports/): crea uno en español, no técnico, de lo hecho en la sesión. --list tabula; --find busca por tema. Publica al Gestor de Documentos (MCP) si está disponible, confirmando antes de crear/actualizar."
 argument-hint: "[--list | --find <descripción> | <instrucciones libres>]"
 ---
 
@@ -12,9 +12,16 @@ explica qué se hizo y le da una guía paso a paso para validarlo él mismo. Est
 skill crea esos reportes con el formato estándar del fleet, y también los lista
 y los busca.
 
+**Cadena:** [[client-message]] corre esta skill como su Phase 4 cuando el operador
+pide además el reporte. Invocable suelta para crear/listar/buscar reportes sin el par
+correo+WhatsApp. La coordenada del Gestor (`gestor:` en
+`config/client-comms/clients/<codebase>.yml`) se resuelve y persiste **acá**, no allá.
+
 **Convención de almacenamiento (fleet-wide):**
 - Carpeta: `docs/reports/` — **versionada en git** (a diferencia de `docs/tmp/`,
-  que es para borradores efímeros y está gitignorada).
+  que es para borradores efímeros y está gitignorada). Nota: en
+  `vps-ops-toolkit` los reportes viven en `reports/` y `docs/audits/` — esta
+  convención es para repos de proyecto.
 - Nombre: `<Tema_En_Snake_Case>_DDMMYYYY.md` — la fecha SIEMPRE como **postfijo**
   y SIEMPRE obtenida de `date +%d%m%Y`, nunca asumida.
   Ej.: `Reporte_Respuestas_Reunion_22062026.md`.
@@ -119,14 +126,48 @@ resultados".
 2. **Clasifica cada punto**: tipo (🐞 bug / 💡 requerimiento-mejora / ❓ duda
    aclarada) y estado (✅ Atendido / ⏭️ Fuera de alcance / ⚠️ Parcial / 🔄 En curso).
 3. **Redacta** con la plantilla de abajo. Reglas de estilo:
-   - Español, **no técnico**: nada de nombres de funciones, endpoints ni jerga.
-     Los módulos y botones se nombran como los ve el usuario ("Archivos
-     Jurídicos", "Previsualizar"), no como se llaman en el código.
+   - Español, **no técnico**: nada de nombres de funciones, endpoints de API ni
+     variables de código. Los módulos y botones se nombran como los ve el
+     usuario ("Archivos Jurídicos", "Previsualizar"), no como se llaman en el
+     código. **Excepción:** las URLs y rutas navegables SÍ se incluyen — son
+     texto que el usuario final ve y usa en el navegador, no jerga técnica.
    - Si existe el texto original del cliente (correo, reporte de bugs, acta),
      cítalo **textualmente** en el blockquote del punto.
    - "Cómo validar que funciona" siempre en **pasos numerados** accionables.
    - "Antes de probar necesitas": rol requerido, datos previos, y desde qué
      vista se empieza.
+   - **Sin saltos de línea a mitad de párrafo.** Cada párrafo, ítem de lista,
+     cita (`>`) y celda de tabla va en **una sola línea física**, por larga que
+     sea — no envuelvas el texto manualmente a ~80 columnas. El cliente suele
+     abrir el `.md` en visores que respetan los saltos duros, y un wrap a media
+     frase se ve como un corte raro. La separación entre bloques se hace con
+     **líneas en blanco**, nunca partiendo una frase.
+   - **Asumí que quien valida es un usuario nuevo que no conoce el sistema.** No
+     des nada por obvio: nombrá el menú, la pestaña y el botón exactos con el
+     texto tal cual aparece en pantalla (en **negrita**), y describí el
+     **resultado observable** esperado en cada paso. Si un botón muestra texto
+     en inglés, ponelo con su traducción.
+   - **Siempre incluí las URLs.** Cada punto debe indicar la URL donde (a) se
+     presentaba el problema y (b) se valida el arreglo. Declará **una vez** la
+     URL base del ambiente de pruebas en la cabecera; en cada punto, el **primer
+     paso** de validación da la **URL completa** para llegar (lista para
+     copiar/pegar) y los pasos siguientes usan nombres de pestañas/botones.
+
+   **Cómo obtener las URLs reales (no las inventes):**
+
+   ```bash
+   # URL base del ambiente de pruebas — fuentes no circulares primero:
+   grep -h 'domain:' ~/webapps/vps-ops-toolkit/projects.yml 2>/dev/null        # projects.yml del fleet (campo domain:)
+   grep -h 'ALLOWED_HOSTS' backend/.env .env 2>/dev/null                       # hosts reales del ambiente
+   # Reportes anteriores (fuente circular — sólo como último recurso):
+   grep -rhoE 'https?://[a-z0-9.-]+\.(projectapp\.co|com)[^ )`"]*' docs/reports/ 2>/dev/null | sort -u
+   # Ruta exacta de cada vista/módulo (Vue router / Django urls):
+   grep -rnE "path:[[:space:]]*[\"']" frontend/src/router/ 2>/dev/null   # SPA Vue
+   grep -rnE "path\(|re_path\(" backend/*/urls.py 2>/dev/null            # Django
+   ```
+
+   Si no encontrás la URL base con seguridad, preguntá al operador una vez;
+   nunca la inventes.
 4. **Escribe el archivo**:
 
 ```bash
@@ -148,15 +189,24 @@ Documentos** (MCP `Gestor de Documentos`), que lo versiona y genera el PDF con m
 El `.md` en `docs/reports/` sigue siendo la fuente; este paso lo sincroniza al gestor.
 
 **Precondición — disponibilidad del conector.** Este paso requiere las tools del
-conector "Gestor de Documentos" en la sesión (`list_folders`, `list_documents`,
-`read_document`, `create_folder`, `create_document`, `update_document`) — un conector
-claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
+conector "Gestor de Documentos" en la sesión — nombre MCP completo:
+`mcp__claude_ai_Gestor_de_Documentos__list_folders`, y con el mismo prefijo
+`…__list_documents`, `…__read_document`, `…__create_folder`, `…__create_document`,
+`…__update_document` — un conector claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
 sin acceso, etc.), **SALTAR** el paso: dejar constancia en el output (`Gestor de
 Documentos: n/a en esta sesión`) y terminar con el reporte local. **Nunca falles por
 esto.**
 
 1. **Carpeta destino según el prompt/proyecto.**
-   - Deducí el proyecto/cliente del contexto de la sesión y de `$FREEFORM` (p.ej.
+   - **Primero, la coordenada persistida.** Leé
+     `$HOME/webapps/vps-ops-toolkit/config/client-comms/clients/<codebase>.yml`
+     (donde `<codebase>` es `basename -s .git` del `remote.origin.url` de este repo).
+     Si trae un bloque `gestor:` con `folder_id`, **usalo sin preguntar** y saltá al
+     punto 2 — ya se resolvió una vez y se guardó. El campo `gestor.naming` dice qué
+     patrón de nombre usa esa carpeta; respetalo en vez de imponer el default.
+     Si el prompt nombra explícitamente otra carpeta, ESA manda igual.
+   - Si no hay coordenada guardada, deducí el proyecto/cliente del contexto de la
+     sesión y de `$FREEFORM` (p.ej.
      "Vastago Project", "Xpandia Project") — el nombre que ve el cliente, no el del
      directorio del repo. Si el prompt nombra explícitamente una carpeta/subcarpeta,
      ESA manda.
@@ -192,6 +242,24 @@ esto.**
 4. **Contenido.** El markdown que subís es el MISMO cuerpo del reporte de Phase 3 (la
    plantilla del cliente), no un resumen. El gestor lo convierte a PDF.
 
+5. **Persistí la coordenada** (sólo si en el punto 1 hubo que resolverla preguntando).
+   Escribí el bloque `gestor:` en
+   `$HOME/webapps/vps-ops-toolkit/config/client-comms/clients/<codebase>.yml`
+   (creando el archivo si falta) para que la próxima corrida no vuelva a preguntar
+   el destino:
+
+   ```yaml
+   gestor:
+     folder_id: <id real>
+     folder_path: "<Cliente> Project / <subcarpeta>"
+     naming: "<patrón observado en esa carpeta>"
+   ```
+
+   El `naming` se deriva de los títulos que ya viven en la carpeta (`list_documents`)
+   — la convención NO es uniforme entre clientes y se respeta, no se normaliza.
+   No commitees: dejá el cambio visible para `/git-commit`. Schema completo en
+   `config/client-comms/README.md`.
+
 ---
 
 ## Plantilla del reporte (usar literal, ajustando contenido)
@@ -208,7 +276,9 @@ esto.**
 - ❓ = duda del cliente que se aclara
 - ✅ Atendido | ⏭️ Fuera de alcance | ⚠️ Parcial | 🔄 En curso
 
-**Para todas las pruebas:** <requisito global: ambiente, tipo de cuenta.>
+**Ambiente de pruebas:** <URL base del staging, ej. `https://proyecto.projectapp.co`>. Iniciá sesión en <URL base>/<ruta de login, ej. `/sign_in`> con una cuenta de <rol>.
+
+**Para todas las pruebas:** <requisito global: datos previos, rol si varía por punto.>
 
 ---
 
@@ -233,15 +303,17 @@ esto.**
 **Qué se hizo:** <explicación no técnica. Si ayuda, usar el par
 **Antes:** / **Ahora:** para contrastar comportamiento.>
 
+**Dónde se ve / URL:** <URL completa, ej. `https://proyecto.projectapp.co/ruta?tab=…`> — <breadcrumb: Módulo → pestaña → sección donde ocurría y donde se valida>.
+
 **Antes de probar necesitas:**
 - <rol con el que ingresar>
 - <datos o estado previo necesario>
-- <vista/módulo donde empezar>
+- <la URL exacta desde donde empezás (la de arriba)>
 
 **Cómo validar que funciona:**
-1. <paso>
-2. <paso>
-3. <resultado esperado observable>
+1. Abre <URL completa> (si no iniciaste sesión, primero te llevará al login).
+2. <paso: nombrá la pestaña/botón literal en **negrita** y el resultado visible>
+3. <resultado final esperado, observable y sin ambigüedad>
 
 ---
 
@@ -254,6 +326,21 @@ esto.**
 
 <Frase de cierre: quedamos atentos a dudas/ajustes.>
 ```
+
+---
+
+## Acciones disponibles
+
+Tras el reporte (modo create), si la sesión es interactiva y NO hubo flags
+explícitos (reglas de gating de [[_output-protocol]] §4), ofrecer vía
+AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Listar reportes existentes | tabla concisa de `docs/reports/` (read-only) | `/client-report --list` |
+| Buscar por tema | busca en qué reportes se tocó un tema | `/client-report --find <tema>` |
+| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | `/client-report publicá en el Gestor el reporte recién creado` |
+| Commitear el reporte | add+commit+push del reporte recién creado | `/git-commit` |
 
 ---
 

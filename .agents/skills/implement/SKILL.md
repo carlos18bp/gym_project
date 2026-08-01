@@ -1,39 +1,128 @@
 ---
 name: implement
-description: "Implement a Azurita feature or fix using the repo's existing architecture and minimal targeted verification. Use when the user asks to build, code, or fix something."
-argument-hint: "[feature, refactor, bugfix, or concrete implementation request]"
+description: "Implementation workflow — systematic code protocol with dependency analysis, step-by-step changes, and testing. Use when the user asks to build, code, or implement a feature or fix."
+argument-hint: "[description of what to implement]"
 ---
 
-# Implement Workflow
-
-## Before Editing
-- Read the relevant scope instructions and touched code.
-- Read only the memory files that materially affect the change.
-- Identify the smallest useful verification commands before changing code.
-
-## Azurita Rules
-- Backend DRF views stay function-based unless the user explicitly asks otherwise.
-- Keep business logic out of views when a service, serializer, helper, or model method is the better fit.
-- Frontend stores use Pinia Options API.
-- Keep content/admin requests on `stores/services/request_http.js`.
-- Keep platform/auth requests on `usePlatformApi.js`.
-- Preserve existing public response shapes unless the task explicitly changes them.
-
-## Implementation Sequence
-1. Confirm the affected files, contracts, and side effects.
-2. Make the smallest coherent change that solves the request.
-3. Update tests or add focused coverage for the changed behavior.
-4. Run only the smallest relevant verification slice.
-5. Update docs or memory files only if the user asked for it or the change materially alters runtime guidance, architecture, or workflows.
-
-## Output Contract
-When done, report:
-- what changed
-- why the change fits existing project patterns
-- what verification ran
-- what could not be verified
+Before starting, ALWAYS do 2 things:
+a. Read and understand the documentation in `docs/` and `tasks/`
+b. Get required code context from `backend/` and `frontend/` — o el layout que
+   exista en el repo (ver [[methodology-setup]])
 
 ---
+
+## Preflight (obligatorio)
+
+Si el repo actual es un proyecto del fleet (aparece en
+`~/webapps/vps-ops-toolkit/projects.yml`), ANTES de escribir:
+
+```bash
+bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <proyecto>
+```
+
+- Commitear **SÓLO** en `resolved_branch` (la coordenada validada contra los
+  PRs abiertos — nunca adivinar la rama).
+- `host_status=wrong-host` → **STOP**: el trabajo de este proyecto vive en el
+  clon de `vps_work`, no en este host.
+- Proyecto `production+active` (`is_protected_project`) y el cambio toca
+  runtime → pedir confirmación explícita del operador antes de escribir.
+
+---
+
+# Implementation Workflow
+
+## Programming Principles
+
+- **Algorithm efficiency**: Use the most efficient algorithms and data structures
+- **Modularity**: Write modular code, break complex logic into smaller atomic parts
+- **File management**: Break long files into smaller, more manageable files
+- **Import statements**: Prefer importing functions from other files instead of modifying them directly
+- **Reuse**: Prefer to reuse existing code instead of writing from scratch
+- **Code preservation**: Don't modify working components without necessity
+- **Systematic sequence**: Complete one step completely before starting another
+- **Design patterns**: Apply appropriate patterns for maintainability and scalability
+- **Proactive testing**: Functionality code should be accompanied with proper tests
+
+## Systematic Code Protocol
+
+### Step 1: Analyze Code
+
+**Dependency Analysis:**
+- Which components will be affected?
+- What dependencies exist?
+- Is this local or does it affect core logic?
+- What cascading effects will this change have?
+
+**Flow Analysis:**
+- Conduct complete end-to-end flow analysis from entry point to execution of all affected code.
+- Track data and logic flow throughout all components.
+- Document dependencies thoroughly.
+
+### Step 2: Plan Code
+
+- Outline a detailed plan including component dependencies and architectural considerations.
+- Provide a proposal specifying: (1) what files/functions/lines are changed; (2) why; (3) impacted modules; (4) potential side effects; (5) trade-offs.
+
+### Step 3: Make Changes
+
+1. Document current state in the memory files — los 7 canónicos de
+   [[methodology-setup]]; `tasks/active_context.md` siempre
+2. Plan single logical change at a time:
+   - One logical feature at a time
+   - Fully resolve by accommodating changes in other parts
+   - Adjust all existing dependencies
+   - Ensure new code integrates with existing architecture
+3. Simulation testing: simulate user interactions, dry runs, trace calls before applying
+4. If simulation passes, do the actual implementation
+
+### Step 4: Test
+
+- Slice mínimo de verificación: el/los tests del comportamiento tocado (crear
+  o correr sólo esos, en archivos separados) + confirmar que la regresión
+  inmediata no se rompe.
+- La cobertura completa (edge cases, casos negativos, gate) la cierra [[qa]]
+  en el Cierre — no dupliques su trabajo acá.
+
+### Step 5: Loop Steps 1-4
+
+Incorporate all changes systematically, one by one. Verify and test each.
+
+### Step 6: Optimize
+
+Optimize the implemented code after all changes are tested and verified.
+
+---
+
+After every implementation, ALWAYS do 2 things:
+a. Update other possibly affected codes in `backend/` and `frontend/`
+b. Update the memory files afectados por el cambio — los 7 canónicos de
+   [[methodology-setup]]: `docs/methodology/product_requirement_docs.md`,
+   `docs/methodology/technical.md`, `docs/methodology/architecture.md`,
+   `docs/methodology/error-documentation.md`,
+   `docs/methodology/lessons-learned.md`, `tasks/tasks_plan.md` y
+   `tasks/active_context.md` (este último siempre)
+
+---
+
+## Cierre — QA de lo implementado
+
+Al terminar la implementación (feature funcionalmente completa), la forma
+canónica de cerrar la cobertura es invocar **[[qa]]**: audita el flow-map,
+escribe los tests faltantes al DoD de 3 puntos (casos negativos incluidos),
+corre el gate y purga junk — sin mergear. Sugerilo siempre en el cierre.
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y sin flags explícitos (reglas de
+gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| /qa (Recommended) | dry-run, no mergea; cierra la cobertura de lo implementado | `/qa` |
+| /git-commit | add+commit+push de lo implementado | `/git-commit` |
+
+**NUNCA** ofrecer `/deploy-and-check` (manual-only por política — sólo como
+texto en `## Next steps` si aplica).
 
 ## Output final
 

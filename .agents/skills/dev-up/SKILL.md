@@ -2,7 +2,7 @@
 name: dev-up
 description: "Levanta el entorno de desarrollo LOCAL de un proyecto Django del fleet: bootstrap de venv/pip, deps de backend (SQLite dev, sin mysqlclient) y frontend, migrate, arranca runserver + frontend dev en background y monitorea sus logs. Auto-descubre desde projects.yml. Solo dev machine — refusa en VPS/prod."
 disable-model-invocation: true
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, AskUserQuestion
 argument-hint: "[--restart] [--backend-port=8000] [--frontend-port=3000] [--frontend-cmd='npm run dev']"
 ---
 
@@ -361,6 +361,11 @@ Si el gate refusa (corriendo en VPS), reportar 🚫 con `## Next steps` indicand
 Si un server no levanta, health 000, o aparece un crash/error en los logs,
 reemplazar ✅ por 🔴, omitir la línea ✨ y agregar `## Next steps` con el extracto
 relevante de `/tmp/<proyecto>-dev/{backend,frontend}.log`.
+
+## Next steps
+- `/dev-down` — apagar los servers
+- `/qa` — cerrar cobertura de lo implementado
+- (operador) abrir http://localhost:<frontend-port>
 
 ---
 

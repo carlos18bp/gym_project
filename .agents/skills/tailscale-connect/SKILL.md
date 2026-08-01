@@ -1,7 +1,7 @@
 ---
 name: tailscale-connect
 description: "Conecta ESTE host al tailnet del fleet de punta a punta: instala/enablea tailscaled si falta, corre `tailscale up --ssh` (con --hostname en VPS), captura la URL de login y te la muestra en la respuesta para que la autorices en el browser, y luego verifica la conexión (tailscale status + IP 100.x + ssh cap). Idempotente: si ya está conectado, sólo reporta. Complementa a [[bootstrap-tailscale-fleet]] (onboarding/audit/registry)."
-allowed-tools: Bash
+allowed-tools: Bash, AskUserQuestion
 argument-hint: "[--check (sólo diagnóstico read-only, no conecta)]"
 ---
 
@@ -141,6 +141,16 @@ tailscale status --self --json | grep -q '"https://tailscale.com/cap/ssh"' && ec
 - `0` — conectado y verificado (o ya estaba conectado).
 - `1` — pausa manual pendiente (URL mostrada, esperando autorización del operador).
 - `2` — error (install falló, daemon no arranca, verificación no pasa tras auth).
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Re-verificar conexión | re-corre el diagnóstico read-only (status + IP 100.x + ssh cap) | `/tailscale-connect --check` |
+| Registrar este nodo en el registry (dry-run primero) | preview del alta en expected-nodes.yml; el `--add-self` real commitea + pushea | `/bootstrap-tailscale-fleet --add-self --dry-run` |
 
 ## Output final
 
