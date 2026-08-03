@@ -43,7 +43,7 @@ test-audit, fake-data-refresh) inherit THIS gating: they never ask on their own.
 | e2e | Playwright layer | `--layers=e2e` |
 
 **Qué NO se pregunta:** `--all-repos`/`--all-vps` (fleet sweep, analysis-only —
-typed only) and the `--project=` protected-override (typed: golden-rule consent).
+typed only).
 
 ## Engine
 
@@ -51,7 +51,7 @@ The deterministic parts live in
 `$HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh`. Call it; do not
 reimplement it.
 
-- `qa-agent.sh --preflight <proj>` → scope: layers, db engine, staging/protected,
+- `qa-agent.sh --preflight <proj>` → scope: layers, db engine, staging/production,
   `fake_data_allowed`, abstain decision, and the work coordinate.
 - `qa-agent.sh --check <proj>` → coverage audit + quality gate → worklist counts,
   verdict, and a `docs/audits/<date>-<proj>-qa.md` report.
@@ -115,10 +115,10 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
 
 1. **Dry-run by default.** Without `--apply`: describe the planned diffs, write
    nothing, commit nothing.
-2. **Production protected.** `--preflight` reports `protected=yes` for
-   production+active. On a fleet sweep those are read-only. Authoring on a
-   protected project needs an explicit `/qa --project=<X> --apply`. Staging-first
-   otherwise.
+2. **Production visibility.** `--preflight` reports `production=yes` for
+   production+active — informational: authoring follows the work coordinate
+   like any project (projects.yml decides), and fleet sweeps stay analysis-only
+   for every repo. Staging-first otherwise.
 3. **fake-data-refresh only off production.** `--preflight` reports
    `fake_data_allowed`. If `no`, SKIP the fake-data phase — never reseed prod.
 4. **Land on the resolved coordinate.** Commit only on `resolved_branch` from the
@@ -348,8 +348,7 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
   - **Prod-direct repo** (`resolved_branch` = `main`/`master`): land as a
     `qa/<fecha>` branch + PR targeting `resolved_branch`, per
     `git-branch-protocol` — NEVER push directly to a project repo's main.
-  **Do not merge.** Do not write to a production clone without an explicit
-  `--project`.
+  **Do not merge.**
 - **Git identity before committing:** `git var GIT_COMMITTER_IDENT` fails on a
   fresh clone — if it does, configure `user.name`/`user.email` **repo-local**
   with the operator's identity (never `--global`), then commit.
@@ -483,8 +482,7 @@ Casos de veredicto:
   bridge ausente — `npm install` en `frontend/` habilita el análisis completo;
   el gate CI con node_modules es la última palabra).
 - 🔴 errores de CONTENIDO del gate, o un test (nuevo o existente) falla.
-- 🚫 REFUSED — intento de authoring sobre prod protegido sin `--project`, o commit
-  en `wrong-host`. Nombrar el override / el VPS correcto.
+- 🚫 REFUSED — intento de commit en `wrong-host`. Nombrar el VPS correcto.
 - ⏭️ abstención (sin infra de tests / nada que QA-ear).
 - ⏸️ release-hold, auth-pendiente de tailscale, o app no corriendo que requiere al
   operador.

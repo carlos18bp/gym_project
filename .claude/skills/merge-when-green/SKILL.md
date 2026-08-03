@@ -1,8 +1,8 @@
 ---
 name: merge-when-green
-description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni para mergear ramas release (--allow-release-merge se tipea, jamás se ofrece), ni en cron/headless. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
+description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni en cron/headless. Las ramas release se mergean sólo si projects.yml las autoriza (release_merge: <rama>); sin autorización se integran y se espera el CI, sin merge. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
 allowed-tools: Bash, AskUserQuestion
-argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] [--allow-release-merge] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
+argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
 
 > **⚠️ How to invoke**:
@@ -37,10 +37,17 @@ argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] 
 >
 > **Guards de coordenada de trabajo (Path A y C, siempre ON):** antes de tocar
 > nada se resuelve la coordenada del repo con `resolve-work-coordinate.sh`
-> (misma fuente que usa [[all-projects]]):
-> - **Rama release** (`pr_state=single`, el head del PR abierto) → se hace todo el
->   flujo (commit + push + espera del CI + fix loop) pero **NO se mergea**: una
->   release no se mergea hasta el lanzamiento. Override: `--allow-release-merge`.
+> (misma fuente que usa [[all-projects]] — projects.yml validado contra los PRs
+> abiertos), y la decisión de merge sale de ahí, sin flags:
+> - **Rama release** (la actual es head de un PR abierto) **autorizada en
+>   projects.yml** (`release_merge: <rama>` nombra exactamente esta rama) → flujo
+>   completo **incluido el merge**, sin preguntar. Tras el merge la skill elimina
+>   el campo (autorización one-shot).
+> - **Rama release SIN autorizar** (campo ausente) → se hace todo el flujo
+>   (commit + push + espera del CI + fix loop) pero **NO se mergea**, y se informa
+>   cómo autorizar el lanzamiento.
+> - **Ambigüedad** (el campo nombra OTRA rama, o la coordenada no se pudo
+>   resolver) → se **pregunta** (AskUserQuestion), nunca se asume.
 > - **Host equivocado** (`host_status=wrong-host`) → **aborta sin tocar nada**. El
 >   trabajo de ese proyecto vive en el clon de otro VPS; commitear en éste deja el
 >   fleet inconsistente.
@@ -80,11 +87,13 @@ operador no lo indicó):
 | Merge commit | conserva los commits de la rama como ancestros en la base | `/merge-when-green --merge-method=merge` |
 | Rebase | reescribe los commits de la rama sobre la base, sin merge commit | `/merge-when-green --merge-method=rebase` |
 
-**Qué NO se pregunta:** `--allow-release-merge` (mergear una release se TIPEA
-— blocklist §4), `--autonomous` (quita la pausa de aprobación del fix loop) y
-`--no-verify` (salta el green gate del toolkit) son overrides deliberadamente
-incómodos y jamás se ofrecen. `--fix-nontest`, `--max-iterations=N`,
-`--no-propagate`, `--no-ci-watch`: tuning simétrico al default, se tipean.
+**Qué NO se pregunta:** `--autonomous` (quita la pausa de aprobación del fix
+loop) y `--no-verify` (salta el green gate del toolkit) son overrides
+deliberadamente incómodos y jamás se ofrecen. `--fix-nontest`,
+`--max-iterations=N`, `--no-propagate`, `--no-ci-watch`: tuning simétrico al
+default, se tipean. El merge de una release no se pregunta ni se tipea: lo
+decide `release_merge:` en projects.yml (la única pregunta posible es la de
+ambigüedad del guard, arriba).
 
 ## Phase 0 — Preflight + ruteo
 
@@ -94,8 +103,8 @@ ARGS_RAW="${ARGUMENTS:-}"
 MERGE_METHOD="squash"; CREATE_PR=1; AUTONOMOUS=0; FIX_NONTEST=0; MAX_ITER=5
 # Flags del toolkit (Path B: trunk flow):
 VERIFY=1; PROPAGATE=1; CI_WATCH=1
-# Multi-repo (Path C) + override del guard de release:
-ALL_REPOS=0; ALLOW_RELEASE_MERGE=0
+# Multi-repo (Path C):
+ALL_REPOS=0
 for tok in $ARGS_RAW; do
     case "$tok" in
         --merge-method=squash|--merge-method=merge|--merge-method=rebase) MERGE_METHOD="${tok#--merge-method=}" ;;
@@ -107,7 +116,6 @@ for tok in $ARGS_RAW; do
         --no-propagate)     PROPAGATE=0 ;;
         --no-ci-watch)      CI_WATCH=0 ;;
         --all-repos)            ALL_REPOS=1 ;;
-        --allow-release-merge)  ALLOW_RELEASE_MERGE=1 ;;
         --all|--all-vps)
             echo "❌ ERROR: '$tok' no existe en merge-when-green."
             echo "   ¿Todos los repos de ESTE host? → --all-repos (sólo desde vps-ops-toolkit)"
@@ -116,7 +124,7 @@ for tok in $ARGS_RAW; do
         *) echo "❌ ERROR: argumento desconocido '$tok'."; exit 2 ;;
     esac
 done
-export ALL_REPOS ALLOW_RELEASE_MERGE
+export ALL_REPOS
 
 # Resolver el repo del cwd (NO asumir el toolkit; ignorar el hook SessionStart).
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
@@ -181,8 +189,9 @@ PR_STATE="$(sed -n 's/^pr_state=//p'   <<<"$COORD")"
 HOST_ST="$(sed -n 's/^host_status=//p' <<<"$COORD")"
 VPS_WORK="$(sed -n 's/^vps_work=//p'   <<<"$COORD")"
 OPEN_PR="$(sed -n 's/^open_pr=//p'     <<<"$COORD")"
+RELEASE_AUTH="$(sed -n 's/^release_merge=//p' <<<"$COORD")"
 CURRENT="$(git rev-parse --abbrev-ref HEAD)"
-MERGE_ALLOWED=1; RELEASE_HOLD=0
+MERGE_ALLOWED=1
 
 # Guard 1 — host equivocado. El trabajo de este proyecto vive en el clon de otro
 # VPS; commitear acá deja el fleet inconsistente (los scripts que filtran por
@@ -205,25 +214,59 @@ if [ -n "$OPEN_PR" ] && [ "$OPEN_PR" != "none" ]; then
     done < <(tr ',' '\n' <<<"$OPEN_PR")
 fi
 
-if (( IS_RELEASE_BRANCH == 1 )) && (( ALLOW_RELEASE_MERGE == 0 )); then
-    MERGE_ALLOWED=0; RELEASE_HOLD=1
-    echo "⏸️  '$CURRENT' es rama release (head de PR abierto; pr_state=$PR_STATE)."
-    echo "    Se integrará y se esperará el CI, pero NO se mergea."
-    echo "    Override: --allow-release-merge"
+# La decisión de merge sale de projects.yml — release_merge= (autorización
+# one-shot de lanzamiento que nombra la rama release exacta), emitida por el
+# resolver. Sin flags: la fuente de verdad se consulta en cada invocación.
+if (( IS_RELEASE_BRANCH == 1 )); then
+    if [ "$RELEASE_AUTH" = "$CURRENT" ]; then
+        echo "✅ '$CURRENT' es rama release AUTORIZADA (release_merge en projects.yml)."
+        echo "    Flujo completo incluido el merge; tras mergear se limpia el campo."
+    elif [ -n "$RELEASE_AUTH" ]; then
+        echo "❓ '$CURRENT' es rama release, pero release_merge autoriza otra: '$RELEASE_AUTH'."
+        echo "    Ambigüedad → se pregunta (abajo), no se asume."
+    else
+        MERGE_ALLOWED=0
+        echo "⏸️  '$CURRENT' es rama release (head de PR abierto; pr_state=$PR_STATE), sin autorización."
+        echo "    Se integrará y se esperará el CI, pero NO se mergea."
+        echo "    Para lanzarla: setear 'release_merge: $CURRENT' en projects.yml y re-invocar."
+    fi
+fi
+
+# Autorización stale: release_merge nombra una rama que no es head de ningún
+# PR abierto (la release ya se mergeó/cerró). No bloquea, pero se reporta y se
+# ofrece limpiarla en Next steps.
+if [ -n "$RELEASE_AUTH" ] && (( IS_RELEASE_BRANCH == 0 )); then
+    case ",$OPEN_PR," in
+        *",$RELEASE_AUTH,"*) : ;;   # respalda otra rama release abierta — válida
+        *) echo "ℹ️  release_merge='$RELEASE_AUTH' no corresponde a ningún PR abierto (stale)." ;;
+    esac
 fi
 
 # Sin coordenada resoluble (repo fuera de projects.yml, gh caído) no se puede
-# afirmar que NO es una release. Se continúa, pero decirlo — un guard que falla
-# en silencio es peor que no tenerlo.
+# afirmar que NO es una release → también es ambigüedad: se pregunta.
 case "$PR_STATE" in
     ""|gh-error|gh-unavailable|no-repo)
-        echo "ℹ️  coordenada no resoluble (pr_state='${PR_STATE:-vacío}') — el guard de"
-        echo "    release NO pudo evaluarse. Verificá la rama a mano antes de mergear." ;;
+        echo "❓ coordenada no resoluble (pr_state='${PR_STATE:-vacío}') — el guard de"
+        echo "    release no pudo evaluarse. Se pregunta antes de seguir." ;;
 esac
 ```
 
-Reportá `PR_STATE`, `HOST_ST` y el valor final de `MERGE_ALLOWED` en la tabla de
-salida: el operador tiene que ver por qué se mergeó o por qué no.
+**Ambigüedad → AskUserQuestion, nunca asumir** (los dos casos `❓` de arriba):
+
+- **`release_merge` nombra OTRA rama** — preguntar: «projects.yml autoriza
+  `$RELEASE_AUTH` pero estás sobre `$CURRENT`». Opciones: **Mantener hold
+  (Recommended)** — integrar sin merge, `MERGE_ALLOWED=0`; **Mergear `$CURRENT`
+  igual** — tratarla como autorizada (al mergear se limpia el campo, que quedó
+  stale); **Abortar** — salir sin tocar nada.
+- **Coordenada no resoluble** — preguntar según la causa visible. Opciones:
+  **Continuar sin merge** — integra y espera el CI, `MERGE_ALLOWED=0` (elegila
+  si `gh` falló y podrías estar sobre una release); **Continuar como rama
+  normal** — flujo completo con merge (esperable si el repo no pertenece al
+  fleet / no está en projects.yml); **Abortar**.
+
+Reportá `PR_STATE`, `HOST_ST`, `RELEASE_AUTH` y el valor final de
+`MERGE_ALLOWED` en la tabla de salida: el operador tiene que ver por qué se
+mergeó o por qué no.
 
 ## Phase 1 — Commit + push
 
@@ -421,15 +464,15 @@ Por cada check en `fail`, clasificalo:
 
 ## Phase 5 — Merge
 
-**Guard de release primero** (Phase 0.5). Si la rama es la del PR release, acá
-termina el flujo: el trabajo ya está integrado y el CI ya dio su veredicto, que
-es lo que se venía a saber.
+**Guard de release primero** (Phase 0.5). Si la rama es release sin
+autorización en projects.yml, acá termina el flujo: el trabajo ya está
+integrado y el CI ya dio su veredicto, que es lo que se venía a saber.
 
 ```bash
 if [ "${MERGE_ALLOWED:-1}" = "0" ]; then
     echo "⏸️  Rama release ($CURRENT, PR #$PR_NUMBER) — commit y CI hechos, merge NO."
-    echo "    Una release no se mergea hasta el lanzamiento."
-    echo "    Para lanzarla igual:  /merge-when-green --allow-release-merge"
+    echo "    Para lanzarla: setear 'release_merge: $CURRENT' al proyecto en"
+    echo "    projects.yml (vps-ops-toolkit) y re-invocar /merge-when-green."
     # Saltar Phase 6. El PR queda abierto a propósito.
 fi
 ```
@@ -448,6 +491,24 @@ gh pr view "$PR_NUMBER" --json mergeStateStatus,reviewDecision,mergeable \
   ```bash
   gh pr merge "$PR_NUMBER" --"$MERGE_METHOD" --delete-branch
   ```
+
+**Post-merge de una release autorizada (consumir la autorización):** si el
+merge fue habilitado por `release_merge:` (o el operador eligió mergear en la
+pregunta de ambigüedad), la autorización es one-shot — limpiála de
+`projects.yml` acotando el borrado al bloque del proyecto:
+
+```bash
+OPS="$HOME/webapps/vps-ops-toolkit"
+awk -v proj="$REPO_NAME" '
+  /^[[:space:]]*- name:/ { in_p = ($NF == proj) }
+  !(in_p && $1 == "release_merge:")
+' "$OPS/projects.yml" > "$OPS/projects.yml.tmp" && mv "$OPS/projects.yml.tmp" "$OPS/projects.yml"
+grep -n 'release_merge:' "$OPS/projects.yml" || echo "✓ autorización consumida"
+```
+
+Reportá el cambio del toolkit pendiente de commit (directo a `master` vía
+`/git-commit`), y sugerí `resolve-work-coordinate.sh --apply <proyecto>` para
+refrescar `branch_working`/`branch:` ahora que la release aterrizó.
 
 ## Phase 6 — Post-merge
 
@@ -656,7 +717,9 @@ Por cada repo en `REPOS`, con `cd "$HOME/webapps/<repo>"`:
    - no está → ⏭️ `skipped:sin-cambios`, como hasta ahora.
 2. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
    `skipped:wrong-host:<vps_work>`; ese repo se trabaja en otro VPS.
-   `pr_state=single` → marcar `release-hold`.
+   Rama del clon = head de un PR abierto (la MISMA prueba de Phase 0.5 sobre
+   `open_pr`, no `pr_state=single`) → `release-hold`, salvo que `release_merge=`
+   nombre exactamente esa rama (autorización de projects.yml) → `mergeable`.
 3. **Toolkit** → Path B completo (T1 green gate → T2 commit+push → T3
    propagación). Un `GATE:RED` marca `failed:green-gate` para **ese** repo y
    sigue con el resto.
@@ -680,7 +743,9 @@ Sólo sobre los repos cuya clasificación es `mergeable` o `release-hold` (los
    pausa si hay que tocar código de producción salvo `--autonomous`).
 2. `mergeable` → Phase 5 (merge) + Phase 6 (post-merge).
 3. `release-hold` → reportá el veredicto del CI y **no mergees** (⏸️). Es el
-   caso normal, no un error.
+   caso normal, no un error. (Una release autorizada por `release_merge:` ya
+   quedó clasificada `mergeable` en C1 y se mergea como cualquier rama —
+   consumiendo la autorización, Phase 5.)
 
 **Política de errores**: ningún fallo individual corta el barrido. Un repo que
 falla queda con su razón en la tabla y se sigue con el siguiente. El reporte
@@ -700,8 +765,9 @@ Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
 | --no-ci-watch | toolkit: push sin esperar acá el run de CI en master | `/merge-when-green --no-ci-watch` |
 | Ver el PR en el browser | abrir el PR para review manual | `gh pr view <n> --web` |
 
-NUNCA ofrecer `--allow-release-merge`, `--autonomous` ni `--no-verify` como
-opciones — se tipean deliberadamente (guards de release/prod).
+NUNCA ofrecer `--autonomous` ni `--no-verify` como opciones — se tipean
+deliberadamente (pausa del fix loop / green gate del toolkit). El merge de una
+release tampoco se ofrece: lo decide `release_merge:` en projects.yml.
 
 ## Output final
 
@@ -746,9 +812,16 @@ Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps
   `Coordenada` en ⏸️ (sigue siendo release) y `Trabajo vs <base>` en ✅. Un PR release
   abierto sobre una rama ya mergeada es un dato que el operador quiere ver, con
   `gh pr view <n> --web` en next steps.
-- **Rama release** (`pr_state=single`) → veredicto `⏸️ merge-when-green — release
-  integrada y verde, sin mergear`, fila `Merge` en ⏸️ con "rama release; se mergea
-  en el lanzamiento" y next step `/merge-when-green --allow-release-merge`.
+- **Rama release sin autorizar** → veredicto `⏸️ merge-when-green — release
+  integrada y verde, sin mergear`, fila `Merge` en ⏸️ con "rama release; sin
+  `release_merge:` en projects.yml" y next step: setear `release_merge: <rama>`
+  al proyecto en projects.yml (vps-ops-toolkit) y re-invocar `/merge-when-green`.
+- **Release autorizada mergeada** → fila `Merge` en ✅ con "release lanzada
+  (`release_merge` consumida)" y next steps: `/git-commit` en el toolkit (el
+  projects.yml editado quedó pendiente) + `resolve-work-coordinate.sh --apply
+  <proyecto>` para refrescar `branch_working`/`branch:`.
+- **`release_merge` stale** (nombra una rama sin PR abierto) → next step con la
+  limpieza del campo (el `awk` de Phase 5) o su corrección en projects.yml.
 - **Host equivocado** (`host_status=wrong-host`) → `⏭️ merge-when-green — N/A`,
   fila `Coordenada` en ⏭️ y next step `tailscale ssh ryzepeck@<vps_work>`.
 - **Coordenada no resoluble** → fila `Coordenada` en ℹ️ diciendo que el guard de

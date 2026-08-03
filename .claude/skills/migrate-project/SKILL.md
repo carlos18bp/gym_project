@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Edit, AskUserQuestion
 
 ## Qué hace esta skill
 
-Migra un proyecto Django entre dos VPS del fleet (origin → target) componiendo los scripts existentes vía `FORCE_SINGLE_PROJECT` + `FORCE_PROJECTS` env vars. NO migra un VPS completo (para eso usar `docs/migration-runbook.md`).
+Migra un proyecto Django entre dos VPS del fleet (origin → target) componiendo los scripts existentes vía la env var `FORCE_SINGLE_PROJECT` (narrowing de `LOCAL_PROJECTS` a un solo proyecto). NO migra un VPS completo (para eso usar `docs/migration-runbook.md`).
 
 **Casos de uso típicos:**
 - Mover un proyecto de un VPS saturado a uno nuevo
@@ -136,7 +136,7 @@ cutover).
 ### Paso 4 — Clone project repo en target (PRIMER acto de modificación)
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 bash scripts/bootstrap/clone-projects.sh --apply
 ```
 
@@ -208,7 +208,7 @@ que el `mysql-users.env` del paso 6 (commiteado y pusheado por el
 operador) esté disponible.
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/setup-mysql.sh --apply
 ```
 
@@ -244,7 +244,7 @@ catastróficos).
 ### Paso 12 — Snapshot DB + media + extras en origin (HEAVY)
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 bash scripts/maintenance/backup-mysql-and-media.sh
 ```
 
@@ -266,7 +266,7 @@ HOST_ROLE != target.
 ### Paso 14 — Restore DB + media + extras en target
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/restore-from-backup.sh --apply --from=<dir>
 ```
 
@@ -276,7 +276,7 @@ Importa DB, extrae media tarball, y extrae extras tarball (kore
 ### Paso 15 — venv + pip + frontend build + systemd
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/setup-project-environments.sh --apply
 ```
 

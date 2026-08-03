@@ -30,8 +30,6 @@ bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.s
   PRs abiertos — nunca adivinar la rama).
 - `host_status=wrong-host` → **STOP**: el trabajo de este proyecto vive en el
   clon de `vps_work`, no en este host.
-- Proyecto `production+active` (`is_protected_project`) y el cambio toca
-  runtime → pedir confirmación explícita del operador antes de escribir.
 
 ---
 

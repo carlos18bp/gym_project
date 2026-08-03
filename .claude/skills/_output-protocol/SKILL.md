@@ -63,7 +63,7 @@ Códigos de emoji (para celdas de la tabla):
 | ✅ | done — completado correctamente |
 | ⚠️ | warning — completado con observaciones, no bloquea |
 | ❌ | error — falló, requiere acción |
-| ⏭️ | skipped — saltado por flag, no-aplica, o protegido |
+| ⏭️ | skipped — saltado por flag o no-aplica |
 | ℹ️ | info — informativo, sin estado binario |
 | 🚫 | refused — bloqueado por safety gate (decisión segura, no fue error) |
 | ⏸️ | paused — esperando intervención manual del operador (OAuth, admin console) |
@@ -153,22 +153,11 @@ ejecutaría.
 
 - `/deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
   como texto en Next steps).
-- Merge de una rama release (`--allow-release-merge` se tipea, no se clickea).
+- Merge de una rama release: no se ofrece ni se tipea — lo decide
+  `release_merge:` en projects.yml (fuente de verdad, consultada por
+  [[merge-when-green]] en cada invocación).
 - `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
   es una confirmación de downtime).
-- Cualquier acción sobre un proyecto `production+active` protegido
-  (`is_protected_project`) — el override `--project=<X>` se tipea.
-  **Única excepción (2026-08-01): el selector de targets de
-  [[sync-ai-ecosystems]]**, que sí puede ofrecer repos protegidos como filas
-  clickeables. Se concede porque las tres condiciones se cumplen a la vez y son
-  verificables en esa skill: (a) la acción es sync de archivos de config IA, no
-  destructiva y con backup `.bak.<TS>`; (b) las filas de producción **nunca**
-  vienen pre-seleccionadas, así que el click ES el consentimiento explícito que
-  pide la Regla de oro; (c) un **gate de coordenada** previo ya excluyó de la
-  lista todo repo que no sea seguro (wrong-host, clon en rama sin PR, tree
-  sucio) — o sea que lo ofrecido es un subconjunto más chico que el que el
-  override tipeado habilitaba antes. Si alguna de las tres deja de cumplirse,
-  la excepción caduca. **No extender a otras skills sin la misma verificación.**
 - `--include-projects` de bootstrap/init-fleet como Recommended (es
   deploy-equivalente).
 - Git destructivo: `reset --hard`, `push --force`, `stash drop` masivo
