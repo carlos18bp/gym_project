@@ -125,7 +125,8 @@ test(
       "@module:processes",
       "@priority:P2",
       "@role:lawyer",
-    , '@outcome:success'],
+      "@outcome:success",
+    ],
   },
   async ({ page }) => {
     test.setTimeout(60_000);
