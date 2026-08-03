@@ -53,6 +53,16 @@ DATA_ASSERTIONS: frozenset[str] = frozenset({
     # checked is a real assertion about behaviour (e.g. "submit is disabled while
     # the cart is empty"), not mere presentation like toBeVisible.
     "toBeDisabled", "toBeEnabled", "toBeChecked",
+    # jest-dom (React Testing Library) analogues of the Playwright matchers
+    # above. `toHaveTextContent('PDF')` pins content exactly like toContainText,
+    # and `toBeNull()` pins a concrete state exactly like `toBe(null)` — which
+    # _STRONG_ASSERTION_RE already accepts, so omitting the no-argument form was
+    # an inconsistency, not a policy. Deliberately NOT included: the presence-only
+    # `toBeInTheDocument`, which is the jest-dom sibling of `toBeVisible` and
+    # stays out for the same reason (see _CONTENT_LOCATOR_RE in
+    # detect_no_data_assertion for how a content-bearing QUERY is credited
+    # instead of the matcher).
+    "toHaveTextContent", "toBeNull",
 })
 
 # Assertions that are satisfied by almost any DOM, so they cannot fail
@@ -181,7 +191,17 @@ class TestBlock:
         return set(re.findall(r"\.(\w+)\s*\(", self.reach))
 
     def interactions(self) -> set[str]:
-        return self.calls() & INTERACTION_CALLS
+        # Receiver-qualified (F50): `localStorage.clear()` is test housekeeping,
+        # not a user touching the UI — but it matches `.clear(` exactly like
+        # `locator.clear()` does. A method only counts when at least one of its
+        # call sites hangs off something other than a Storage object.
+        hits: set[str] = set()
+        for name in self.calls() & INTERACTION_CALLS:
+            if re.search(
+                rf"(?<!localStorage)(?<!sessionStorage)\.{name}\s*\(", self.reach
+            ):
+                hits.add(name)
+        return hits
 
     def assertions(self) -> set[str]:
         return {c for c in self.calls() if c.startswith("toBe") or c.startswith("toHave")
@@ -751,14 +771,15 @@ def _import_candidates(name: str, source: str, spec_path: Path | None) -> list[P
     return candidates
 
 
-def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[str] | None:
+def _imported_tag_decl(const: str, source: str, spec_path: Path | None) -> str | None:
     """
-    Flow ids declared by a tag constant imported from a relative module.
+    Raw array body of a tag constant imported from a relative module.
 
     Returns None when the module (or the constant's declaration inside it)
-    cannot be resolved, so the caller can fall back to the name-derived hint.
-    A resolved declaration wins even when it carries no `@flow:` entries —
-    same semantics as a locally defined constant.
+    cannot be resolved. Returning the declaration TEXT (not just `@flow:` ids)
+    lets callers extract every tag family from one resolution — F48 was
+    exactly this gap: `@outcome:` placed inside the constant was silently
+    dropped because only flow ids survived the import hop.
     """
     for candidate in _import_candidates(const, source, spec_path):
         text = _module_text(candidate)
@@ -768,8 +789,23 @@ def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[
             rf"\b{re.escape(const)}\s*=\s*\[([^\]]*)\]", text, flags=re.DOTALL
         )
         if decl:
-            return re.findall(r"@flow:([\w.-]+)", decl.group(1))
+            return decl.group(1)
     return None
+
+
+def _imported_flow_ids(const: str, source: str, spec_path: Path | None) -> list[str] | None:
+    """
+    Flow ids declared by a tag constant imported from a relative module.
+
+    Returns None when the module (or the constant's declaration inside it)
+    cannot be resolved, so the caller can fall back to the name-derived hint.
+    A resolved declaration wins even when it carries no `@flow:` entries —
+    same semantics as a locally defined constant.
+    """
+    decl = _imported_tag_decl(const, source, spec_path)
+    if decl is None:
+        return None
+    return re.findall(r"@flow:([\w.-]+)", decl)
 
 
 # Masked variants of module/spec texts scanned for object-literal declarations.
@@ -798,6 +834,14 @@ def _object_member_flow_ids(text: str, obj: str, member: str) -> list[str] | Non
     object short, and a decoy `X = {` inside a string must not match at all);
     the ids come from the original slice because tags are string content.
     """
+    decl = _object_member_decl(text, obj, member)
+    if decl is None:
+        return None
+    return re.findall(r"@flow:([\w.-]+)", decl)
+
+
+def _object_member_decl(text: str, obj: str, member: str) -> str | None:
+    """Raw array body of `<obj> = { ..., MEMBER: [...], ... }`, or None."""
     masked = _masked_text(text)
     decl = re.search(rf"\b{re.escape(obj)}\s*=\s*\{{", masked)
     if not decl:
@@ -809,7 +853,7 @@ def _object_member_flow_ids(text: str, obj: str, member: str) -> list[str] | Non
     entry = re.search(rf"\b{re.escape(member)}\s*:\s*\[([^\]]*)\]", body, flags=re.DOTALL)
     if entry is None:
         return None
-    return re.findall(r"@flow:([\w.-]+)", entry.group(1))
+    return entry.group(1)
 
 
 def _imported_object_member_flow_ids(
@@ -827,6 +871,20 @@ def _imported_object_member_flow_ids(
         ids = _object_member_flow_ids(text, obj, member)
         if ids is not None:
             return ids
+    return None
+
+
+def _imported_object_member_decl(
+    obj: str, member: str, source: str, spec_path: Path | None
+) -> str | None:
+    """Raw member-array body for `...Obj.MEMBER` imported from a module."""
+    for candidate in _import_candidates(obj, source, spec_path):
+        text = _module_text(candidate)
+        if text is None:
+            continue
+        decl = _object_member_decl(text, obj, member)
+        if decl is not None:
+            return decl
     return None
 
 
@@ -850,8 +908,22 @@ _TAG_VALUE_IDENT_RE = re.compile(
 def resolve_flow_ids(
     block: TestBlock, source: str, spec_path: Path | None = None
 ) -> list[str]:
+    """Flow ids only — thin wrapper over resolve_tag_ids (kept for callers)."""
+    return resolve_tag_ids(block, source, spec_path)[0]
+
+
+def resolve_tag_ids(
+    block: TestBlock, source: str, spec_path: Path | None = None
+) -> tuple[list[str], list[str]]:
     """
-    Resolve flow ids for a test, following tag constants defined in the file.
+    Resolve (flow ids, outcome classes) for a test, following tag constants.
+
+    Every declaration text a flow id is read from also yields its `@outcome:`
+    entries (F48): an `@outcome:display` placed inside an imported/aliased tag
+    constant used to be silently dropped — only the import-resolved flow ids
+    survived — so a correctly-authored constant bought zero outcome credit
+    while the identical tag inline at the call site worked. The name-hint
+    fallback stays flow-only (there is no text to read outcomes from).
 
     Specs commonly tag with an imported constant (`tag: [...ADMIN_LOGIN]`)
     instead of a literal `@flow:` string. Without this the tag looks absent and
@@ -890,6 +962,7 @@ def resolve_flow_ids(
     # Literal tags first: the test's own plus the ones every enclosing
     # describe already merged into flow_ids at extraction.
     ids: list[str] = list(block.flow_ids)
+    outcomes: list[str] = []
     # Spreads count as flow tags only inside a `tag: [...]` option. Scanning
     # the whole body read data spreads in mocks (`{ ...DOC, ...patchBody }`)
     # as tag constants and invented phantom flows like "doc". A block can
@@ -916,11 +989,13 @@ def resolve_flow_ids(
             )
             if local:
                 ids.extend(re.findall(r"@flow:([\w.-]+)", local.group(1)))
+                outcomes.extend(re.findall(r"@outcome:([\w.-]+)", local.group(1)))
                 tag_regions.append(local.group(1))
                 continue
-            imported = _imported_flow_ids(ref, source, spec_path)
-            if imported:
-                ids.extend(imported)
+            decl = _imported_tag_decl(ref, source, spec_path)
+            if decl:
+                ids.extend(re.findall(r"@flow:([\w.-]+)", decl))
+                outcomes.extend(re.findall(r"@outcome:([\w.-]+)", decl))
             # Unresolvable: nothing. Unlike a bare SPREAD constant (usually
             # flow-shaped, e.g. ADMIN_LOGIN), a whole-value identifier is
             # generically named — a hint like "tags" credits no real flow.
@@ -940,10 +1015,12 @@ def resolve_flow_ids(
         seen_refs.add(ref)
         if "." in ref:
             obj, member = ref.split(".", 1)
-            resolved = _object_member_flow_ids(source, obj, member)
-            if resolved is None:
-                resolved = _imported_object_member_flow_ids(obj, member, source, spec_path)
-            ids.extend(resolved or [])
+            decl = _object_member_decl(source, obj, member)
+            if decl is None:
+                decl = _imported_object_member_decl(obj, member, source, spec_path)
+            if decl is not None:
+                ids.extend(re.findall(r"@flow:([\w.-]+)", decl))
+                outcomes.extend(re.findall(r"@outcome:([\w.-]+)", decl))
             continue
         if not _PLAIN_TAG_CONST_RE.fullmatch(ref):
             continue
@@ -953,18 +1030,20 @@ def resolve_flow_ids(
         )
         if local:
             ids.extend(re.findall(r"@flow:([\w.-]+)", local.group(1)))
+            outcomes.extend(re.findall(r"@outcome:([\w.-]+)", local.group(1)))
             pending += _SPREAD_REF_RE.findall(local.group(1))
             continue
-        imported = _imported_flow_ids(ref, source, spec_path)
-        if imported is not None:
-            ids.extend(imported)
+        decl = _imported_tag_decl(ref, source, spec_path)
+        if decl is not None:
+            ids.extend(re.findall(r"@flow:([\w.-]+)", decl))
+            outcomes.extend(re.findall(r"@outcome:([\w.-]+)", decl))
         else:
             # Unresolvable: fall back to the name as a flow-shaped hint.
             ids.append(ref.lower().replace("_", "-"))
 
     # A flow tagged at both suite and test level (or reached via two spreads)
-    # must count once.
-    return list(dict.fromkeys(ids))
+    # must count once; same for an outcome declared along two resolution paths.
+    return list(dict.fromkeys(ids)), list(dict.fromkeys(outcomes))
 
 
 # ---------------------------------------------------------------------------
@@ -1498,6 +1577,29 @@ def analyze_e2e_source(source: str, file: str, spec_path: Path | None = None) ->
                 findings.append(found)
 
     return findings
+
+
+def zero_assertion_lines(source: str, file: str, spec_path: Path | None = None) -> set[int]:
+    """
+    Start lines of tests whose full reach contains no `expect(` at all (F49).
+
+    An assertion-free test that clicks a real submit button used to earn
+    coverage credit three blind spots deep: detect_no_data_assertion bails on
+    zero-assert tests deferring to the AST-side NO_ASSERTIONS rule, that rule
+    does not run on degraded hosts, and the audit's DISQUALIFYING_RULES never
+    included it. This helper is the source-based answer: helper bodies are
+    resolved transitively (same machinery as the analyzers), so a test that
+    delegates its asserts to a helper is NOT flagged. Consumed by
+    flow_coverage_audit, which treats these lines as disqualified evidence.
+    """
+    known = _function_bodies(source)
+    known.update(_resolve_import_bodies(source, spec_path))
+    lines: set[int] = set()
+    for block in extract_test_blocks(source, file):
+        block.expanded = effective_source(block, known)
+        if "expect(" not in _strip_for_scanning(block.reach):
+            lines.add(block.start_line)
+    return lines
 
 
 def analyze_unit_source(source: str, file: str, spec_path: Path | None = None) -> list[Finding]:

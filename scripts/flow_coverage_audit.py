@@ -51,7 +51,8 @@ from quality import load_project_config  # noqa: E402
 from quality.junk_detectors import (  # noqa: E402
     analyze_e2e_source,
     extract_test_blocks,
-    resolve_flow_ids,
+    resolve_tag_ids,
+    zero_assertion_lines,
 )
 
 # Outcome classes a flow can declare. They mirror how a user actually
@@ -138,17 +139,27 @@ def audit(repo_root: Path) -> dict:
             f.line for f in analyze_e2e_source(source, rel, spec)
             if f.rule_id in DISQUALIFYING_RULES
         }
+        # F49: a test with no expect() anywhere in its reach (helpers resolved)
+        # proves nothing — it is disqualified evidence, same bucket as junk.
+        # Neither disqualifying rule catches it and the AST-side NO_ASSERTIONS
+        # twin does not run on degraded hosts, so the audit checks directly.
+        disqualified_lines |= zero_assertion_lines(source, rel, spec)
 
         for block in extract_test_blocks(source, rel):
             total_tests += 1
-            flow_ids = resolve_flow_ids(block, source, spec)
+            # F48: outcome tags may live inside the resolved tag constants, not
+            # just inline — both sources merge before the success default.
+            flow_ids, const_outcomes = resolve_tag_ids(block, source, spec)
             if not flow_ids:
                 untagged.append({"file": rel, "line": block.start_line, "test": block.name})
                 continue
 
             # An untagged outcome cannot be credited to a specific class; it
             # counts as `success` so that pre-migration suites still register.
-            outcomes = [o for o in block.outcomes if o in OUTCOME_CLASSES] or ["success"]
+            outcomes = [
+                o for o in dict.fromkeys([*block.outcomes, *const_outcomes])
+                if o in OUTCOME_CLASSES
+            ] or ["success"]
             # Junk wins over draft: a drafted test that is ALSO junk stays
             # junk after validation, so name the worse state now.
             if block.start_line in disqualified_lines:

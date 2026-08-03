@@ -217,15 +217,24 @@ class QualityReport:
         normalized = file_path.replace("\\", "/")
         if normalized.startswith("backend/"):
             return "backend"
-        if any(normalized.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
-            return "frontend_unit"
+        # e2e is tested BEFORE unit: once frontend_unit_dir "." normalises to the
+        # "frontend/" prefix (F60), a unit-first order would swallow every e2e
+        # file into the unit bucket. _attach_issue already orders it this way.
         if normalized.startswith("frontend/e2e/"):
             return "frontend_e2e"
+        if any(normalized.startswith(prefix) for prefix in self._frontend_unit_prefixes()):
+            return "frontend_unit"
         return None
 
     def _frontend_unit_prefixes(self) -> tuple[str, ...]:
         """Return accepted frontend-unit path prefixes (configured + legacy)."""
-        configured = f"frontend/{self.config.frontend_unit_dir.strip('/').replace('\\\\', '/')}/"
+        # F60: "." / "" / "./" all mean "frontend/ itself" — the repos that
+        # colocate unit tests in **/__tests__/ at arbitrary depth have no single
+        # dir to name. Interpolated raw they produced the literals "frontend/./"
+        # and "frontend//", which no repo-relative path starts with, silently
+        # voiding every consumer of this tuple. Four fleet repos ship ".".
+        raw = self.config.frontend_unit_dir.strip().replace("\\", "/").strip("/")
+        configured = "frontend/" if raw in ("", ".") else f"frontend/{raw}/"
         prefixes = [configured]
         if configured != "frontend/test/":
             prefixes.append("frontend/test/")
@@ -924,6 +933,39 @@ class QualityReport:
                 # is a no-op, so before this guard an empty dir de-scoped the scan
                 # to ALL of frontend/. frontend/ itself is spelled ".".
                 unit.suite_findings["disabled_by_config"] = True
+                # F59: but a disabled layer used to report "files 0, errors 0",
+                # which reads as a clean pass. Measured: versiona shipped "" from
+                # the day it adopted the core, so 0 of its 67 unit files were ever
+                # analysed — locally or in CI — while every run reported green.
+                # Twin of F37's backend sentinel: WARNING, so it surfaces in every
+                # report without turning adoption itself red.
+                from quality.base import CONFIG_FILENAME, FileResult
+                _has_cfg = (self.repo_root / CONFIG_FILENAME).is_file()
+                _unit_sentinel = FileResult(
+                    file="frontend/<frontend_unit_dir>",
+                    area="unit",
+                    location_ok=True,
+                )
+                _unit_sentinel.issues.append(Issue(
+                    file="frontend/<frontend_unit_dir>",
+                    message=(
+                        "frontend unit suite scanned nothing: frontend_unit_dir is \"\" "
+                        + ("(from .testquality.yml)" if _has_cfg else
+                           f"(canonical default — no {CONFIG_FILENAME} in this repo)")
+                        + ", which disables the layer — a green unit result here "
+                        "verifies nothing"
+                    ),
+                    severity=Severity.WARNING,
+                    category=IssueCategory.MISPLACED_FILE,
+                    rule_id="config_unit_layer_disabled",
+                    line=0,
+                    suggestion=(
+                        "Set frontend_unit_dir to the dir holding the unit tests, or "
+                        "to \".\" when they are colocated under frontend/ at arbitrary "
+                        f"depth; run extract_project_config.py to derive {CONFIG_FILENAME}"
+                    ),
+                ))
+                unit.add_file(_unit_sentinel)
                 if self.verbose:
                     print(f"  {Colors.DIM}frontend_unit_dir is \"\" - suite disabled by config{Colors.RESET}")
             else:

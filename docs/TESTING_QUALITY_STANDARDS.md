@@ -1455,6 +1455,23 @@ Precedence, worst-signal first when evidence mixes:
 Real qualifying tests are never demoted by drafts elsewhere: a flow with a
 green test in one file and a draft twin in another stays `covered`.
 
+**Zero-assertion evidence is disqualified (F49):** a test whose full reach
+(helpers resolved, comments stripped) contains no `expect(` proves nothing —
+the audit treats it exactly like junk, so a flow backed only by such tests
+reads `junk-only`, never `covered`. **Outcome tags resolve through constants
+(F48):** `@outcome:` entries inside an imported/aliased tag constant now
+credit their class just like inline tags; the inline call-site idiom remains
+the recommended convention.
+
+**Suspect flag (F47, orthogonal to the state):** an outcome-untagged test
+credits only `success`, so a flow whose declared classes exclude `success`
+can report `missing`/`partial` while flow-tagged evidence exists in the
+wrong bucket — masking either junk or real coverage. The audit flags these
+with per-flow `stray_evidence_outcomes`, the `suspect` summary counter and a
+`SUSPECT FLOWS` report section. The state itself does not change (warning
+only; `covered` and `exempt` are never flagged): apply the `@outcome`
+tagging pass, then trust the recomputed state.
+
 ---
 
 ## Quick Reference Card

@@ -161,7 +161,6 @@
     "frontend/test/stores/dashboard/recent_document.test.js::mock_only_assertion::updateRecentDocument handles errors without throwing",
     "frontend/test/stores/dashboard/recent_process.test.js::mock_only_assertion::init calls fetchRecentProcesses",
     "frontend/test/stores/dashboard/recent_process.test.js::mock_only_assertion::updateRecentProcess handles errors without throwing",
-    "frontend/test/stores/dashboard/reports.test.js::mock_only_assertion::generateExcelReport creates a download link",
     "frontend/test/stores/dynamic_document/documents.test.js::mock_only_assertion::init does not fetch when data is fresh and loaded",
     "frontend/test/stores/dynamic_document/documents.test.js::mock_only_assertion::loadMoreDocuments does nothing when hasMore is false",
     "frontend/test/stores/dynamic_document/documents.test.js::mock_only_assertion::loadMoreDocuments does nothing when isLoading is true",

@@ -1414,9 +1414,14 @@ function parseTestFile(filePath, isE2E) {
   const issues = [];
 
   // Forbidden tokens in the FILE name — coverage-farming artifacts announce
-  // themselves in the filename before any test title does.
+  // themselves in the filename before any test title does. Narrower than the
+  // title rule ON PURPOSE: only the farming vocabulary proper (coverage/cov).
+  // 'batch'/'deep' are legitimate feature words in file names (measured false
+  // positive: admin-proposal-batch-actions.spec.js — a real bulk-actions UI),
+  // while the measured true positives were coverage-gaps.spec.ts and
+  // checkout-coverage-gaps.spec.ts.
   const baseName = path.basename(absolutePath);
-  const fileNameMatch = baseName.match(FORBIDDEN_TOKEN_RE);
+  const fileNameMatch = baseName.match(/\b(coverage|cov)\b/i);
   if (fileNameMatch) {
     issues.push({
       type: 'FORBIDDEN_TOKEN',
