@@ -82,6 +82,7 @@ class IssueCategory(Enum):
     MOCK_ONLY_ASSERTION = auto()
     REIMPLEMENTS_SUT = auto()
     TAUTOLOGICAL_URL = auto()
+    NEGATION_ONLY_ASSERTION = auto()
 
 
 # Centralized semantic rule identifiers used for rollout gating and reporting.
@@ -140,6 +141,10 @@ JUNK_RULE_CATEGORIES: dict[str, str] = {
     # navigated path itself — redirect and no-redirect both pass. 37 instances
     # machine-verified in one repo, all invisible before this rule.
     "tautological_url": "TAUTOLOGICAL_URL",
+    # F62 (2026-08): every assertion satisfied by absence — an empty DOM, a
+    # failed render or a hard delete all pass. Measured live in versiona C4-E02,
+    # which would have passed the very delete it was written to guard against.
+    "negation_only_assertion": "NEGATION_ONLY_ASSERTION",
 }
 
 

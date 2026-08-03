@@ -111,6 +111,7 @@ _STATE_CHANGE_RE = re.compile(
 # Opt-out markers, mirroring the existing `quality: allow-*` convention.
 ALLOW_MARKERS: dict[str, str] = {
     "allow-no-interaction": "no_user_interaction",
+    "allow-negation-only": "negation_only_assertion",
     "allow-deep-link": "deep_link_entry",
     "allow-render-only": "no_data_assertion",
     "allow-duplicate": "duplicate_coverage",
@@ -1315,6 +1316,67 @@ def detect_weak_assertion(block: TestBlock) -> Finding | None:
     )
 
 
+
+# F62: an assertion satisfied by ABSENCE — a negated matcher, or a zero
+# count/length. Every one of these passes on an empty DOM, so a test built
+# ONLY from them goes green under a worse regression than the one it guards.
+_ABSENCE_ASSERT_RE = re.compile(
+    r"\.not\s*\.\s*to\w+|"
+    r"\.toHaveCount\(\s*0\s*\)|"
+    r"\.toHaveLength\(\s*0\s*\)|"
+    r"\.toBeHidden\s*\(\s*\)|"
+    r"\.toBeNull\s*\(\s*\)"
+)
+_ANY_MATCHER_RE = re.compile(r"\.(?:not\s*\.\s*)?to[A-Z]\w*\s*\(")
+
+
+def detect_negation_only_assertion(block: TestBlock) -> Finding | None:
+    """
+    A test whose every assertion is satisfied by absence.
+
+    `expect(list).not.toContainText('v2')` + `expect(row).toHaveCount(0)` reads
+    as "v2 is gone, v1 survived" — but both hold when the list, the page, or the
+    whole app rendered nothing. The test passes a hard delete, which is strictly
+    worse than the regression it was written to catch. Measured live in
+    versiona_project (C4-E02).
+
+    The remedy is an anchor, not the removal of the negative assertions: one
+    assertion that FAILS on an empty DOM makes the negatives meaningful again.
+    Absence-as-contract is legitimate (a banner that must never render), so the
+    documented escape hatch applies there.
+    """
+    if "negation_only_assertion" in block.allow_markers:
+        return None
+
+    pieces = re.split(r"\bexpect\s*(?:\.\w+\s*)?\(", block.source)[1:]
+    total = absence = 0
+    for piece in pieces:
+        matcher = _ANY_MATCHER_RE.search(piece)
+        if not matcher:
+            continue
+        total += 1
+        if _ABSENCE_ASSERT_RE.search(piece[: matcher.end() + 24]):
+            absence += 1
+
+    if total == 0 or absence != total:
+        return None
+
+    return Finding(
+        rule_id="negation_only_assertion",
+        message=(
+            f"every assertion ({total}) is satisfied by absence - an empty DOM, a failed "
+            "render or a hard delete all pass, so this cannot verify what it claims"
+        ),
+        file=block.file,
+        line=block.start_line,
+        identifier=block.name,
+        suggestion=(
+            "Add one positive assertion that fails on an empty DOM (the sibling that must "
+            "SURVIVE, a count, a heading), or mark `// quality: allow-negation-only (reason)` "
+            "when absence genuinely is the contract"
+        ),
+    )
+
 _GOTO_LITERAL_RE = re.compile(r"\.goto\(\s*[`'\"]([^`'\"]+)[`'\"]")
 _URL_REGEX_ASSERT_RE = re.compile(r"toHaveURL\(\s*/((?:\\.|[^/\\])*)/")
 
@@ -1570,6 +1632,7 @@ def analyze_e2e_source(source: str, file: str, spec_path: Path | None = None) ->
             detect_deep_link_entry,
             detect_no_data_assertion,
             detect_weak_assertion,
+            detect_negation_only_assertion,
             detect_tautological_url,
         ):
             found = detector(block)
@@ -1614,6 +1677,7 @@ def analyze_unit_source(source: str, file: str, spec_path: Path | None = None) -
             detect_weak_assertion,
             detect_tautological_selector,
             detect_mock_only_assertion,
+            detect_negation_only_assertion,
             detect_reimplements_sut,
         ):
             found = detector(block)
