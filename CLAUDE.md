@@ -8,9 +8,10 @@ la seccion `project-specific` mas abajo.
 
 ## Convencion de lenguaje
 
-- Documentacion, comentarios y mensajes de commit en **ingles**.
-- Codigo, identificadores y nombres de variable en **ingles**.
-- Mensajes de error visibles al usuario final en el idioma del proyecto.
+- Codigo, identificadores y nombres de variable: **ingles**.
+- Mensajes de commit: **ingles** (Conventional Commits).
+- Docs operativos, skills y reportes: **espanol** (terminos tecnicos en ingles donde son de uso corriente).
+- Mensajes de error visibles al usuario final: idioma del proyecto.
 
 <!-- session-start-protocol:begin -->
 ## Session Start Protocol
@@ -21,6 +22,7 @@ Al inicio de **cada sesión y antes de editar archivos**, debes invocar la skill
 1. Un hook `SessionStart` (definido en `.claude/settings.json`) ejecuta `git fetch + git status` read-only y te inyecta el estado de este repo como contexto.
 2. Si el reporte indica `behind > 0` o `dirty > 0`, **invoca la skill `git-sync`** antes de hacer cualquier cambio. `git-sync` hace rebase contra el parent branch y, si hay conflictos, te guía interactivamente por la resolución.
 3. Si el reporte indica `behind=0 ahead=0 dirty=0`, el repo ya está sincronizado y puedes proceder.
+4. Si `behind=0` y `dirty=0` pero `ahead>0` (commits locales sin pushear): podés proceder a editar; el push pendiente se resuelve durante la sesión (commit+push del flujo normal) — no requiere `git-sync`.
 
 **Importante:** Nunca uses `git pull --force`, `git reset --hard` ni stash automático para "resolver" el sync — usa siempre la skill `git-sync`, que es segura y reproducible.
 <!-- session-start-protocol:end -->
@@ -28,7 +30,26 @@ Al inicio de **cada sesión y antes de editar archivos**, debes invocar la skill
 <!-- git-branch-protocol:begin -->
 ## Reglas de trabajo con Git: ramas y commits
 
-**Nunca hagas commits directamente sobre `main` o `master`.** Estas ramas están protegidas y los pushes serán rechazados por GitHub. Antes de cualquier `git commit`, sigue este protocolo:
+**Nunca hagas commits directamente sobre `main` o `master`.** Estas ramas están protegidas y los pushes serán rechazados por GitHub.
+
+**El default es REUTILIZAR una rama abierta, no crear una nueva.** La convención del fleet es **máximo 1 PR feature activo por proyecto**: todo el trabajo en curso — aunque sean features o arreglos distintos entre sí — se acumula como **commits sucesivos sobre esa misma rama** hasta que mergee. **Lo que identifica cada pieza de trabajo es el COMMIT, no una rama nueva.** Crear una rama por cada cambio fragmenta el trabajo en PRs paralelos y hace imposible un code review unificado. **Sólo se crea una rama cuando estás en `main`/`master` y NO hay ninguna rama abierta.** Antes de cualquier `git commit`, seguí este protocolo:
+
+### 0. (Fleet) Confirmá la coordenada de trabajo del proyecto
+
+Si este repo pertenece al fleet `vps-ops-toolkit` (existe `~/webapps/vps-ops-toolkit/projects.yml`), la **fuente de verdad de dónde y sobre qué rama se trabaja** es `projects.yml` + los PRs abiertos, no tu intuición. Resolvé la coordenada antes de reutilizar/crear rama:
+
+```bash
+OPS=~/webapps/vps-ops-toolkit
+RESOLVER="$OPS/scripts/maintenance/resolve-work-coordinate.sh"
+PROJ=$(basename "$(git rev-parse --show-toplevel)")
+[[ -x "$RESOLVER" ]] && bash "$RESOLVER" --check "$PROJ"   # imprime vps_work, resolved_branch, host_status, matches_yml
+```
+
+- **`host_status=wrong-host`** → **PARÁ**. El trabajo de este proyecto va en OTRO clon (el `vps_work` que imprime el resolver — p.ej. kore se trabaja en el clon de `vps-projectapp-staging`, no en el de producción). Avisá al operador antes de commitear acá.
+- **`resolved_branch` es una rama release** (`pr_state=single`) → **esa** es la rama de trabajo: `git checkout <resolved_branch>` y commiteá ahí (es la rama del PR abierto; la reutilizás igual que en la sección 2). **No crees una feature branch nueva.**
+- **`matches_yml=no`** (la rama del PR difiere de la registrada, p.ej. la release anterior se mergeó y hay otra) → avisá al operador; puede que haya que refrescar `projects.yml` con `bash "$RESOLVER" --apply "$PROJ"` en el toolkit.
+- **`branch_deploy_status=yml-stale`** (el clon acá ya está en la rama nueva y el `branch:` de projects.yml quedó viejo) → avisá y refrescá el yml con `bash "$RESOLVER" --fix "$PROJ"` (desde el toolkit). NUNCA hagas checkout de la rama vieja del yml sobre el clon. Si es `unbacked` o `server_status` marca host ajeno → derivar a `migrate-project` / revisión manual, sin auto.
+- **Sin toolkit, o el proyecto no está en `projects.yml`** → ignorá este paso y seguí con la sección 1.
 
 ### 1. Verificar la rama actual
 
@@ -38,23 +59,24 @@ Antes de cualquier operación de escritura (add, commit, etc.), ejecuta:
 git rev-parse --abbrev-ref HEAD
 ```
 
-### 2. Si la rama actual es `main` o `master`
+- **Si ya estás en una rama feature** (cualquier rama que no sea `main`/`master`): **quedate ahí y commiteá**, sin importar si el cambio actual es de un feature distinto al que originó la rama. NO crees una rama nueva — pasá directo a la sección 8 (commit).
+- **Si estás en `main`/`master`**: seguí la sección 2 antes de commitear.
 
-Antes de crear una rama nueva, **busca si ya existe una rama feature activa** para este proyecto:
+### 2. Si estás en `main` o `master`: primero buscá una rama abierta para reutilizar
+
+**Antes de siquiera pensar en crear una rama**, buscá si ya hay una rama feature con PR abierto (o trabajo en curso) para este proyecto y reutilizala. Preferí los PRs abiertos — son literalmente "la rama abierta para revisar los cambios":
 
 ```bash
 git fetch --quiet --prune
-# Lista ramas remotas que no son main/master/release-* ni HEAD
+# Fuente preferida: PRs abiertos (rama + URL)
+gh pr list --state open --json headRefName,url -q '.[] | "\(.headRefName)\t\(.url)"' 2>/dev/null
+# Fallback si gh no está disponible: ramas remotas que no son main/master/release-*/HEAD
 git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
 ```
 
-- **Si hay UNA rama feature activa** (con PR abierto o trabajo en curso): `git checkout <rama-existente>` y haz pull rebase si está atrás del remote. Commitea ahí. No crees rama nueva.
-- **Si hay VARIAS ramas feature activas**: pregunta al usuario en cuál commitear (no asumas).
-- **Si NO hay ninguna rama feature activa** (todas las que ves están mergeadas/cerradas o son ramas históricas abandonadas): crea rama nueva según el formato de la sección 3.
-
-**Por qué:** la convención del fleet es **máximo 1 PR feature activo simultáneamente** por proyecto. Todos los cambios en curso se acumulan como commits sucesivos sobre esa rama hasta que mergee. Crear ramas paralelas fragmenta el trabajo en múltiples PRs y hace difícil hacer code review unificado.
-
-**No pidas permiso para hacer el checkout** — sólo comunícalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
+- **Si hay UNA rama abierta** (PR abierto o trabajo en curso): `git checkout <rama-existente>`, `git pull --rebase` si está atrás del remote, y **commiteá ahí — aunque tu cambio sea de otra naturaleza que el trabajo previo de esa rama**. No crees rama nueva. **No pidas permiso para el checkout**, sólo comunicalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
+- **Si hay VARIAS ramas abiertas**: preguntá al usuario en cuál commitear (no asumas).
+- **Si NO hay ninguna rama abierta** (todas mergeadas/cerradas, o son ramas históricas abandonadas): recién ahí creá una rama nueva según el formato de la sección 3.
 
 ### 3. Formato obligatorio del nombre de rama
 
@@ -115,7 +137,7 @@ Si hay ambigüedad, pregunta al usuario una sola vez antes de crear la rama.
 
 - Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git pull`, `git fetch`) están permitidas en `main`/`master`.
 - Si el usuario explícitamente pide quedarse en `main` para revisar algo sin commitear, respeta esa intención.
-- Si ya estás en una rama feature válida (no `main`/`master`), no crees una nueva — continúa trabajando en ella. **Esta es la convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
+- Si ya estás en una rama feature válida (no `main`/`master`), **nunca** crees una rama paralela para un cambio "distinto" — seguí commiteando en la rama actual. Cada cambio es un commit más, no una rama más. **Convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
 
 ### 8. Mensajes de commit
 
