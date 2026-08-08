@@ -49,7 +49,6 @@ from quality.js_ast_bridge import JSFileResult, JSIssueInfo, JSTestInfo  # noqa:
 from quality.patterns import Patterns  # noqa: E402
 from test_quality_gate import QualityReport  # noqa: E402
 
-
 # Django app whose test tree the synthetic repos below emulate. It must stay in
 # sync with the "backend/<app>/tests/..." paths used throughout this module and
 # with `backend_app_name` in the repo's .testquality.yml. The canonical quality
