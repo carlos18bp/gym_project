@@ -49,6 +49,21 @@ from quality.js_ast_bridge import JSFileResult, JSIssueInfo, JSTestInfo  # noqa:
 from quality.patterns import Patterns  # noqa: E402
 from test_quality_gate import QualityReport  # noqa: E402
 
+# Django app whose test tree the synthetic repos below emulate. It must stay in
+# sync with the "backend/<app>/tests/..." paths used throughout this module and
+# with `backend_app_name` in the repo's .testquality.yml. The canonical quality
+# core defaults this to a different fleet project's app on purpose (per-project
+# values belong in .testquality.yml, not in the shared code), and a synthetic
+# tmp_path repo has no .testquality.yml to read — so with a bare, unparameterized
+# Config() the backend discovery walks backend/<other-app>/tests, finds nothing,
+# and every positive assertion below silently degrades to "no findings".
+BACKEND_APP = "gym_app"
+
+
+def _gate_config() -> Config:
+    """Build the Config a real gate run uses for this repo (see BACKEND_APP)."""
+    return Config(backend_app_name=BACKEND_APP)
+
 
 # Django app whose test tree the synthetic repos below emulate. It must stay in
 # sync with the "backend/<app>/tests/..." paths used throughout this module and
