@@ -42,14 +42,14 @@ describe("RequestCard.vue", () => {
     });
 
     await wrapper.trigger("click");
-    expect(wrapper.emitted("view-detail")).toBeTruthy();
+    expect(wrapper.emitted("view-detail")).toHaveLength(1);
     expect(wrapper.emitted("view-detail")[0]).toEqual([99]);
 
     const detailBtn = wrapper
       .findAll("button")
       .find((b) => (b.text() || "").includes("Ver Detalle"));
 
-    expect(detailBtn).toBeTruthy();
+    expect(detailBtn.text()).toContain("Ver Detalle");
 
     await detailBtn.trigger("click");
 

@@ -49,7 +49,9 @@ describe("Captcha Store", () => {
 
     mock.onGet("/api/google-captcha/site-key/").reply(500, { detail: "err" });
 
-    await expect(store.fetchSiteKey()).rejects.toBeTruthy();
+    await expect(store.fetchSiteKey()).rejects.toThrow(
+      "Request failed with status code 500"
+    );
     expect(store.siteKey).toBe(null);
 
     consoleSpy.mockRestore();

@@ -234,32 +234,32 @@ describe("DocumentVariablesConfig.vue", () => {
     setupStore(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const draftBtn = wrapper.findAll("button").find(
+    const draftBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Guardar como borrador")
     );
-    expect(draftBtn).toBeTruthy();
+    expect(draftBtns).toHaveLength(1);
   });
 
   test("publish button is visible", async () => {
     setupStore(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const publishBtn = wrapper.findAll("button").find(
+    const publishBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Publicar")
     );
-    expect(publishBtn).toBeTruthy();
+    expect(publishBtns).toHaveLength(1);
   });
 
   test("cancel button navigates back to dashboard", async () => {
     setupStore(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const cancelBtn = wrapper.findAll("button").find(
+    const cancelBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Cancelar")
     );
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtns).toHaveLength(1);
 
-    await cancelBtn.trigger("click");
+    await cancelBtns[0].trigger("click");
     await flushPromises();
 
     expect(mockRouterPush).toHaveBeenCalledWith("/dynamic_document_dashboard");
@@ -342,7 +342,6 @@ describe("DocumentVariablesConfig.vue", () => {
 
     expect(store.selectedDocument.variables[0].field_type).toBe("date");
   });
-
   test("duplicate summary_field classification resets previous variable", async () => {
     const variables = buildVariables();
     variables[0].summary_field = "counterparty";

@@ -87,7 +87,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const edit = options.find((o) => o.action === "edit-submenu");
-      expect(edit).toBeTruthy();
+      expect(edit).toMatchObject({ label: "Editar", action: "edit-submenu", isGroup: true });
       expect(edit.children.map((c) => c.action)).toEqual(
         expect.arrayContaining(["edit", "editDocument", "editForm"])
       );
@@ -194,7 +194,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const publish = options.find((o) => o.action === "publish");
-      expect(publish).toBeTruthy();
+      expect(publish).toMatchObject({ label: "Publicar", action: "publish" });
       expect(publish.disabled).toBe(true);
     });
 
@@ -314,7 +314,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const rel = options.find((o) => o.action === "relationships");
-      expect(rel).toBeTruthy();
+      expect(rel).toMatchObject({ label: "Administrar Asociaciones", action: "relationships" });
       expect(rel.disabled).toBe(true);
     });
 
@@ -350,7 +350,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const relationships = options.find((o) => o.action === "relationships");
-      expect(relationships).toBeTruthy();
+      expect(relationships).toMatchObject({ label: "Administrar Asociaciones", action: "relationships" });
       expect(relationships.disabled).toBe(false);
       expect(options.some((o) => o.action === "downloadPDF")).toBe(true);
     });
@@ -381,7 +381,7 @@ describe("menuOptionsHelper.js", () => {
       expect(options.some((o) => o.action === "preview")).toBe(true);
       expect(options.some((o) => o.action === "downloadPDF")).toBe(true);
       const downloadWord = options.find((o) => o.action === "downloadWord");
-      expect(downloadWord).toBeTruthy();
+      expect(downloadWord).toMatchObject({ label: "Descargar Word", action: "downloadWord" });
       expect(downloadWord.disabled).toBe(true);
       expect(options.some((o) => o.action === "delete")).toBe(false);
     });
@@ -580,7 +580,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const edit = options.find((o) => o.action === "edit-submenu");
-      expect(edit).toBeTruthy();
+      expect(edit).toMatchObject({ label: "Editar", action: "edit-submenu", isGroup: true });
       expect(edit.children.some((c) => c.action === "editDocument")).toBe(false);
 
       const disabledActions = [
@@ -610,15 +610,15 @@ describe("menuOptionsHelper.js", () => {
       expect(options.some((o) => o.action === "preview")).toBe(true);
 
       const relationships = options.find((o) => o.action === "relationships");
-      expect(relationships).toBeTruthy();
+      expect(relationships).toMatchObject({ label: "Administrar Asociaciones", action: "relationships" });
       expect(relationships.disabled).toBe(true);
 
       const formalize = options.find((o) => o.action === "formalize");
-      expect(formalize).toBeTruthy();
+      expect(formalize).toMatchObject({ label: "Formalizar y Agregar Firmas", action: "formalize" });
       expect(formalize.disabled).toBe(true);
 
       const downloadPdf = options.find((o) => o.action === "downloadPDF");
-      expect(downloadPdf).toBeTruthy();
+      expect(downloadPdf).toMatchObject({ label: "Descargar PDF", action: "downloadPDF" });
       expect(downloadPdf.disabled).toBe(true);
     });
 
@@ -635,7 +635,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const downloadWord = options.find((o) => o.action === "downloadWord");
-      expect(downloadWord).toBeTruthy();
+      expect(downloadWord).toMatchObject({ label: "Descargar Word", action: "downloadWord" });
       expect(downloadWord.disabled).toBe(true);
     });
 
@@ -667,7 +667,7 @@ describe("menuOptionsHelper.js", () => {
       );
 
       const edit = options.find((o) => o.action === "edit-submenu");
-      expect(edit).toBeTruthy();
+      expect(edit).toMatchObject({ label: "Editar", action: "edit-submenu", isGroup: true });
       expect(edit.children.some((c) => c.action === "editDocument")).toBe(true);
     });
 

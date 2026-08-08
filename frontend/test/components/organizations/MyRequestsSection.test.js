@@ -144,7 +144,7 @@ describe("MyRequestsSection.vue", () => {
     await wrapper.find("[data-test='view-detail']").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("request-detail")).toBeTruthy();
+    expect(wrapper.emitted("request-detail")).toHaveLength(1);
     expect(wrapper.emitted("request-detail")[0]).toEqual([55]);
   });
 
@@ -186,7 +186,7 @@ describe("MyRequestsSection.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Limpiar Filtros"));
 
-    expect(clearButton).toBeTruthy();
+    expect(clearButton.text()).toContain("Limpiar Filtros");
 
     await clearButton.trigger("click");
     await flushPromises();
@@ -234,11 +234,11 @@ describe("MyRequestsSection.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Nueva Solicitud"));
 
-    expect(createButton).toBeTruthy();
+    expect(createButton.text()).toContain("Nueva Solicitud");
 
     await createButton.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("create-request")).toBeTruthy();
+    expect(wrapper.emitted("create-request")).toHaveLength(1);
   });
 });

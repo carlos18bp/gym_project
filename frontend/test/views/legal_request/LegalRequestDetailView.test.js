@@ -45,7 +45,7 @@ describe("views/legal_request/LegalRequestDetail.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Regresar"));
 
-    expect(backButton).toBeTruthy();
+    expect(backButton.text()).toContain("Regresar");
     await backButton.trigger("click");
 
     expect(mockRouterGo).toHaveBeenCalledWith(-1);

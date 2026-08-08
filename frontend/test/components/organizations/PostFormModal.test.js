@@ -123,11 +123,11 @@ describe("PostFormModal.vue", () => {
     const wrapper = await mountModal();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
 
     await wrapper.find("input#title").setValue("  Title  ");
     await flushPromises();
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
 
     await wrapper.find("textarea#content").setValue("  Content  ");
     await flushPromises();
@@ -254,7 +254,7 @@ describe("PostFormModal.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("saved")).toBeTruthy();
+    expect(wrapper.emitted("saved")).toHaveLength(1);
     expect(wrapper.emitted("saved")[0]).toEqual([{ post: { id: 50 } }]);
   });
 
@@ -330,7 +330,8 @@ describe("PostFormModal.vue", () => {
       "Post actualizado exitosamente",
       "success"
     );
-    expect(wrapper.emitted("saved")).toBeTruthy();
+    expect(wrapper.emitted("saved")).toHaveLength(1);
+    expect(wrapper.emitted("saved")[0]).toEqual([{ post: { id: 60 } }]);
   });
 
   test("edit flow uses fallback values when post fields are empty", async () => {
@@ -729,11 +730,11 @@ describe("PostFormModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cancelar"));
 
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtn.text()).toContain("Cancelar");
 
     await cancelBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

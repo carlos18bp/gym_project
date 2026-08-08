@@ -68,12 +68,12 @@ describe("CorporateRequestCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Ver Detalle") || (b.text() || "").trim() === "Detalle");
 
-    expect(viewBtn).toBeTruthy();
+    expect(viewBtn.text()).toContain("Ver Detalle");
 
     await viewBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("view-detail")).toBeTruthy();
+    expect(wrapper.emitted("view-detail")).toHaveLength(1);
     expect(wrapper.emitted("view-detail")[0]).toEqual([123]);
   });
 
@@ -225,7 +225,7 @@ describe("CorporateRequestCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cambiar Estado") || (b.text() || "").trim() === "Estado");
 
-    expect(statusMenuToggle).toBeTruthy();
+    expect(statusMenuToggle.text()).toContain("Cambiar Estado");
 
     await statusMenuToggle.trigger("click");
     await flushPromises();
@@ -236,12 +236,12 @@ describe("CorporateRequestCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Resuelta"));
 
-    expect(resolvedOption).toBeTruthy();
+    expect(resolvedOption.text()).toBe("Resuelta");
 
     await resolvedOption.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("status-updated")).toBeTruthy();
+    expect(wrapper.emitted("status-updated")).toHaveLength(1);
     expect(wrapper.emitted("status-updated")[0][0]).toMatchObject({
       requestId: 5,
       newStatus: "RESOLVED",
@@ -271,12 +271,12 @@ describe("CorporateRequestCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Pendiente"));
 
-    expect(pendingOption).toBeTruthy();
+    expect(pendingOption.text()).toBe("Pendiente");
 
     await pendingOption.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("status-updated")).toBeFalsy();
+    expect(wrapper.emitted("status-updated")).toBeUndefined();
 
     // Menu should be closed
     expect(wrapper.find("div.fixed.inset-0").exists()).toBe(false);
@@ -300,7 +300,7 @@ describe("CorporateRequestCard.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Resuelta"));
 
-    expect(option.attributes("disabled")).toBeDefined();
+    expect(option.attributes("disabled")).toBe("");
   });
 
   test("clicking the backdrop closes the status menu", async () => {

@@ -183,6 +183,7 @@ describe("DocumentInProgressByClientListTable.vue", () => {
   });
 
   test("sets tabDocuments to empty array on fetch error", async () => {
+    // quality: allow-duplicate (distinct SUT vs DocumentFinishedByClientListTable)
     mockDocumentStore.fetchDocumentsForTab.mockRejectedValue(
       new Error("Network error")
     );

@@ -36,9 +36,9 @@ describe("PWAInstallAlert.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Instalar aplicación"));
 
-    expect(button).toBeTruthy();
+    expect(button.text()).toContain("Instalar aplicación");
     await button.trigger("click");
 
-    expect(mockPromptInstall).toHaveBeenCalled();
+    expect(mockPromptInstall).toHaveBeenCalledTimes(1);
   });
 });

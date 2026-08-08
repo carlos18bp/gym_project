@@ -198,7 +198,7 @@ describe("SlideBar.vue", () => {
       .findAll("a")
       .find((a) => (a.text() || "").trim() === "Perfil");
 
-    expect(perfilLink).toBeTruthy();
+    expect(perfilLink.text().trim()).toBe("Perfil");
 
     await perfilLink.trigger("click");
     await flushPromises();
@@ -224,7 +224,7 @@ describe("SlideBar.vue", () => {
     const logoutLink = wrapper
       .findAll("a")
       .find((a) => (a.text() || "").trim() === "Cerrar sesión");
-    expect(logoutLink).toBeTruthy();
+    expect(logoutLink.text().trim()).toBe("Cerrar sesión");
 
     await logoutLink.trigger("click");
     await flushPromises();
@@ -303,7 +303,7 @@ describe("SlideBar.vue", () => {
     const manualLink = wrapper
       .findAll("a")
       .find((a) => (a.text() || "").trim() === "Manual de Usuario");
-    expect(manualLink).toBeTruthy();
+    expect(manualLink.text().trim()).toBe("Manual de Usuario");
 
     await manualLink.trigger("click");
     await flushPromises();
@@ -397,7 +397,7 @@ describe("SlideBar.vue", () => {
     const inicioMobile = mobileRoot
       .findAll("a")
       .find((a) => (a.text() || "").trim() === "Inicio");
-    expect(inicioMobile).toBeTruthy();
+    expect(inicioMobile.text().trim()).toBe("Inicio");
     await inicioMobile.trigger("click");
     await nextTick();
     await flushPromises();
@@ -436,7 +436,7 @@ describe("SlideBar.vue", () => {
         const spans = b.findAll("span");
         return spans.some((s) => (s.text() || "").trim() === "Cerrar slidebar");
       });
-    expect(closeBtn).toBeTruthy();
+    expect(closeBtn.text()).toContain("Cerrar slidebar");
     await closeBtn.trigger("click");
     await nextTick();
     await flushPromises();
@@ -480,7 +480,7 @@ describe("SlideBar.vue", () => {
     const manualLink = wrapper
       .findAll("a")
       .find((a) => (a.text() || "").trim() === "Manual de Usuario");
-    expect(manualLink).toBeTruthy();
+    expect(manualLink.text().trim()).toBe("Manual de Usuario");
 
     await manualLink.trigger("click");
     await flushPromises();
@@ -506,7 +506,7 @@ describe("SlideBar.vue", () => {
       const link = wrapper
         .findAll("a")
         .find((a) => (a.text() || "").trim() === label);
-      expect(link).toBeTruthy();
+      expect(link.text().trim()).toBe(label);
       mockRouterPush.mockClear();
       await link.trigger("click");
       await flushPromises();
@@ -546,7 +546,7 @@ describe("SlideBar.vue", () => {
       const link = wrapper
         .findAll("a")
         .find((a) => (a.text() || "").trim() === label);
-      expect(link).toBeTruthy();
+      expect(link.text().trim()).toBe(label);
       mockRouterPush.mockClear();
       await link.trigger("click");
       await flushPromises();

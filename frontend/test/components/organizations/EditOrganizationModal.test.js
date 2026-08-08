@@ -261,7 +261,7 @@ describe("EditOrganizationModal.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("updated")).toBeTruthy();
+    expect(wrapper.emitted("updated")).toHaveLength(1);
     expect(wrapper.emitted("updated")[0]).toEqual([{ id: 5, title: "Updated" }]);
   });
 
@@ -601,11 +601,11 @@ describe("EditOrganizationModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cancelar"));
 
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtn.text()).toContain("Cancelar");
 
     await cancelBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

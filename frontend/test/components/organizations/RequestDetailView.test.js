@@ -762,7 +762,7 @@ describe("RequestDetailView.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Volver"));
 
-    expect(backBtn).toBeTruthy();
+    expect(backBtn.text()).toContain("Volver");
 
     await backBtn.trigger("click");
     await flushPromises();
@@ -873,8 +873,8 @@ describe("RequestDetailView.vue", () => {
       .findAll("span")
       .find((span) => span.text() === "CUSTOM_PRIORITY");
 
-    expect(statusBadge).toBeTruthy();
-    expect(priorityBadge).toBeTruthy();
+    expect(statusBadge.text()).toBe("CUSTOM_STATUS");
+    expect(priorityBadge.text()).toBe("CUSTOM_PRIORITY");
     expect(statusBadge.classes()).toEqual(
       expect.arrayContaining(["bg-gray-100", "text-gray-800"])
     );

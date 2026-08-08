@@ -123,9 +123,8 @@ describe("ServiceDetail.vue", () => {
     await flushPromises();
 
     // Field 10 (Nombre, type=input) is on stage 1 which is rendered
-    const inputs = wrapper.findAll("input[type='text']");
-    const populated = inputs.find((i) => i.element.value === "Juan Perez");
-    expect(populated).toBeTruthy();
+    const inputValues = wrapper.findAll("input[type='text']").map((i) => i.element.value);
+    expect(inputValues).toContain("Juan Perez");
   });
 
   test("applyDraftToForm sets activeStageIndex from draft current_stage", async () => {

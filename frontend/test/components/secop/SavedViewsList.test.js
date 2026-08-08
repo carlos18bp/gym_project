@@ -36,35 +36,24 @@ describe("SavedViewsList.vue", () => {
       },
     });
 
-    const deleteButton = wrapper.findAll("button").find(
-      (b) => b.text().includes("Eliminar") || b.text().includes("eliminar")
-    );
-    if (deleteButton) {
-      await deleteButton.trigger("click");
-      expect(wrapper.emitted("delete")).toBeTruthy();
-    } else {
-      expect(wrapper.text()).toContain("Delete Me");
-    }
+    await wrapper.find("[data-testid='saved-view-delete-1']").trigger("click");
+
+    expect(wrapper.emitted("delete")).toHaveLength(1);
+    expect(wrapper.emitted("delete")[0]).toEqual([1]);
   });
 
   test("emits apply event with view filters", async () => {
+    const view = { id: 1, name: "Apply Me", filters: { department: "Bogotá D.C." } };
     const wrapper = mount(SavedViewsList, {
       props: {
-        savedViews: [
-          { id: 1, name: "Apply Me", filters: { department: "Bogotá D.C." } },
-        ],
+        savedViews: [view],
         currentFilters: {},
       },
     });
 
-    const applyButton = wrapper.findAll("button").find(
-      (b) => b.text().includes("Aplicar") || b.text().includes("aplicar")
-    );
-    if (applyButton) {
-      await applyButton.trigger("click");
-      expect(wrapper.emitted("apply")).toBeTruthy();
-    } else {
-      expect(wrapper.text()).toContain("Apply Me");
-    }
+    await wrapper.find("[data-testid='saved-view-apply-1']").trigger("click");
+
+    expect(wrapper.emitted("apply")).toHaveLength(1);
+    expect(wrapper.emitted("apply")[0]).toEqual([view]);
   });
 });

@@ -66,7 +66,7 @@ describe("ImageUploadSignature.vue", () => {
 
     await findButtonByText(wrapper, "Volver").trigger("click");
 
-    expect(wrapper.emitted("cancel")).toBeTruthy();
+    expect(wrapper.emitted("cancel")).toHaveLength(1);
   });
 
   test("validates file size and shows alert when too large", async () => {
@@ -182,7 +182,7 @@ describe("ImageUploadSignature.vue", () => {
     const emitted = wrapper.emitted("save");
     const payload = emitted[0][0];
 
-    expect(emitted).toBeTruthy();
+    expect(emitted).toHaveLength(1);
     expect([payload.signatureImage, payload.originalFile?.name, payload.traceabilityData.method]).toEqual([
       "data:image/png;base64,QQ==",
       "sig.png",

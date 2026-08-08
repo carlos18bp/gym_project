@@ -71,8 +71,8 @@ describe("DeleteConfirmModal.vue", () => {
     await Promise.resolve();
 
     expect(mockDeleteRequest).toHaveBeenCalledWith(9);
-    expect(wrapper.emitted("deleted")).toBeTruthy();
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("deleted")).toHaveLength(1);
+    expect(wrapper.emitted("close")).toHaveLength(1);
 
     jest.runAllTimers();
 

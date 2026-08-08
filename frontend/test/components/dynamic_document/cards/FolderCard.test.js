@@ -259,15 +259,15 @@ describe("FolderCard.vue", () => {
     expect(buttons).toHaveLength(3);
 
     await buttons[0].trigger("click");
-    expect(wrapper.emitted("edit")).toBeTruthy();
+    expect(wrapper.emitted("edit")).toHaveLength(1);
 
     await menuToggle.trigger("click");
     await wrapper.findAll("[data-testid='folder-menu-dropdown'] button")[1].trigger("click");
-    expect(wrapper.emitted("add-documents")).toBeTruthy();
+    expect(wrapper.emitted("add-documents")).toHaveLength(1);
 
     await menuToggle.trigger("click");
     await wrapper.findAll("[data-testid='folder-menu-dropdown'] button")[2].trigger("click");
-    expect(wrapper.emitted("delete")).toBeTruthy();
+    expect(wrapper.emitted("delete")).toHaveLength(1);
   });
 
   test("clicking card while menu is open does not emit click", async () => {
@@ -346,7 +346,7 @@ describe("FolderCard.vue", () => {
     jest.advanceTimersByTime(60);
 
     await wrapper.trigger("click");
-    expect(wrapper.emitted("click")).toBeTruthy();
+    expect(wrapper.emitted("click")).toHaveLength(1);
 
     wrapper.unmount();
     jest.useRealTimers();

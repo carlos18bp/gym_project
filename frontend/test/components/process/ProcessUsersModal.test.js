@@ -29,10 +29,9 @@ describe("ProcessUsersModal.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Cerrar"));
 
-    expect(closeBtn).toBeTruthy();
     await closeBtn.trigger("click");
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("shows empty state when there are no users", () => {

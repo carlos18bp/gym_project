@@ -91,7 +91,13 @@ describe("services_tramites store", () => {
     const [url, formData] = mockCreateRequest.mock.calls[0];
     expect(url).toBe("service-requests/save/");
     expect(formData).toBeInstanceOf(FormData);
-    expect(formData.get("payload")).toBeTruthy();
+    expect(JSON.parse(formData.get("payload"))).toEqual({
+      service_id: 1,
+      request_id: null,
+      answers: [{ field_id: 100, value_text: "Test" }],
+      current_stage: 1,
+      is_submit: true,
+    });
     expect(formData.get("field_files_101")).toBe(file);
     expect(result).toEqual(responseData);
   });

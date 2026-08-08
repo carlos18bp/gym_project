@@ -142,7 +142,7 @@ describe("InviteMemberModal.vue", () => {
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
 
     await wrapper.find("input#email").setValue("  client@example.com ");
     await wrapper.find("textarea#message").setValue("  Hola  ");
@@ -163,7 +163,7 @@ describe("InviteMemberModal.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("invited")).toBeTruthy();
+    expect(wrapper.emitted("invited")).toHaveLength(1);
     expect(wrapper.emitted("invited")[0]).toEqual([{ id: 77, status: "PENDING" }]);
 
     expect(wrapper.text()).toContain("¡Invitación Enviada!");
@@ -358,12 +358,12 @@ describe("InviteMemberModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cancelar"));
 
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtn.text()).toContain("Cancelar");
 
     await cancelBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("clicking 'Invitar a Otra Persona' after success resets form and keeps modal open", async () => {
@@ -404,7 +404,7 @@ describe("InviteMemberModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Invitar a Otra Persona"));
 
-    expect(inviteAnotherBtn).toBeTruthy();
+    expect(inviteAnotherBtn.text()).toContain("Invitar a Otra Persona");
 
     await inviteAnotherBtn.trigger("click");
     await flushPromises();

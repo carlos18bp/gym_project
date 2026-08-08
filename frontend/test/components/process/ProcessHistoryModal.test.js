@@ -38,7 +38,40 @@ describe("ProcessHistoryModal.vue", () => {
     expect(titles[1]).toContain("Segunda");
   });
 
-  test("formatDate handles plain dates and close emits", async () => {
+  test.each([
+    {
+      label: "plain YYYY-MM-DD date",
+      date: "2026-02-01",
+      expected: new Date(2026, 1, 1).toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+    {
+      label: "full ISO datetime",
+      date: "2026-02-01T12:30:00.000Z",
+      expected: new Date("2026-02-01T12:30:00.000Z").toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "America/Bogota",
+      }),
+    },
+  ])("renders the $label formatted in the stage entry", ({ date, expected }) => {
+    const wrapper = mount(ProcessHistoryModal, {
+      props: {
+        isOpen: true,
+        stages: [buildStage({ date })],
+      },
+    });
+
+    expect(wrapper.text()).toContain(expected);
+  });
+
+  test("emits close when the footer button is clicked", async () => {
     const wrapper = mount(ProcessHistoryModal, {
       props: {
         isOpen: true,
@@ -46,42 +79,13 @@ describe("ProcessHistoryModal.vue", () => {
       },
     });
 
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2026-02-01T12:00:00Z"));
-
-    const { formatDate } = wrapper.vm;
-
-    const plainDate = "2026-02-01";
-    const expectedPlain = new Date("2026-02-01T05:00:00Z").toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    expect(formatDate(plainDate)).toBe(expectedPlain);
-
-    const dateTime = "2026-02-01T12:30:00.000Z";
-    const expectedDateTime = new Date("2026-02-01T12:30:00.000Z").toLocaleDateString("es-CO", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "America/Bogota",
-    });
-
-    expect(formatDate(dateTime)).toBe(expectedDateTime);
-
-    jest.useRealTimers();
-
     const closeBtn = wrapper
       .findAll("button")
       .find((button) => (button.text() || "").includes("Cerrar"));
 
-    expect(closeBtn).toBeTruthy();
     await closeBtn.trigger("click");
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("renders alert badge with lawyer-and-clients tooltip when notify_clients=true", () => {

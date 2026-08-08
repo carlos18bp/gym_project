@@ -181,7 +181,7 @@ describe("ElectronicSignature.vue", () => {
 
     const img = wrapper.find("img[alt='Firma guardada']");
 
-    expect(wrapper.emitted("signatureSaved")).toBeTruthy();
+    expect(wrapper.emitted("signatureSaved")).toHaveLength(1);
     expect([img.exists(), img.attributes("src")]).toEqual([
       true,
       "data:image/png;base64,QQ==",
@@ -208,7 +208,7 @@ describe("ElectronicSignature.vue", () => {
     expect(capturedParams.formData.get("method")).toBe("draw");
 
     const uploadedFile = capturedParams.formData.get("signature_image");
-    expect(uploadedFile).toBeTruthy();
+    expect(uploadedFile.size).toBe(1);
     expect(typeof uploadedFile).toBe("object");
     expect(uploadedFile.type).toBe("image/png");
   });
@@ -241,7 +241,7 @@ describe("ElectronicSignature.vue", () => {
     await findButtonByText(wrapper, "Subir imagen").trigger("click");
     await wrapper.find("[data-test='upload-stub'] [data-test='emit-cancel']").trigger("click");
 
-    expect(wrapper.emitted("cancel")).toBeTruthy();
+    expect(wrapper.emitted("cancel")).toHaveLength(1);
   });
 
   test("logs error when there is no user id available", async () => {
@@ -382,7 +382,8 @@ describe("ElectronicSignature.vue", () => {
     await wrapper.find("[data-test='draw-stub'] [data-test='emit-cancel']").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("cancel")).toBeTruthy();
+    expect(wrapper.emitted("cancel")).toHaveLength(1);
+    expect(wrapper.text()).toContain("Dibujar firma");
   });
 
   test("openModal/closeModal toggles SignatureModal", async () => {

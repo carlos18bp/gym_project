@@ -40,7 +40,7 @@ describe("ResponseForm.vue", () => {
     await flushPromises();
 
     expect(mockCreateResponse).toHaveBeenCalledWith(10, "Hola");
-    expect(wrapper.emitted("response-added")).toBeTruthy();
+    expect(wrapper.emitted("response-added")).toHaveLength(1);
     expect(wrapper.emitted("response-added")[0]).toEqual([response]);
     expect(wrapper.find("textarea").element.value).toBe("");
   });

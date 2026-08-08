@@ -100,7 +100,7 @@ describe("DrawSignature.vue", () => {
 
     await findButtonByText(wrapper, "Volver").trigger("click");
 
-    expect(wrapper.emitted("cancel")).toBeTruthy();
+    expect(wrapper.emitted("cancel")).toHaveLength(1);
   });
 
   test("save button is disabled until user draws", async () => {
@@ -112,7 +112,7 @@ describe("DrawSignature.vue", () => {
     });
 
     const saveBtn = findButtonByText(wrapper, "Guardar");
-    expect(saveBtn.attributes("disabled")).toBeDefined();
+    expect(saveBtn.attributes("disabled")).toBe("");
   });
 
   test("draw returns early when not drawing and does not call lineTo", async () => {
@@ -209,7 +209,7 @@ describe("DrawSignature.vue", () => {
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.hasDrawn).toBe(false);
     const saveBtn = findButtonByText(wrapper, "Guardar");
-    expect(saveBtn.attributes("disabled")).toBeDefined();
+    expect(saveBtn.attributes("disabled")).toBe("");
   });
 
   test("after drawing enables save and updates store", async () => {
@@ -230,7 +230,7 @@ describe("DrawSignature.vue", () => {
     await findButtonByText(wrapper, "Guardar").trigger("click");
 
     const emitted = wrapper.emitted("save");
-    expect(emitted).toBeTruthy();
+    expect(emitted).toHaveLength(1);
 
     const payload = emitted[0][0];
     expect(payload.signatureImage).toBe("data:image/png;base64,QQ==");
@@ -287,7 +287,7 @@ describe("DrawSignature.vue", () => {
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.hasDrawn).toBe(false);
     const saveBtn = findButtonByText(wrapper, "Guardar");
-    expect(saveBtn.attributes("disabled")).toBeDefined();
+    expect(saveBtn.attributes("disabled")).toBe("");
   });
 
   test("clearCanvas returns early when context is falsy", async () => {

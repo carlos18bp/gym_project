@@ -37,7 +37,7 @@ describe("InvitationsSection.vue", () => {
 
     await wrapper.find("[data-test='responded']").trigger("click");
 
-    expect(wrapper.emitted("invitation-responded")).toBeTruthy();
+    expect(wrapper.emitted("invitation-responded")).toHaveLength(1);
     expect(wrapper.emitted("invitation-responded")[0]).toEqual([
       { invitationId: 11, status: "ACCEPTED" },
     ]);

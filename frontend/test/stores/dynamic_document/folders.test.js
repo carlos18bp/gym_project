@@ -140,7 +140,7 @@ describe("Document Folders Store", () => {
 
     mockGetRequest.mockResolvedValueOnce({ status: 500, data: [] });
 
-    await expect(store.fetchFolders()).rejects.toBeTruthy();
+    await expect(store.fetchFolders()).rejects.toThrow("Error fetching folders: 500");
     expect(store.error).toBe("Error al obtener las carpetas");
   });
 
@@ -169,26 +169,26 @@ describe("Document Folders Store", () => {
 
     mockGetRequest.mockResolvedValueOnce({ status: 404, data: {} });
 
-    await expect(store.fetchFolder(3)).rejects.toBeTruthy();
+    await expect(store.fetchFolder(3)).rejects.toThrow("Error fetching folder: 404");
     expect(store.error).toBe("Error al obtener la carpeta");
   });
 
   test("createFolder validates name, color, and handles errors", async () => {
     const store = setupStore();
 
-    await expect(store.createFolder({ name: "" })).rejects.toBeTruthy();
+    await expect(store.createFolder({ name: "" })).rejects.toThrow("El nombre de la carpeta es requerido");
     expect(store.error).toBe("El nombre de la carpeta es requerido");
     expect(mockShowNotification).toHaveBeenCalledWith(
       "El nombre de la carpeta es requerido",
       "error"
     );
 
-    await expect(store.createFolder({ name: "Valid", color_id: 9 })).rejects.toBeTruthy();
+    await expect(store.createFolder({ name: "Valid", color_id: 9 })).rejects.toThrow("Color de carpeta no válido");
     expect(store.error).toBe("Color de carpeta no válido");
 
     mockCreateRequest.mockResolvedValueOnce({ status: 400, data: {} });
 
-    await expect(store.createFolder({ name: "Test" })).rejects.toBeTruthy();
+    await expect(store.createFolder({ name: "Test" })).rejects.toThrow("Error creating folder: 400");
     expect(store.error).toBe("Error creating folder: 400");
   });
 
@@ -224,7 +224,7 @@ describe("Document Folders Store", () => {
 
     mockCreateRequest.mockRejectedValueOnce({});
 
-    await expect(store.createFolder({ name: "Valid" })).rejects.toBeTruthy();
+    await expect(store.createFolder({ name: "Valid" })).rejects.toEqual({});
 
     expect(store.error).toBe("Error al crear la carpeta");
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -236,14 +236,14 @@ describe("Document Folders Store", () => {
   test("updateFolder validates input and handles non-200 responses", async () => {
     const store = setupStore();
 
-    await expect(store.updateFolder(1, { name: "   " })).rejects.toBeTruthy();
+    await expect(store.updateFolder(1, { name: "   " })).rejects.toThrow("El nombre de la carpeta no puede estar vacío");
     expect(store.error).toBe("El nombre de la carpeta no puede estar vacío");
 
-    await expect(store.updateFolder(1, { color_id: 9 })).rejects.toBeTruthy();
+    await expect(store.updateFolder(1, { color_id: 9 })).rejects.toThrow("Color de carpeta no válido");
     expect(store.error).toBe("Color de carpeta no válido");
 
     mockPatchRequest.mockResolvedValueOnce({ status: 500, data: {} });
-    await expect(store.updateFolder(1, { name: "Nuevo" })).rejects.toBeTruthy();
+    await expect(store.updateFolder(1, { name: "Nuevo" })).rejects.toThrow("Error updating folder: 500");
     expect(store.error).toBe("Error updating folder: 500");
   });
 
@@ -295,7 +295,7 @@ describe("Document Folders Store", () => {
 
     mockPatchRequest.mockRejectedValueOnce({});
 
-    await expect(store.updateFolder(4, { color_id: 1 })).rejects.toBeTruthy();
+    await expect(store.updateFolder(4, { color_id: 1 })).rejects.toEqual({});
 
     expect(store.error).toBe("Error al actualizar la carpeta");
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -360,7 +360,7 @@ describe("Document Folders Store", () => {
     error.message = "";
     mockDeleteRequest.mockRejectedValueOnce(error);
 
-    await expect(store.deleteFolder(99)).rejects.toBeTruthy();
+    await expect(store.deleteFolder(99)).rejects.toBe(error);
 
     expect(store.error).toBe("Error al eliminar la carpeta");
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -374,7 +374,7 @@ describe("Document Folders Store", () => {
 
     mockDeleteRequest.mockResolvedValueOnce({ status: 500 });
 
-    await expect(store.deleteFolder(5)).rejects.toBeTruthy();
+    await expect(store.deleteFolder(5)).rejects.toThrow("Error deleting folder: 500");
 
     expect(store.error).toBe("Error deleting folder: 500");
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -387,7 +387,7 @@ describe("Document Folders Store", () => {
     const store = setupStore();
 
     store.setCurrentFolder(buildFolder());
-    expect(store.currentFolder).toBeTruthy();
+    expect(store.currentFolder).toEqual(buildFolder());
 
     store.clearCurrentFolder();
     expect(store.currentFolder).toBe(null);
@@ -405,8 +405,8 @@ describe("Document Folders Store", () => {
   test("utility actions add/remove documents and handle missing folders", async () => {
     const store = setupStore();
 
-    await expect(store.addDocumentsToFolder(1, [1])).rejects.toBeTruthy();
-    await expect(store.removeDocumentsFromFolder(1, [1])).rejects.toBeTruthy();
+    await expect(store.addDocumentsToFolder(1, [1])).rejects.toThrow("Carpeta no encontrada");
+    await expect(store.removeDocumentsFromFolder(1, [1])).rejects.toThrow("Carpeta no encontrada");
 
     store.folders = [buildFolder({ id: 1, document_ids: [1, 2, 3] })];
 
@@ -472,7 +472,7 @@ describe("Document Folders Store", () => {
 
     jest.spyOn(store, "removeDocumentsFromFolder").mockRejectedValue(new Error("fail"));
 
-    await expect(store.moveDocumentsBetweenFolders([1], 2, 3)).rejects.toBeTruthy();
+    await expect(store.moveDocumentsBetweenFolders([1], 2, 3)).rejects.toThrow("fail");
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al mover documentos",

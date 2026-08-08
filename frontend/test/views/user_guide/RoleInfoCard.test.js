@@ -49,6 +49,7 @@ describe("views/user_guide/components/RoleInfoCard.vue", () => {
   });
 
   test.each([
+    // quality: allow-duplicate (test.each name-collision artifact; asserts access level, not role name)
     ["lawyer", "completas"],
     ["basic", "básicas"],
   ])("shows the access level for %s", (role, level) => {

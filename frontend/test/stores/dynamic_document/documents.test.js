@@ -82,7 +82,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/dynamic-documents/99/").reply(500, { detail: "err" });
 
-    await expect(store.fetchDocumentById(99)).rejects.toBeTruthy();
+    await expect(store.fetchDocumentById(99)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -181,7 +181,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPost("/api/dynamic-documents/create/").reply(500, { detail: "err" });
 
-    await expect(store.createDocument({ title: "Doc" })).rejects.toBeTruthy();
+    await expect(store.createDocument({ title: "Doc" })).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -237,7 +237,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPut("/api/dynamic-documents/2/update/").reply(500, { detail: "err" });
 
-    await expect(store.updateDocument(2, { title: "Updated" })).rejects.toBeTruthy();
+    await expect(store.updateDocument(2, { title: "Updated" })).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -332,7 +332,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     downloadFile.mockRejectedValueOnce(new Error("fail"));
 
-    await expect(store.downloadPDF(10, "MyDoc")).rejects.toBeTruthy();
+    await expect(store.downloadPDF(10, "MyDoc")).rejects.toThrow("fail");
 
     consoleSpy.mockRestore();
   });
@@ -359,7 +359,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     downloadFile.mockRejectedValueOnce(new Error("fail"));
 
-    await expect(store.downloadWord(11, "MyDoc")).rejects.toBeTruthy();
+    await expect(store.downloadWord(11, "MyDoc")).rejects.toThrow("fail");
 
     consoleSpy.mockRestore();
   });
@@ -397,7 +397,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/user/letterhead/").reply(500, { detail: "err" });
 
-    await expect(store.getGlobalLetterheadImage()).rejects.toBeTruthy();
+    await expect(store.getGlobalLetterheadImage()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -409,7 +409,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/dynamic-documents/9/letterhead/").reply(500, { detail: "err" });
 
-    await expect(store.getLetterheadImage(9)).rejects.toBeTruthy();
+    await expect(store.getLetterheadImage(9)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -483,7 +483,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/user/letterhead/word-template/").reply(500, { detail: "err" });
 
-    await expect(store.getGlobalLetterheadWordTemplate()).rejects.toBeTruthy();
+    await expect(store.getGlobalLetterheadWordTemplate()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -495,7 +495,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/dynamic-documents/12/letterhead/word-template/").reply(500, { detail: "err" });
 
-    await expect(store.getDocumentLetterheadWordTemplate(12)).rejects.toBeTruthy();
+    await expect(store.getDocumentLetterheadWordTemplate(12)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -578,7 +578,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPost("/api/dynamic-documents/9/letterhead/upload/").reply(500, { detail: "err" });
 
-    await expect(store.uploadLetterheadImage(9, image)).rejects.toBeTruthy();
+    await expect(store.uploadLetterheadImage(9, image)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -613,7 +613,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onDelete("/api/dynamic-documents/12/letterhead/word-template/delete/").reply(500, { detail: "err" });
 
-    await expect(store.deleteDocumentLetterheadWordTemplate(12)).rejects.toBeTruthy();
+    await expect(store.deleteDocumentLetterheadWordTemplate(12)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -625,7 +625,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onDelete("/api/user/letterhead/delete/").reply(500, { detail: "err" });
 
-    await expect(store.deleteGlobalLetterheadImage()).rejects.toBeTruthy();
+    await expect(store.deleteGlobalLetterheadImage()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -637,7 +637,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onDelete("/api/dynamic-documents/9/letterhead/delete/").reply(500, { detail: "err" });
 
-    await expect(store.deleteLetterheadImage(9)).rejects.toBeTruthy();
+    await expect(store.deleteLetterheadImage(9)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -666,7 +666,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPost("/api/user/letterhead/upload/").reply(500, { detail: "err" });
 
-    await expect(store.uploadGlobalLetterheadImage(image)).rejects.toBeTruthy();
+    await expect(store.uploadGlobalLetterheadImage(image)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -688,7 +688,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet("/api/user/letterhead/").reply(404);
 
-    await expect(store.getGlobalLetterheadImage()).rejects.toBeTruthy();
+    await expect(store.getGlobalLetterheadImage()).rejects.toThrow("Request failed with status code 404");
 
     expect(consoleSpy).not.toHaveBeenCalled();
 
@@ -730,7 +730,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPost("/api/dynamic-documents/12/letterhead/word-template/upload/").reply(500, { detail: "err" });
 
-    await expect(store.uploadDocumentLetterheadWordTemplate(12, docx)).rejects.toBeTruthy();
+    await expect(store.uploadDocumentLetterheadWordTemplate(12, docx)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -743,7 +743,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onPost("/api/user/letterhead/word-template/upload/").reply(500, { detail: "err" });
 
-    await expect(store.uploadGlobalLetterheadWordTemplate(docx)).rejects.toBeTruthy();
+    await expect(store.uploadGlobalLetterheadWordTemplate(docx)).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -766,7 +766,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onDelete("/api/user/letterhead/word-template/delete/").reply(500, { detail: "err" });
 
-    await expect(store.deleteGlobalLetterheadWordTemplate()).rejects.toBeTruthy();
+    await expect(store.deleteGlobalLetterheadWordTemplate()).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });
@@ -1087,7 +1087,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet(/dynamic-documents\/\?/).reply(500);
 
-    await expect(store.fetchDocuments({ forceRefresh: true })).rejects.toBeTruthy();
+    await expect(store.fetchDocuments({ forceRefresh: true })).rejects.toThrow("Request failed with status code 500");
 
     expect(store.documents).toEqual([]);
     expect(store.isLoading).toBe(false);
@@ -1103,7 +1103,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     mock.onGet(/dynamic-documents\/\?/).reply(500);
 
-    await expect(store.fetchDocuments({ page: 2, forceRefresh: true })).rejects.toBeTruthy();
+    await expect(store.fetchDocuments({ page: 2, forceRefresh: true })).rejects.toThrow("Request failed with status code 500");
 
     expect(store.documents).toEqual([{ id: 1 }]);
 
@@ -1209,7 +1209,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     await expect(
       store.formalizeDocument(10, { signers: [1], title: "Doc" })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 400");
 
     expect(consoleSpy).toHaveBeenCalled();
 
@@ -1348,7 +1348,7 @@ describe("Dynamic Document Store - documents module behaviors", () => {
 
     await expect(
       store.correctDocument(20, { content: "x", title: "Doc" })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 400");
 
     expect(consoleSpy).toHaveBeenCalled();
 

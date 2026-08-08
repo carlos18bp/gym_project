@@ -79,7 +79,7 @@ describe("CreateDocumentByLawyer.vue", () => {
     const wrapper = mountView();
     const updateButton = findButtonByText(wrapper, "Actualizar nombre");
 
-    expect(updateButton.attributes("disabled")).toBeDefined();
+    expect(updateButton.attributes("disabled")).toBe("");
 
     await wrapper.find("#document-name").setValue("Actualizado");
     await findButtonByText(wrapper, "Actualizar nombre").trigger("click");
@@ -120,6 +120,6 @@ describe("CreateDocumentByLawyer.vue", () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await flushPromises();
 
-    expect(wrapper.emitted().close).toBeTruthy();
+    expect(wrapper.emitted().close).toHaveLength(1);
   });
 });

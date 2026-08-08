@@ -87,15 +87,13 @@ describe("LegalRequestCard.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Cambiar Estado"));
 
-    expect(statusButton).toBeTruthy();
-
     await statusButton.trigger("click");
 
     expect(wrapper.find("[data-test='status-modal']").exists()).toBe(true);
 
     await wrapper.find("[data-test='status-updated']").trigger("click");
 
-    expect(wrapper.emitted("status-updated")).toBeTruthy();
+    expect(wrapper.emitted("status-updated")).toHaveLength(1);
     expect(wrapper.emitted("status-updated")[0]).toEqual([{ id: 99 }]);
     expect(wrapper.find("[data-test='status-modal']").exists()).toBe(false);
   });
@@ -122,15 +120,13 @@ describe("LegalRequestCard.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Eliminar"));
 
-    expect(deleteButton).toBeTruthy();
-
     await deleteButton.trigger("click");
 
     expect(wrapper.find("[data-test='delete-modal']").exists()).toBe(true);
 
     await wrapper.find("[data-test='delete-confirm']").trigger("click");
 
-    expect(wrapper.emitted("deleted")).toBeTruthy();
+    expect(wrapper.emitted("deleted")).toHaveLength(1);
     expect(wrapper.emitted("deleted")[0]).toEqual([44]);
     expect(wrapper.find("[data-test='delete-modal']").exists()).toBe(false);
   });

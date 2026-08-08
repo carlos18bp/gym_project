@@ -82,8 +82,8 @@ describe("Legal Requests Management Store", () => {
 
     mock.onGet("/api/legal_requests/").reply(500, { detail: "boom" });
 
-    await expect(store.fetchRequests()).rejects.toBeTruthy();
-    expect(store.error).toBeTruthy();
+    await expect(store.fetchRequests()).rejects.toThrow("Request failed with status code 500");
+    expect(store.error).toBe("Request failed with status code 500");
     expect(store.loading).toBe(false);
   });
 
