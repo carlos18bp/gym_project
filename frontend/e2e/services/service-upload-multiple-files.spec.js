@@ -47,6 +47,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:success",
     ],
   },
   async ({ page }) => {
@@ -103,6 +104,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:success",
     ],
   },
   async ({ page }) => {
@@ -158,6 +160,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:error",
     ],
   },
   async ({ page }) => {

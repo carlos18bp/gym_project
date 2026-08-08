@@ -9,7 +9,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-too-many-assertions (complex cross-role E2E flow with multiple checkpoints)
 
-test("client my requests: list + filters + open detail + add response", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client my requests: list + filters + open detail + add response", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const userId = 3560;
 
   await installOrganizationsClientApiMocks(page, {

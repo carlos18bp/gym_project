@@ -42,7 +42,7 @@ async function openDocActions(page, { docTitle }) {
   await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
 }
 
-test("publishing a Draft document sends PUT update with state='Published'", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("publishing a Draft document sends PUT update with state='Published'", { tag: ['@flow:docs-state-transitions', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 9100;
   const draftDoc = buildMockDocument({ id: 5100, title: "Minuta Publicable", state: "Draft", createdBy: userId });
   const captured = { body: null, originalDoc: draftDoc };

@@ -1,6 +1,6 @@
 {
-  "version": "1.9.4",
-  "lastUpdated": "2026-07-16",
+  "version": "1.12.0",
+  "lastUpdated": "2026-07-27",
   "flows": {
     "auth-login-email": {
       "name": "Login con email/password",
@@ -10,7 +10,11 @@
       ],
       "priority": "P1",
       "description": "Usuario inicia sesión con email y contraseña",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-login-google": {
       "name": "Login con Google OAuth",
@@ -20,7 +24,11 @@
       ],
       "priority": "P1",
       "description": "Usuario inicia sesión con cuenta de Google",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "auth-login-outlook": {
       "name": "Login con Microsoft/Outlook",
@@ -33,6 +41,10 @@
       "expectedSpecs": 1,
       "knownGaps": [
         "Synthetic by necessity — Playwright cannot drive the real Microsoft popup, so outlook-login-flow.spec.js stubs it through the window.__e2eOutlookAuth seam. The MSAL layer itself (single in-flight popup, interaction_in_progress recovery, prompt=select_account) is covered by test/shared/msal_config.test.js, and the popup redirect page by backend gym_app/tests/views/test_outlook_callback.py."
+      ],
+      "outcomes": [
+        "success",
+        "failure"
       ]
     },
     "auth-register": {
@@ -43,7 +55,11 @@
       ],
       "priority": "P1",
       "description": "Usuario crea cuenta nueva con verificación por código",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-forgot-password": {
       "name": "Recuperar contraseña",
@@ -53,7 +69,11 @@
       ],
       "priority": "P2",
       "description": "Enviar passcode y resetear password",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-subscription-signup": {
       "name": "Registro vía suscripción",
@@ -63,7 +83,11 @@
       ],
       "priority": "P1",
       "description": "Usuario se registra a través del flujo de suscripción",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-subscription-signin": {
       "name": "Login vía suscripción",
@@ -73,7 +97,11 @@
       ],
       "priority": "P1",
       "description": "Usuario inicia sesión en contexto de suscripción",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-logout": {
       "name": "Cerrar sesión",
@@ -83,7 +111,10 @@
       ],
       "priority": "P2",
       "description": "Usuario cierra sesión y limpia estado local",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "auth-edge-cases": {
       "name": "Auth edge cases",
@@ -93,7 +124,11 @@
       ],
       "priority": "P2",
       "description": "Token expirado, OAuth callback, credenciales inválidas, captcha",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-idle-logout": {
       "name": "Idle logout automático",
@@ -103,7 +138,10 @@
       ],
       "priority": "P2",
       "description": "Desconexión automática por inactividad",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "auth-login-attempts": {
       "name": "Control de intentos de login",
@@ -113,7 +151,11 @@
       ],
       "priority": "P2",
       "description": "Bloqueo progresivo tras intentos fallidos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "auth-router-guards": {
       "name": "Router guards de autenticación",
@@ -123,7 +165,10 @@
       ],
       "priority": "P2",
       "description": "Redirecciones por rol y estado de autenticación",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "profile-view-edit": {
       "name": "Ver y editar perfil",
@@ -133,7 +178,12 @@
       ],
       "priority": "P2",
       "description": "Modal de perfil con datos personales, edición y foto",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error",
+        "display"
+      ]
     },
     "profile-complete": {
       "name": "Completar perfil (primer login)",
@@ -143,7 +193,11 @@
       ],
       "priority": "P2",
       "description": "Modal forzado al primer acceso para completar datos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "dashboard-welcome-card": {
       "name": "Dashboard tarjeta de bienvenida",
@@ -153,7 +207,11 @@
       ],
       "priority": "P2",
       "description": "Saludo personalizado con stats y acciones rápidas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "dashboard-activity-feed": {
       "name": "Dashboard feed de actividad",
@@ -163,7 +221,10 @@
       ],
       "priority": "P2",
       "description": "Historial de acciones recientes con rangos de tiempo",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "dashboard-quick-actions": {
       "name": "Dashboard botones de acción rápida",
@@ -173,7 +234,10 @@
       ],
       "priority": "P3",
       "description": "Accesos directos contextuales por rol",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "dashboard-navigation": {
       "name": "Dashboard navegación sidebar",
@@ -183,7 +247,10 @@
       ],
       "priority": "P2",
       "description": "Menú lateral filtrado por rol con navegación",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "dashboard-legal-updates": {
       "name": "Legal updates / notificaciones",
@@ -193,7 +260,10 @@
       ],
       "priority": "P3",
       "description": "Actualizaciones legales activas en dashboard",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "dashboard-reports": {
       "name": "Generar reportes Excel",
@@ -204,7 +274,11 @@
       ],
       "priority": "P2",
       "description": "Exportar datos a Excel desde el dashboard",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "dashboard-folder-components": {
       "name": "Dashboard carpetas y contactos",
@@ -214,7 +288,10 @@
       ],
       "priority": "P3",
       "description": "Pestañas de carpetas y contactos en dashboard",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "dashboard-reports-advanced-filters": {
       "name": "Filtros avanzados de reportes",
@@ -225,7 +302,11 @@
       ],
       "priority": "P2",
       "description": "Filtrar reporte de Usuarios Registrados por rol, estado de perfil y tipo de documento antes de generar Excel",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "subscriptions-view-plans": {
       "name": "Ver planes de suscripción",
@@ -235,7 +316,10 @@
       ],
       "priority": "P2",
       "description": "Visualizar planes disponibles y plan actual",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "subscriptions-checkout-free": {
       "name": "Checkout plan gratuito",
@@ -245,7 +329,11 @@
       ],
       "priority": "P1",
       "description": "Activar plan gratuito sin método de pago",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "subscriptions-checkout-paid": {
       "name": "Checkout plan pago (Wompi)",
@@ -255,7 +343,12 @@
       ],
       "priority": "P1",
       "description": "Pagar suscripción con tarjeta vía Wompi",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "subscriptions-management": {
       "name": "Gestión de suscripción",
@@ -265,7 +358,10 @@
       ],
       "priority": "P2",
       "description": "Reactivar suscripción, ver historial de pagos",
-      "expectedSpecs": 3
+      "expectedSpecs": 0,
+      "knownGaps": [
+        "Dead surface (Rule 7): the flow's own description (\"Reactivar suscripcion, ver historial de pagos\") names capabilities with zero UI wiring. `reactivateSubscription()` and `fetchPaymentHistory()` (frontend/src/stores/subscriptions/index.js:143,182) call real, registered backend endpoints (subscriptions/reactivate/ -- note: NOT registered in urls.py at all; subscriptions/payments/ -- registered, urls.py:288) but are never invoked from any .vue file in the entire git history: `git log --all --oneline -S\"reactivateSubscription\" -- 'frontend/src/**/*.vue'` and the same for `fetchPaymentHistory` both return zero commits (only fff9a48/4578e6d touch the store). Subscriptions.vue (the /subscriptions page) is a static marketing catalog -- it never calls fetchCurrentSubscription or renders a current-plan/management indicator at all (`grep -in subscription frontend/src/views/subscriptions/Subscriptions.vue` returns only 2 unrelated navigation lines). The 7 tests currently tagged @flow:subscriptions-management (subscription-management.spec.js x4, subscription-management-flows.spec.js x3) all exercise catalog-browsing/checkout-navigation (duplicating subscriptions-view-plans) or one genuine PAID checkout completion (subscription-management-flows.spec.js:94, duplicating subscriptions-checkout-paid) -- none test reactivation or payment history."
+      ]
     },
     "subscriptions-cancel": {
       "name": "Cancelar suscripción",
@@ -275,7 +371,10 @@
       ],
       "priority": "P2",
       "description": "Cancelar suscripción activa, plan vigente hasta fin de período, transición a plan gratuito",
-      "expectedSpecs": 1
+      "expectedSpecs": 0,
+      "knownGaps": [
+        "Dead surface (Rule 7), explicitly self-documented: subscription-cancel.spec.js:12-15 states verbatim \"there is currently NO cancel-subscription UI in the frontend (no component calls subscriptions/cancel/)\". Backend has TWO registered cancel endpoints (urls.py:286,290) and the store has `cancelSubscription()` (frontend/src/stores/subscriptions/index.js:125-134) but it is never called from any .vue file: `git log --all --oneline -S\"cancelSubscription\" -- 'frontend/src/**/*.vue'` returns zero commits (introduced only in the store by fff9a48/4578e6d, never referenced in a component since). The 2 tests tagged to this flow test a tangentially related but distinct thing: the cancel-anytime POLICY TEXT shown on the static plans page, and navigating to checkout for a plan change -- neither cancels anything."
+      ]
     },
     "subscriptions-update-payment": {
       "name": "Actualizar método de pago",
@@ -285,7 +384,10 @@
       ],
       "priority": "P2",
       "description": "Cambiar tarjeta de pago en suscripción activa vía tokenización Wompi",
-      "expectedSpecs": 1
+      "expectedSpecs": 0,
+      "knownGaps": [
+        "Dead surface (Rule 7), explicitly self-documented: subscription-update-payment.spec.js:11-14 states verbatim \"there is currently NO standalone update-payment-method UI (no component calls subscriptions/update-payment-method/)\". Backend endpoint is registered (urls.py:287, view at subscription.py:364) and the store wires `updatePaymentMethod(paymentSourceId)` (frontend/src/stores/subscriptions/index.js:162-172) to it, but it is never called from any .vue file: `git log --all --oneline -S\"updatePaymentMethod\" -- 'frontend/src/**/*.vue'` returns zero commits. What the spec file's own header names as \"the real payment-method flow\" -- tokenizing/replacing a card via Checkout.vue's own 'Cambiar' button -- only exists as a step INSIDE the initial paid-checkout purchase (Checkout.vue:402-469), duplicating subscriptions-checkout-paid's territory; it is not a way to change the card on an already-active subscription, which is what this flow's description promises."
+      ]
     },
     "process-list-view": {
       "name": "Ver lista de procesos",
@@ -296,7 +398,10 @@
       ],
       "priority": "P1",
       "description": "Pestañas Mis/Todos/Archivados con búsqueda y filtros",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-create": {
       "name": "Radicar (crear) proceso",
@@ -306,7 +411,11 @@
       ],
       "priority": "P1",
       "description": "Formulario completo de nuevo proceso con etapas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "process-edit": {
       "name": "Editar proceso existente",
@@ -317,7 +426,12 @@
       ],
       "priority": "P2",
       "description": "Actualizar info y etapas de proceso existente",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure",
+        "display"
+      ]
     },
     "process-detail": {
       "name": "Ver detalle de proceso",
@@ -328,7 +442,10 @@
       ],
       "priority": "P1",
       "description": "Info, timeline, expediente del proceso",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-history": {
       "name": "Ver histórico procesal",
@@ -338,7 +455,10 @@
       ],
       "priority": "P2",
       "description": "Modal de línea de tiempo con etapas ordenadas",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-alerts": {
       "name": "Alertas de proceso por estado procesal",
@@ -348,7 +468,10 @@
       ],
       "priority": "P2",
       "description": "Indicador de alerta activa con destinatarios (abogado o abogado y clientes) en detalle e historial; recordatorios automáticos 3d/1d antes de la fecha del último estado.",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-form-validation": {
       "name": "Validación de formulario de proceso",
@@ -358,7 +481,11 @@
       ],
       "priority": "P2",
       "description": "Campos requeridos, botón guardar, agregar etapas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "process-search": {
       "name": "Búsqueda de procesos",
@@ -368,7 +495,10 @@
       ],
       "priority": "P3",
       "description": "Filtrar procesos por nombre de demandante",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-request-info": {
       "name": "Request process information (client)",
@@ -378,7 +508,10 @@
       ],
       "priority": "P2",
       "description": "Client requests information about a process from detail view, pre-filled form sent to responsible lawyer",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "process-case-file-upload": {
       "name": "Subir archivos al expediente",
@@ -388,7 +521,11 @@
       ],
       "priority": "P2",
       "description": "Gestionar documentos del caso (upload/download)",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "docs-create-template": {
       "name": "Crear minuta/plantilla",
@@ -398,7 +535,10 @@
       ],
       "priority": "P1",
       "description": "Abogado crea documento plantilla con editor TinyMCE",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-editor": {
       "name": "Editor de documentos",
@@ -409,7 +549,12 @@
       ],
       "priority": "P1",
       "description": "Editor TinyMCE con toolbar, navegación, contenido protegido",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "docs-variables-config": {
       "name": "Configurar variables de minuta",
@@ -419,7 +564,11 @@
       ],
       "priority": "P1",
       "description": "Definir campos dinámicos, tipos, clasificación, permisos. Includes field type selector, summary classification, dashboard integration tests.",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "docs-use-template": {
       "name": "Usar documento (completar minuta)",
@@ -429,7 +578,10 @@
       ],
       "priority": "P1",
       "description": "Cliente llena campos variables de plantilla asignada",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-form-interactions": {
       "name": "Formulario de documento interacciones",
@@ -439,7 +591,12 @@
       ],
       "priority": "P2",
       "description": "Campos, botones, validación, tipos de campo",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "docs-dashboard-lawyer": {
       "name": "Dashboard documentos (abogado)",
@@ -449,7 +606,10 @@
       ],
       "priority": "P1",
       "description": "Vista de abogado con minutas, tabs, modales, acciones",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-dashboard-client": {
       "name": "Dashboard documentos (cliente)",
@@ -459,7 +619,10 @@
       ],
       "priority": "P1",
       "description": "Vista de cliente con docs asignados, tabs, carpetas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-permissions": {
       "name": "Asignar documento a cliente",
@@ -469,7 +632,11 @@
       ],
       "priority": "P1",
       "description": "Permisos de visibilidad/uso por usuario y rol",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-card-actions": {
       "name": "Acciones de tarjeta de documento",
@@ -480,7 +647,10 @@
       ],
       "priority": "P2",
       "description": "Menú de acciones, click en fila, ejecución de acciones",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-filters": {
       "name": "Filtros y búsqueda de documentos",
@@ -490,7 +660,10 @@
       ],
       "priority": "P2",
       "description": "Filtros avanzados, búsqueda, menús jerárquicos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-tags": {
       "name": "Gestionar etiquetas (tags)",
@@ -500,7 +673,12 @@
       ],
       "priority": "P2",
       "description": "Crear, editar, eliminar, asignar tags a documentos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "docs-folders": {
       "name": "Gestionar carpetas",
@@ -511,7 +689,11 @@
       ],
       "priority": "P2",
       "description": "Crear, mover docs, eliminar carpetas, colores",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-download": {
       "name": "Descargar PDF/Word",
@@ -522,7 +704,11 @@
       ],
       "priority": "P2",
       "description": "Exportar documento en formato PDF o Word",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-send-email": {
       "name": "Enviar email con documentos",
@@ -532,7 +718,11 @@
       ],
       "priority": "P2",
       "description": "Enviar documentos por correo electrónico — incluye manejo de fallas del backend",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-duplicate": {
       "name": "Duplicar documento",
@@ -542,7 +732,11 @@
       ],
       "priority": "P3",
       "description": "Copiar documento existente",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-delete": {
       "name": "Eliminar documento",
@@ -552,7 +746,11 @@
       ],
       "priority": "P3",
       "description": "Eliminar documento con confirmación",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-state-transitions": {
       "name": "Transiciones de estado de documento",
@@ -562,7 +760,11 @@
       ],
       "priority": "P2",
       "description": "Draft, Published, Completed, signing states — incluye acciones de transición (publish, move-to-draft)",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-relationships": {
       "name": "Asociar documentos",
@@ -573,7 +775,11 @@
       ],
       "priority": "P3",
       "description": "Vincular docs relacionados entre sí",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-key-fields": {
       "name": "Clasificar campos clave",
@@ -583,7 +789,10 @@
       ],
       "priority": "P3",
       "description": "Marcar variables como info clave del documento",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-letterhead": {
       "name": "Configurar membrete",
@@ -594,7 +803,11 @@
       ],
       "priority": "P2",
       "description": "Encabezado/pie global para documentos",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "docs-preview": {
       "name": "Vista previa de documento",
@@ -604,7 +817,10 @@
       ],
       "priority": "P3",
       "description": "Modal de preview con contenido renderizado",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-summary": {
       "name": "Resumen de documento",
@@ -614,7 +830,10 @@
       ],
       "priority": "P3",
       "description": "Modal de resumen con campos clave",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-list-table": {
       "name": "Tabla de documentos interacciones",
@@ -624,7 +843,10 @@
       ],
       "priority": "P3",
       "description": "Ordenamiento, export, interacciones de tabla",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "docs-empty-states": {
       "name": "Estados vacíos de documentos",
@@ -634,7 +856,10 @@
       ],
       "priority": "P4",
       "description": "UI cuando no hay documentos, carpetas, etc.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-multiple": {
       "name": "Múltiples documentos",
@@ -644,7 +869,10 @@
       ],
       "priority": "P4",
       "description": "Renderizado con múltiples documentos simultáneos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "docs-profile-navigation": {
       "name": "Perfil y navegación desde documentos",
@@ -654,7 +882,10 @@
       ],
       "priority": "P4",
       "description": "Navegación entre documentos y perfil",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "sign-electronic-signature": {
       "name": "Firma electrónica (dibujar/subir)",
@@ -665,7 +896,10 @@
       ],
       "priority": "P1",
       "description": "Dibujar o subir firma electrónica personal",
-      "expectedSpecs": 4
+      "expectedSpecs": 4,
+      "outcomes": [
+        "success"
+      ]
     },
     "sign-document-flow": {
       "name": "Formalizar documento con firmas",
@@ -675,7 +909,11 @@
       ],
       "priority": "P1",
       "description": "Usar minuta, completar, enviar a firma",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "formalize-in-place": {
       "name": "Formalizar documento sin copia",
@@ -685,7 +923,12 @@
       ],
       "priority": "P1",
       "description": "Transicionar documento Completado a PendingSignatures sin crear copia (normal, issuer_only, informative)",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "correct-document": {
       "name": "Corregir documento rechazado/expirado",
@@ -695,7 +938,12 @@
       ],
       "priority": "P1",
       "description": "Corregir y reenviar documento rechazado o expirado en un solo endpoint",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "minutas-columns": {
       "name": "Columnas de tabla de minutas",
@@ -705,7 +953,10 @@
       ],
       "priority": "P2",
       "description": "Visibilidad y orden de columnas de resumen en la tabla de minutas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "minutas-shared-visibility": {
       "name": "Visibilidad compartida y edición colaborativa de minutas",
@@ -715,7 +966,10 @@
       ],
       "priority": "P2",
       "description": "El abogado ve todas las minutas (Draft/Published) sin importar el creador, con columna 'Creado por', badge 'Compartida' y filtro de tres alcances 'Todas / Compartidas / Mías' (params backend shared y lawyer_id). Solo el creador modifica/elimina/publica salvo por allow_shared_edit (activado por defecto), que permite a otros abogados editar contenido pero nunca eliminar ni cambiar estado; el creador puede desactivarlo y copiar/previsualizar siempre está disponible",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
@@ -726,7 +980,11 @@
       ],
       "priority": "P1",
       "description": "Cliente firma documento electrónicamente",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "sign-reject": {
       "name": "Rechazar documento",
@@ -737,7 +995,11 @@
       ],
       "priority": "P1",
       "description": "Rechazar documento con motivo",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "sign-reopen": {
       "name": "Reabrir documento rechazado",
@@ -747,7 +1009,11 @@
       ],
       "priority": "P1",
       "description": "Editar y reenviar documento rechazado a firma",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "sign-signed-documents": {
       "name": "Ver documentos firmados",
@@ -758,7 +1024,10 @@
       ],
       "priority": "P2",
       "description": "Lista de documentos completamente firmados",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "sign-pending-documents": {
       "name": "Ver documentos pendientes de firma",
@@ -769,7 +1038,10 @@
       ],
       "priority": "P2",
       "description": "Documentos esperando firma",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "sign-archived-documents": {
       "name": "Ver documentos archivados",
@@ -780,7 +1052,10 @@
       ],
       "priority": "P3",
       "description": "Rechazados y expirados",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "sign-status-modal": {
       "name": "Estado de firmas modal",
@@ -790,7 +1065,10 @@
       ],
       "priority": "P2",
       "description": "Modal con estado de cada firmante, incluyendo labels por signature_type y rechazos",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "legal-files-menu-pulse": {
       "name": "Pulso visual en menú \"Archivos Jurídicos\" con firmas pendientes",
@@ -803,7 +1081,11 @@
       ],
       "priority": "P1",
       "description": "Tras login con firmas pendientes, el ítem del SlideBar \"Archivos Jurídicos\" muestra un indicador pulsante (badge + dot animado). Al visitar el módulo, el flag se persiste en sessionStorage (`pendingSignaturesAlerted`) y el pulso desaparece para el resto de la sesión. Al cerrar sesión el flag se limpia para que el siguiente login reactive el alerta.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "legal-files-auto-redirect": {
       "name": "Auto-redirect a tab \"Documentos Por Firmar\" en primer ingreso",
@@ -816,7 +1098,10 @@
       ],
       "priority": "P2",
       "description": "Primera visita post-login a `/dynamic_document_dashboard`: si el usuario tiene firmas pendientes (consultadas vía `GET /api/dynamic-documents/pending-signatures-count/`), el Dashboard selecciona automáticamente la pestaña \"Dcs. Por Firmar\" y marca la sesión como visitada. Si la URL incluye `?tab=` o `?lawyerTab=` explícito, ese parámetro tiene prioridad sobre la auto-redirección.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "legal-files-table-pulse": {
       "name": "Pulso de 8s en filas pendientes de la tabla de firmas",
@@ -829,7 +1114,10 @@
       ],
       "priority": "P2",
       "description": "Al cargar la tabla `SignaturesListTable` en estado `PendingSignatures`, las filas donde el usuario actual es firmante con la firma pendiente muestran clase `animate-pulse` durante ~8 segundos (`PULSE_DURATION_MS`). Pasado el timeout, la animación se detiene; al desmontar el componente el `setTimeout` se limpia.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "legal-create-request": {
       "name": "Crear solicitud legal",
@@ -839,7 +1127,11 @@
       ],
       "priority": "P1",
       "description": "Nueva consulta/asesoría legal con archivos",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "legal-list-client": {
       "name": "Ver solicitudes (cliente)",
@@ -849,7 +1141,10 @@
       ],
       "priority": "P1",
       "description": "Lista de solicitudes propias del cliente",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "legal-detail-client": {
       "name": "Detalle solicitud (cliente)",
@@ -859,7 +1154,11 @@
       ],
       "priority": "P1",
       "description": "Detalle con archivos, thread, estado",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display",
+        "success"
+      ]
     },
     "legal-add-files": {
       "name": "Agregar archivos a solicitud",
@@ -869,7 +1168,10 @@
       ],
       "priority": "P2",
       "description": "Modal para subir archivos adicionales",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success"
+      ]
     },
     "legal-management-lawyer": {
       "name": "Gestión de solicitudes (abogado)",
@@ -879,7 +1181,10 @@
       ],
       "priority": "P1",
       "description": "Ver, responder, cambiar estado de solicitudes",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "display"
+      ]
     },
     "legal-response-thread": {
       "name": "Thread de conversación",
@@ -890,7 +1195,10 @@
       ],
       "priority": "P1",
       "description": "Chat entre cliente y abogado en solicitud",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "legal-status-update": {
       "name": "Actualizar estado de solicitud",
@@ -900,7 +1208,11 @@
       ],
       "priority": "P2",
       "description": "Cambiar estado y eliminar solicitudes",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "legal-lawyer-modals": {
       "name": "Modales de abogado en solicitudes",
@@ -910,7 +1222,11 @@
       ],
       "priority": "P3",
       "description": "StatusUpdateModal, DeleteConfirmModal",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "org-create": {
       "name": "Crear organización",
@@ -920,7 +1236,11 @@
       ],
       "priority": "P1",
       "description": "Crear organización con nombre, descripción, imágenes",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "org-edit": {
       "name": "Editar organización",
@@ -930,7 +1250,11 @@
       ],
       "priority": "P2",
       "description": "Actualizar info y portada de organización",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "org-invite-members": {
       "name": "Invitar miembros",
@@ -940,7 +1264,12 @@
       ],
       "priority": "P1",
       "description": "Enviar invitaciones por email con validación",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "org-members-list": {
       "name": "Ver miembros",
@@ -950,7 +1279,10 @@
       ],
       "priority": "P2",
       "description": "Lista de miembros del equipo",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "display"
+      ]
     },
     "org-posts-management": {
       "name": "Gestión de publicaciones",
@@ -960,7 +1292,11 @@
       ],
       "priority": "P2",
       "description": "Crear, editar, eliminar, fijar publicaciones",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "org-posts-visibility": {
       "name": "Visibilidad de publicaciones",
@@ -971,7 +1307,10 @@
       ],
       "priority": "P2",
       "description": "Posts visibles para clientes, filtros, orden",
-      "expectedSpecs": 4
+      "expectedSpecs": 4,
+      "outcomes": [
+        "success"
+      ]
     },
     "org-corporate-requests": {
       "name": "Solicitudes corporativas (recibir/responder)",
@@ -981,7 +1320,10 @@
       ],
       "priority": "P2",
       "description": "Ver solicitudes de miembros y responder",
-      "expectedSpecs": 4
+      "expectedSpecs": 4,
+      "outcomes": [
+        "success"
+      ]
     },
     "org-client-view": {
       "name": "Vista de cliente en organizaciones",
@@ -991,7 +1333,11 @@
       ],
       "priority": "P2",
       "description": "Ver orgs, posts, tabs móvil",
-      "expectedSpecs": 6
+      "expectedSpecs": 6,
+      "outcomes": [
+        "display",
+        "error"
+      ]
     },
     "org-client-invitations": {
       "name": "Aceptar/rechazar invitación",
@@ -1001,7 +1347,11 @@
       ],
       "priority": "P1",
       "description": "Responder invitaciones de organización",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "org-client-requests": {
       "name": "Solicitudes corporativas (cliente)",
@@ -1011,7 +1361,12 @@
       ],
       "priority": "P2",
       "description": "Crear, ver, filtrar solicitudes en organización",
-      "expectedSpecs": 8
+      "expectedSpecs": 8,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "org-client-leave": {
       "name": "Salir de organización",
@@ -1021,7 +1376,10 @@
       ],
       "priority": "P3",
       "description": "Cliente abandona organización",
-      "expectedSpecs": 2
+      "expectedSpecs": 2,
+      "outcomes": [
+        "success"
+      ]
     },
     "org-cross-invite-flow": {
       "name": "Cross-role: flujo de invitación completo",
@@ -1032,7 +1390,11 @@
       ],
       "priority": "P1",
       "description": "Invitar, aceptar/rechazar, verificar stats",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "org-cross-request-flow": {
       "name": "Cross-role: flujo de solicitud corporativa",
@@ -1043,7 +1405,10 @@
       ],
       "priority": "P2",
       "description": "Cliente crea, corporate ve y responde",
-      "expectedSpecs": 5
+      "expectedSpecs": 5,
+      "outcomes": [
+        "success"
+      ]
     },
     "org-cross-member-management": {
       "name": "Cross-role: gestión de miembros",
@@ -1054,7 +1419,10 @@
       ],
       "priority": "P2",
       "description": "Remover miembro, desactivar org, salir",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success"
+      ]
     },
     "org-request-detail": {
       "name": "Detalle de solicitud organizacional",
@@ -1065,7 +1433,10 @@
       ],
       "priority": "P3",
       "description": "Vista detallada de solicitud corporativa",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "directory-search": {
       "name": "Buscar usuarios en directorio",
@@ -1075,7 +1446,10 @@
       ],
       "priority": "P2",
       "description": "Buscar por nombre/email/rol y ver detalle",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "schedule-appointment": {
       "name": "Agendar cita",
@@ -1087,7 +1461,10 @@
       ],
       "priority": "P2",
       "description": "Calendly integrado para agendar cita",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "intranet-main": {
       "name": "Intranet G&M página principal",
@@ -1097,7 +1474,10 @@
       ],
       "priority": "P2",
       "description": "Perfil de firma, procedimientos, organigrama",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "intranet-interactions": {
       "name": "Intranet G&M interacciones",
@@ -1107,7 +1487,10 @@
       ],
       "priority": "P3",
       "description": "Búsqueda, modales, secciones, informe",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "user-guide-navigation": {
       "name": "Manual de usuario navegación",
@@ -1117,7 +1500,10 @@
       ],
       "priority": "P3",
       "description": "Navegación por módulos, roles, quick links",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "misc-policies": {
       "name": "Políticas y páginas informativas",
@@ -1127,7 +1513,10 @@
       ],
       "priority": "P4",
       "description": "Privacy policy, terms of use, no connection",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "misc-pwa-install": {
       "name": "Instalar PWA",
@@ -1137,7 +1526,10 @@
       ],
       "priority": "P4",
       "description": "Botón de instalación PWA y service worker",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "misc-error-handling": {
       "name": "Error handling",
@@ -1147,7 +1539,12 @@
       ],
       "priority": "P3",
       "description": "404, 401, 403, 500, network errors, timeouts",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
     },
     "misc-offline": {
       "name": "Página sin conexión",
@@ -1157,7 +1554,10 @@
       ],
       "priority": "P4",
       "description": "Página /no_connection mostrada cuando el dispositivo pierde la conexión a internet",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "basic-restrictions": {
       "name": "Restricciones usuario básico",
@@ -1167,7 +1567,10 @@
       ],
       "priority": "P3",
       "description": "Toast de restricción, funciones limitadas. Route redirects and disabled UI controls (letterhead, SECOP filters overlay).",
-      "expectedSpecs": 3
+      "expectedSpecs": 3,
+      "outcomes": [
+        "success"
+      ]
     },
     "intranet-facturation-form": {
       "name": "Facturation form field interactions",
@@ -1177,7 +1580,11 @@
       ],
       "priority": "P2",
       "description": "Save button validation, file upload, successful submission, close modal",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "docs-form-field-types": {
       "name": "Document form field types",
@@ -1187,7 +1594,11 @@
       ],
       "priority": "P2",
       "description": "Rendering 6 field types, currency prefix, generate button state, cancel navigation, select options",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "docs-folder-crud": {
       "name": "Document folder CRUD",
@@ -1197,7 +1608,10 @@
       ],
       "priority": "P2",
       "description": "Folder list rendering, empty folders state",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "org-store-actions": {
       "name": "Organization store actions",
@@ -1207,7 +1621,10 @@
       ],
       "priority": "P3",
       "description": "Corporate client loads organizations dashboard and triggers store actions (load, invite)",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-list-browse": {
       "name": "Browse SECOP processes",
@@ -1217,7 +1634,10 @@
       ],
       "priority": "P2",
       "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "secop-process-detail": {
       "name": "View SECOP process detail",
@@ -1227,7 +1647,10 @@
       ],
       "priority": "P2",
       "description": "View full detail of a SECOP procurement process with entity info, dates, budget",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "secop-classify-process": {
       "name": "Classify a SECOP process",
@@ -1237,7 +1660,11 @@
       ],
       "priority": "P2",
       "description": "Mark a process with classification status and add internal notes for team collaboration",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "secop-create-alert": {
       "name": "Create SECOP alert",
@@ -1247,7 +1674,10 @@
       ],
       "priority": "P2",
       "description": "Configure alert criteria to receive notifications for matching SECOP processes",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-manage-alerts": {
       "name": "Manage SECOP alerts",
@@ -1257,7 +1687,10 @@
       ],
       "priority": "P3",
       "description": "Edit, toggle, or delete existing SECOP alerts",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-export-excel": {
       "name": "Export SECOP processes to Excel",
@@ -1267,7 +1700,10 @@
       ],
       "priority": "P3",
       "description": "Export filtered SECOP process list to .xlsx file",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-add-notes": {
       "name": "Add internal notes to a SECOP process",
@@ -1277,7 +1713,10 @@
       ],
       "priority": "P3",
       "description": "Add internal notes to a classified process for team collaboration",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-save-view": {
       "name": "Save filter combination as named view",
@@ -1287,7 +1726,11 @@
       ],
       "priority": "P3",
       "description": "Save current filter combination as a named view for quick future access",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "secop-apply-saved-view": {
       "name": "Apply a saved filter view",
@@ -1297,7 +1740,10 @@
       ],
       "priority": "P3",
       "description": "Apply a previously saved filter combination to the process list",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-view-in-portal": {
       "name": "Open deep-link to SECOP portal",
@@ -1307,7 +1753,10 @@
       ],
       "priority": "P3",
       "description": "Open the official SECOP portal page for a process in a new tab",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "secop-sync-status": {
       "name": "View sync status and history",
@@ -1317,7 +1766,10 @@
       ],
       "priority": "P3",
       "description": "View the last synchronization time and status indicator in the header",
-      "expectedSpecs": 2
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "secop-trigger-sync": {
       "name": "Admin triggers manual sync",
@@ -1327,7 +1779,10 @@
       ],
       "priority": "P4",
       "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-filter-classifications": {
       "name": "Filter classified processes by status",
@@ -1337,7 +1792,10 @@
       ],
       "priority": "P3",
       "description": "Filter the Mis Clasificaciones tab by classification status (Interesante, En Revisión, Aplicado, Descartado)",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "secop-saved-view-favorites": {
       "name": "Toggle saved view as favorite (default filter)",
@@ -1347,7 +1805,11 @@
       ],
       "priority": "P3",
       "description": "Mark/unmark a saved view as favorite so it loads automatically. Favorite views show a star icon and appear first in the list.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "secop-keyword-tags": {
       "name": "Keyword tags in saved views and filters",
@@ -1357,7 +1819,11 @@
       ],
       "priority": "P3",
       "description": "Add pipe-delimited keyword tag phrases to saved views. Keywords are displayed as filter badges and used in SECOP process search.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "secop-edit-saved-view": {
       "name": "Edit an existing saved view",
@@ -1367,7 +1833,11 @@
       ],
       "priority": "P3",
       "description": "Open the edit modal on an existing saved view, update its name and/or filters (including multi-select UNSPSC), and save the changes via PATCH secop/saved-views/:id/.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "display"
+      ]
     },
     "service-browse-catalog": {
       "name": "Explorar catalogo de servicios",
@@ -1378,7 +1848,10 @@
       ],
       "priority": "P1",
       "description": "Usuario ve la grilla de servicios activos y navega al detalle",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-browse-featured": {
       "name": "Ver servicios destacados en Dashboard",
@@ -1388,7 +1861,10 @@
       ],
       "priority": "P1",
       "description": "Dashboard muestra hasta 6 servicios destacados como tarjetas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-fill-form": {
       "name": "Diligenciar formulario multi-etapa",
@@ -1399,7 +1875,11 @@
       ],
       "priority": "P1",
       "description": "Usuario completa formulario del servicio paso a paso con validacion por etapa",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "service-save-draft": {
       "name": "Guardar borrador del formulario",
@@ -1410,7 +1890,11 @@
       ],
       "priority": "P2",
       "description": "Usuario guarda progreso parcial sin enviar, se carga al volver",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "service-submit-request": {
       "name": "Enviar solicitud de servicio",
@@ -1421,7 +1905,10 @@
       ],
       "priority": "P1",
       "description": "Usuario envia solicitud y recibe numero de radicado YYYY-NNNNN",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "service-view-my-requests": {
       "name": "Ver mis solicitudes",
@@ -1432,7 +1919,10 @@
       ],
       "priority": "P1",
       "description": "Cliente ve historial de solicitudes con filtros por estado, servicio, radicado",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-view-request-detail": {
       "name": "Ver detalle de solicitud",
@@ -1443,7 +1933,10 @@
       ],
       "priority": "P1",
       "description": "Usuario ve detalle completo con respuestas por etapa, PDF y respuestas del abogado",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-inbox-view": {
       "name": "Bandeja de solicitudes (Abogado)",
@@ -1453,7 +1946,10 @@
       ],
       "priority": "P1",
       "description": "Abogado ve solicitudes recibidas con filtros por estado, busqueda, fechas",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-manage-request": {
       "name": "Gestionar solicitud (Abogado)",
@@ -1463,7 +1959,10 @@
       ],
       "priority": "P1",
       "description": "Abogado cambia estado, envia respuesta con mensaje y/o archivo adjunto",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "service-admin-create": {
       "name": "Crear servicio (Admin)",
@@ -1473,7 +1972,11 @@
       ],
       "priority": "P1",
       "description": "Admin crea servicio con etapas y campos dinamicos",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
     },
     "service-admin-edit": {
       "name": "Editar servicio (Admin)",
@@ -1486,6 +1989,10 @@
       "expectedSpecs": 1,
       "knownGaps": [
         "Partial coverage — service-admin-flow.spec.js exercises create/toggle but the full edit path (modify existing stages + fields and persist) is not fully asserted. Marked partial in docs/USER_FLOW_MAP.md."
+      ],
+      "outcomes": [
+        "success",
+        "failure"
       ]
     },
     "service-admin-toggle": {
@@ -1496,7 +2003,10 @@
       ],
       "priority": "P2",
       "description": "Admin activa/desactiva y marca/desmarca como destacado",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
     },
     "service-hub-tab-navigation": {
       "name": "Navegar entre tabs en ServicesHub",
@@ -1507,7 +2017,10 @@
       ],
       "priority": "P2",
       "description": "Usuario cambia entre tab Servicios y Mis Solicitudes en /services, incluyendo navegacion por query param (?tab=my-requests) desde redirects legacy",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "service-upload-multiple-files": {
       "name": "Subir multiples archivos en formulario de servicio",
@@ -1518,7 +2031,11 @@
       ],
       "priority": "P2",
       "description": "Usuario sube hasta 10 archivos a un campo tipo file en el formulario multi-etapa; puede eliminar archivos individuales y el contador X/10 se actualiza",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
     },
     "service-admin-form-validation": {
       "name": "Validacion de formulario admin de servicio",
@@ -1528,7 +2045,10 @@
       ],
       "priority": "P3",
       "description": "Admin intenta guardar servicio sin datos requeridos (nombre vacio, sin etapas) y ve los mensajes de error de validateEditor()",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "error"
+      ]
     },
     "notification-center": {
       "name": "Centro de Notificaciones",
@@ -1538,7 +2058,10 @@
       ],
       "priority": "P2",
       "description": "Usuario ve campana flotante con badge de no leídas, navega al centro de notificaciones, alterna entre tabs (todas/no leídas/archivadas), y al hacer clic en una notificación es redirigido al recurso con efecto pulse de 5s (process / document / service_request)",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     },
     "process-alert-configure": {
       "name": "Configurar destinatarios de alerta de proceso",
@@ -1548,7 +2071,171 @@
       ],
       "priority": "P2",
       "description": "Abogado activa la alerta del último estado procesal en ProcessForm (al crear o editar) y alterna el toggle 'Notificar también a los clientes' (notify_clients), opcionalmente añade descripción personalizada. Persiste en StageAlert y se refleja en el indicador del detalle del proceso.",
-      "expectedSpecs": 1
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "notification-mark-read": {
+      "name": "Marcar notificaciones como leídas",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario marca una notificación individual como leída/no-leída desde las acciones hover y usa 'Marcar todas como leídas'; el badge de la campana refleja el conteo.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "notification-snooze": {
+      "name": "Posponer notificación (snooze)",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario abre el menú 'Recordar después' de una notificación y elige un intervalo (1h/3h/1d/3d); la notificación desaparece de la lista activa hasta vencer el snooze.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "notification-archive-toggle": {
+      "name": "Archivar y desarchivar notificación",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario archiva una notificación (pasa a la pestaña Archivadas) y la restaura desde allí (vuelve a Todas).",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "notification-delete": {
+      "name": "Eliminar notificación",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P3",
+      "description": "Usuario elimina una notificación individual desde las acciones hover; desaparece de forma permanente.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "notification-pagination": {
+      "name": "Paginación del centro de notificaciones",
+      "module": "notifications",
+      "roles": [
+        "client",
+        "lawyer",
+        "corporate_client",
+        "basic"
+      ],
+      "priority": "P4",
+      "description": "Con más de una página, el usuario navega con Anterior/Siguiente y el indicador 'Página X de Y' se actualiza.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
+    },
+    "service-admin-delete": {
+      "name": "Eliminar servicio (admin)",
+      "module": "services",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P2",
+      "description": "Admin selecciona un servicio en /services_admin, pulsa 'Eliminar servicio', confirma en el SweetAlert y el servicio desaparece del catálogo (las solicitudes enviadas se conservan).",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "failure"
+      ]
+    },
+    "process-users-modal": {
+      "name": "Modal de participantes del proceso",
+      "module": "processes",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P3",
+      "description": "Desde el detalle del proceso, 'Ver usuarios' abre el modal de participantes con los clientes asociados (avatar/iniciales + nombre).",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
+    },
+    "directory-navigate-to-process": {
+      "name": "Navegar del directorio a procesos",
+      "module": "directory",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Desde el modal de detalle de usuario del directorio, 'Ver proceso' navega al detalle del proceso y 'Ver todos en Procesos' al listado del usuario.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "secop-list-error-retry": {
+      "name": "Reintentar carga del listado SECOP",
+      "module": "secop",
+      "roles": [
+        "lawyer"
+      ],
+      "priority": "P4",
+      "description": "Si la carga del listado SECOP falla, se muestra el estado de error con 'Reintentar'; el botón recarga y muestra la tabla.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "failure",
+        "display"
+      ]
+    },
+    "sign-download-signatures-pdf": {
+      "name": "Descargar certificado de firmas (PDF)",
+      "module": "signatures",
+      "roles": [
+        "lawyer",
+        "client"
+      ],
+      "priority": "P3",
+      "description": "Sobre un documento completamente firmado, la acción 'Descargar Doc. Formalizado' del menú de la tarjeta descarga el PDF de firmas (generate-signatures-pdf).",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
+    "org-corporate-dashboard-stats": {
+      "name": "KPIs del dashboard corporativo",
+      "module": "organizations",
+      "roles": [
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "El dashboard del cliente corporativo muestra los KPIs (organizaciones, miembros, invitaciones pendientes) desde organizations/stats/ y se actualizan tras invitar un miembro.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "display"
+      ]
     }
   }
 }

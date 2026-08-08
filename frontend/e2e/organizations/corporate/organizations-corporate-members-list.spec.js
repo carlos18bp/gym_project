@@ -5,7 +5,7 @@ import { installOrganizationsDashboardApiMocks } from "../../helpers/organizatio
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("corporate_client can open organization members list modal", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
+test("corporate_client can open organization members list modal", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate', '@outcome:display'] }, async ({ page }) => {
   const userId = 4500;
 
   await installOrganizationsDashboardApiMocks(page, {

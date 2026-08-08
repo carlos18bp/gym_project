@@ -8,7 +8,7 @@ import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dy
  */
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
-test("document with single signer shows simplified signature view", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("document with single signer shows simplified signature view", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 9200;
   const docs = [
     buildMockDocument({
@@ -33,7 +33,7 @@ test("document with single signer shows simplified signature view", { tag: ['@fl
 });
 
 // quality: allow-fragile-test-data (mock signer emails in signature test double)
-test("document with multiple signers shows all signers", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("document with multiple signers shows all signers", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 9210;
   const docs = [
     buildMockDocument({
@@ -85,7 +85,7 @@ test("rejected document shows on archived tab with reject info", { tag: ['@flow:
 });
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
-test("client sees pending documents assigned to them for signing", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client sees pending documents assigned to them for signing", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 9230;
   const docs = [
     buildMockDocument({
@@ -104,7 +104,9 @@ test("client sees pending documents assigned to them for signing", { tag: ['@flo
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Doc Para Firma Cliente")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("Pendiente", { exact: true })).toBeVisible();
 });

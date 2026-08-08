@@ -18,23 +18,32 @@ test.describe("SECOP Browse Flows", () => {
     await setAuthLocalStorage(page, LAWYER_AUTH);
   });
 
-  test("lawyer can view SECOP process list with pagination info", {
-    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer'],
+  test("changing the page size re-queries the SECOP list", {
+    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
 
-    // Verify list page renders with processes
+    // Starting point: the first page renders with the seeded processes
     await expect(page.getByText("Ministerio de Transporte")).toBeVisible();
     await expect(page.getByText("INVIAS")).toBeVisible();
     await expect(page.getByText("Alcaldía de Medellín")).toBeVisible();
+    await expect(page.getByTestId("page-size-selector")).toHaveValue("20");
 
-    // Verify result count is shown
+    const pageSizeRequest = page.waitForRequest((request) =>
+      request.url().includes("/api/secop/processes/") && request.url().includes("page_size=50")
+    );
+
+    await page.getByTestId("page-size-selector").selectOption("50");
+
+    // Transition: the list is re-fetched with the new page size
+    await pageSizeRequest;
+    await expect(page.getByTestId("page-size-selector")).toHaveValue("50");
     await expect(page.getByTestId("secop-result-count")).toBeVisible();
   });
 
   test("lawyer can navigate to process detail page", {
-    tag: ['@flow:secop-process-detail', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-process-detail', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();
@@ -48,18 +57,12 @@ test.describe("SECOP Browse Flows", () => {
     await expect(page.getByText("Bogotá D.C.").first()).toBeVisible();
   });
 
-  test("lawyer can view sync status indicator", {
-    tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer'],
-  }, async ({ page }) => {
-    await page.goto("/secop");
-    await expect(page.getByTestId("sync-status")).toBeVisible();
-
-    // Verify sync status shows process count
-    await expect(page.getByTestId("sync-status-text")).toBeVisible();
-  });
+  // NOTE: a "lawyer can view sync status indicator" test used to live here. It
+  // was an exact duplicate of the sync-status test in secop-portal-sync-flow
+  // (same route, same testids), so it was removed instead of rewritten.
 
   test("lawyer can expand advanced filters and see UNSPSC filter", {
-    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer'],
+    tag: ['@flow:secop-list-browse', '@module:secop', '@priority:P2', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-table")).toBeVisible();

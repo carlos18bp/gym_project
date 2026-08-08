@@ -29,7 +29,7 @@ async function setupLawyerDashboard(page, { userId, documents = [], folders = []
 }
 
 test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, () => {
-  test("lawyer navigates all dashboard tabs and sees correct content", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer navigates all dashboard tabs and sees correct content", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
     const userId = 9000;
     const docs = [
       buildMockDocument({ id: 101, title: "Minuta Contrato", state: "Draft", createdBy: userId }),
@@ -82,7 +82,7 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     await expect(page.getByText("Minuta Beta")).toBeHidden();
   });
 
-  test("lawyer opens folder detail and sees Contraparte/Objeto/Fechas columns populated", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+  test("lawyer opens folder detail and sees Contraparte/Objeto/Fechas columns populated", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
     const userId = 9002;
     const counterparty = "Acme Industrial S.A.S.";
     const objectDesc = "Prestación de servicios jurídicos de representación";
@@ -253,12 +253,14 @@ test.describe("Lawyer Document Dashboard", { tag: ['@flow:docs-dashboard-lawyer'
     const searchInput = page.getByPlaceholder("Buscar...");
     await expect(searchInput).toBeVisible();
 
-    const contratoText = page.getByText("Contrato Finalizado");
-    if (await contratoText.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await searchInput.fill("Contrato");
-      await expect(page.getByText("Contrato Finalizado")).toBeVisible();
-      await expect(page.getByText("Poder Completado")).toBeHidden();
-    }
+    // Completed client documents are listed on the tab
+    await expect(page.getByText("Contrato Finalizado")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Poder Completado")).toBeVisible();
+
+    // Searching filters the list down to matching titles
+    await searchInput.fill("Contrato");
+    await expect(page.getByText("Contrato Finalizado")).toBeVisible();
+    await expect(page.getByText("Poder Completado")).toBeHidden();
   });
 
   test("client starts new document from published template", { tag: ['@flow:docs-dashboard-lawyer', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

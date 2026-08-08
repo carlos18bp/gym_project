@@ -43,34 +43,64 @@ async function installDashMocks(page, { userId, role = "lawyer" }) {
   });
 }
 
-test.describe("PWA Install - composable initialization", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
-  test("dashboard loads without PWA install errors", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+test.describe("PWA Install - manual instructions fallback", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("lawyer opens the manual install instructions from the sidebar", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await installDashMocks(page, { userId: 3300 });
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // Dashboard should load without PWA-related errors
-    await expect(page.locator("body")).toBeVisible();
+    const installEntry = page.getByTestId("pwa-install-button");
+    await expect(installEntry).toBeVisible({ timeout: 15_000 });
+
+    // No beforeinstallprompt fired in this browser session, so promptInstall()
+    // must fall back to the manual instructions modal.
+    await installEntry.click();
+
+    const instructionsTitle = page.getByRole("heading", { name: "Instalar Aplicación" });
+    await expect(instructionsTitle).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Para instalar la aplicación en tu dispositivo, sigue estos pasos:")).toBeVisible();
   });
 
-  test("PWA composable initializes on client dashboard", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  test("client closes the install instructions modal", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await installDashMocks(page, { userId: 3301, role: "client" });
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // Client dashboard should render with PWA composable loaded
-    await expect(page.locator("body")).toBeVisible();
+    const installEntry = page.getByTestId("pwa-install-button");
+    await expect(installEntry).toBeVisible({ timeout: 15_000 });
+    await installEntry.click();
+
+    const instructionsTitle = page.getByRole("heading", { name: "Instalar Aplicación" });
+    await expect(instructionsTitle).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole("button", { name: "Cerrar" }).click();
+
+    await expect(instructionsTitle).toBeHidden({ timeout: 10_000 });
   });
 });
 
-test.describe("PWA Install - service worker context", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
-  test("app handles non-PWA context gracefully", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+test.describe("PWA Install - native browser prompt", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, () => {
+  test("install button triggers the native prompt when the browser deferred one", { tag: ['@flow:misc-pwa-install', '@module:misc', '@priority:P4', '@role:shared'] }, async ({ page }) => {
     await installDashMocks(page, { userId: 3310 });
     await page.goto("/dashboard");
-    await page.waitForLoadState("networkidle");
 
-    // In Playwright (non-PWA), the install prompt should not appear
-    // but the app should still function correctly
-    await expect(page.locator("body")).toBeVisible();
+    const installEntry = page.getByTestId("pwa-install-button");
+    await expect(installEntry).toBeVisible({ timeout: 15_000 });
+
+    // Replay the browser event the composable listens for at module load.
+    await page.evaluate(() => {
+      window.__e2eNativePromptCalled = false;
+      const deferred = new Event("beforeinstallprompt");
+      deferred.prompt = () => {
+        window.__e2eNativePromptCalled = true;
+      };
+      deferred.userChoice = Promise.resolve({ outcome: "dismissed" });
+      window.dispatchEvent(deferred);
+    });
+
+    await installEntry.click();
+
+    await expect
+      .poll(() => page.evaluate(() => window.__e2eNativePromptCalled), { timeout: 10_000 })
+      .toBe(true);
+    await expect(page.getByRole("heading", { name: "Instalar Aplicación" })).toBeHidden();
   });
 });

@@ -168,9 +168,16 @@ async function installGoogleAuthMocks(page, { scenario = "existing_user_success"
   });
 }
 
+/**
+ * Drive the Google sign-in the same way a click on the GSI button would.
+ *
+ * The visible button is an iframe rendered by Google's own SDK, which the E2E
+ * fixture stubs out (renderButton is a no-op), so there is no DOM node to
+ * click. The seam that IS the app's own wiring is the callback vue3-google-login
+ * registers through google.accounts.id.initialize(): invoking it exercises
+ * SocialLoginButtons → @google → loginWithGoogle exactly like a real click.
+ */
 async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
-  // Wait for vue3-google-login to call google.accounts.id.initialize(),
-  // which stores the callback via our GSI stub in test.js.
   await page.waitForFunction(() => typeof window.__e2eGoogleLoginCallback === 'function', { timeout: 10_000 });
   await page.evaluate((cred) => {
     window.__e2eGoogleLoginCallback({ credential: cred });
@@ -179,13 +186,20 @@ async function triggerGoogleLogin(page, credential = "e2e-google-credential") {
 
 test.describe.configure({ timeout: 90_000 });
 
-test("google login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login signs in existing user and redirects to dashboard", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives login via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real auth outcome: google_login POST payload, localStorage.token, userAuth and redirect to /dashboard)
   await installGoogleAuthMocks(page, { scenario: "existing_user_success" });
 
   await page.goto("/sign_in");
   await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({ timeout: 15_000 });
 
+  const googleRequest = page.waitForRequest(
+    (request) => request.url().includes("/api/google_login/") && request.method() === "POST"
+  );
   await triggerGoogleLogin(page);
+
+  // The credential handed over by the SDK is what the app forwards
+  expect((await googleRequest).postDataJSON().credential).toBe("e2e-google-credential");
 
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("token")), { timeout: 15_000 })
@@ -200,7 +214,8 @@ test("google login signs in existing user and redirects to dashboard", { tag: ['
     .toBe("/dashboard");
 });
 
-test("google login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login failure shows error and keeps user on sign in", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives the rejected-credential path via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real outcome: error dialog text, null localStorage.token and staying on /sign_in)
   await installGoogleAuthMocks(page, { scenario: "login_failure" });
 
   await page.goto("/sign_in");
@@ -216,7 +231,8 @@ test("google login failure shows error and keeps user on sign in", { tag: ['@flo
   await expect(page).toHaveURL(/\/sign_in/);
 });
 
-test("google login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("google login from sign on stores new user session and redirects", { tag: ['@flow:auth-login-google', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
+  // quality: allow-no-interaction (GSI button is a stubbed Google iframe with no DOM node to click in E2E; the test drives new-user registration via the app-registered window.__e2eGoogleLoginCallback seam and asserts the real outcome: localStorage.token, userAuth email/is_profile_completed and redirect to /dashboard)
   await installGoogleAuthMocks(page, { scenario: "new_user_success" });
 
   await page.goto("/sign_on");

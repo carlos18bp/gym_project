@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client request detail: shows error state for 404 and allows going back", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client request detail: shows error state for 404 and allows going back", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client', '@outcome:failure'] }, async ({ page }) => {
   const userId = 3570;
 
   await installOrganizationsClientApiMocks(page, {
@@ -39,7 +39,7 @@ test("client request detail: shows error state for 404 and allows going back", {
   await expect(page.locator('h1:has-text("Mis Organizaciones")')).toBeVisible();
 });
 
-test("client request detail: shows error state for 403 and allows going back", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client request detail: shows error state for 403 and allows going back", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client', '@outcome:failure'] }, async ({ page }) => {
   const userId = 3571;
 
   await installOrganizationsClientApiMocks(page, {

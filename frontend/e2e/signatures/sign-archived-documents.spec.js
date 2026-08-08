@@ -8,7 +8,7 @@ import { installDynamicDocumentApiMocks, buildMockDocument } from "../helpers/dy
  */
 
 // quality: allow-fragile-test-data (mock signer email in signature test double)
-test("lawyer sees rejected documents on Dcs. Archivados tab", { tag: ['@flow:sign-archived-documents', '@module:signatures', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees rejected documents on Dcs. Archivados tab", { tag: ['@flow:sign-archived-documents', '@module:signatures', '@priority:P3', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   const userId = 8710;
   const docs = [
     buildMockDocument({

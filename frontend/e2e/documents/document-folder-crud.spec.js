@@ -36,7 +36,7 @@ async function setupAndNavigate(page, folders = undefined) {
   await page.goto("/dynamic_document_dashboard");
 }
 
-test("folder list renders existing folders", { tag: ['@flow:docs-folder-crud', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("folder list renders existing folders", { tag: ['@flow:docs-folder-crud', '@module:documents', '@priority:P2', '@role:lawyer', '@outcome:display'] }, async ({ page }) => {
   await setupAndNavigate(page);
 
   // Lawyer default tab is "legal-documents"; switch to "Carpetas" tab

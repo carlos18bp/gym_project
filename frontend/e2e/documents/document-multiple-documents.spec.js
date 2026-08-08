@@ -7,7 +7,7 @@ import {
 } from "../helpers/dynamicDocumentMocks.js";
 
 test.describe("document dashboard: multiple documents", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, () => {
-  test("lawyer sees multiple documents in list", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  test("lawyer sees multiple documents in list", { tag: ['@flow:docs-multiple', '@module:documents', '@priority:P4', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 6000;
 
     const docs = [

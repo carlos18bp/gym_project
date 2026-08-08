@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client can create a corporate request from modal and see it in My Requests", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client can create a corporate request from modal and see it in My Requests", { tag: ['@flow:org-client-requests', '@module:organizations', '@priority:P2', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const userId = 3200;
 
   await installOrganizationsClientApiMocks(page, {

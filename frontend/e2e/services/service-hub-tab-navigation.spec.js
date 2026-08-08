@@ -9,13 +9,14 @@ import {
 const CLIENT_ID = 8001;
 
 test(
-  "client sees services catalog on default tab when navigating to /services",
+  "client opens the services hub from the sidebar and lands on the catalog tab",
   {
     tag: [
       "@flow:service-hub-tab-navigation",
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {
@@ -36,8 +37,15 @@ test(
       },
     });
 
-    await page.goto("/services");
-    await page.waitForLoadState("networkidle");
+    await page.goto("/dashboard");
+    await page.getByText("Servicios y Solicitudes").first().waitFor({ timeout: 15_000 });
+
+    // The hub is not mounted yet — no tabs, no catalog
+    await expect(page.getByRole("button", { name: "Mis Solicitudes" })).toHaveCount(0);
+
+    await page.getByText("Servicios y Solicitudes").first().click();
+
+    await expect(page).toHaveURL(/\/services$/, { timeout: 15_000 });
 
     // ServicesHub always renders the ModuleHeader title
     await expect(page.getByRole("heading", { name: "Servicios y Solicitudes" })).toBeVisible({
@@ -63,6 +71,7 @@ test(
       "@module:services",
       "@priority:P2",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {

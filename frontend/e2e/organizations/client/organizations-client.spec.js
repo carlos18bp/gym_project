@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client can accept an organization invitation and see membership + posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client can accept an organization invitation and see membership + posts", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3100;
 
   await installOrganizationsClientApiMocks(page, { userId, role: "client" });
