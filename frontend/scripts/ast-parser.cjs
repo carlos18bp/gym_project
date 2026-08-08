@@ -689,11 +689,16 @@ function parseFile(filePath, isE2E = false) {
             }
           }
 
-          // Track duplicates
-          if (!titlesSeen.has(title)) {
-            titlesSeen.set(title, []);
+          // Track duplicates. Titles built from a template literal with
+          // expressions (`${page.name} does X`) cannot be resolved statically,
+          // so they arrive here as '' — comparing those against each other
+          // reports parameterized tests as duplicates of one another.
+          if (title) {
+            if (!titlesSeen.has(title)) {
+              titlesSeen.set(title, []);
+            }
+            titlesSeen.get(title).push(line);
           }
-          titlesSeen.get(title).push(line);
 
           const testInfo = {
             name: title,
