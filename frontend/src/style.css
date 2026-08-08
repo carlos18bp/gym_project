@@ -2,6 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global forced app zoom — makes the UI feel wider / less oversized.
+   Desktop 80%, phone 75%. Uses CSS `zoom` (layout-aware, reflows content).
+   Tunable via the --app-zoom custom property.
+
+   IMPORTANT: --app-zoom is the single source of truth. CSS `zoom` scales the
+   used value of lengths, but viewport units (vh/vw/dvh) resolve against the
+   UNZOOMED viewport, so a plain `100vh` only paints at 80%/75% of the screen.
+   Every full-viewport length must therefore be written as
+   `calc(100vh / var(--app-zoom, 1))` — the `*-screen` Tailwind utilities
+   already do this via tailwind.config.js. `position: fixed; inset: 0` is not
+   affected and needs no compensation. */
+:root {
+  --app-zoom: 0.8; /* desktop default */
+}
+
+@media (max-width: 768px) {
+  :root {
+    --app-zoom: 0.75; /* phone */
+  }
+}
+
+/* Never scale print / PDF output. Resetting the custom property rather than
+   overriding `zoom` directly keeps the compensated lengths correct on paper. */
+@media print {
+  :root {
+    --app-zoom: 1;
+  }
+}
+
+/* Browsers without CSS `zoom` must not get the compensation either. */
+@supports not (zoom: 1) {
+  :root {
+    --app-zoom: 1;
+  }
+}
+
+html {
+  zoom: var(--app-zoom);
+}
+
 @font-face {
     font-family: 'Inter-Regular';
     src: url('@/assets/fonts/Inter_18pt-Regular.ttf') format('truetype');

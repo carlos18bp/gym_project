@@ -175,6 +175,7 @@ describe("BaseDocumentCard.vue", () => {
         id: 1,
         title: "My Document",
         state: "Draft",
+        created_by: 1,
         tags: [],
         ...documentOverrides,
       },
@@ -183,7 +184,7 @@ describe("BaseDocumentCard.vue", () => {
       statusIcon: markRaw({ template: "<span />" }),
       statusText: "Estado",
       documentStore: {},
-      userStore: { currentUser: { email: "test@example.com" } },
+      userStore: { currentUser: { id: 1, email: "test@example.com" } },
       ...rest,
     };
   };
@@ -196,13 +197,14 @@ describe("BaseDocumentCard.vue", () => {
         id: 1,
         title: "My Document",
         state: "Draft",
+        created_by: 1,
         tags: [],
         ...documentOverrides,
       },
       cardType: "client",
       cardContext: "list",
       documentStore: {},
-      userStore: { currentUser: { email: "test@example.com" } },
+      userStore: { currentUser: { id: 1, email: "test@example.com" } },
       ...rest,
     };
   };
@@ -269,7 +271,7 @@ describe("BaseDocumentCard.vue", () => {
   });
 
   test("runs preview/delete actions from menu and emits refresh", async () => {
-    const doc = { id: 1, title: "My Document", state: "Completed", tags: [] };
+    const doc = { id: 1, title: "My Document", state: "Completed", created_by: 1, tags: [] };
 
     const wrapper = mount(BaseDocumentCard, {
       props: baseProps({
@@ -1049,7 +1051,7 @@ describe("BaseDocumentCard.vue", () => {
 
   test("handles useDocument/use branches and unknown-action warn", async () => {
     // quality: allow-multi-render (contrasting default vs lawyer cardType branches)
-    const doc = { id: 30, title: "Default", state: "Draft", tags: [] };
+    const doc = { id: 30, title: "Default", state: "Draft", created_by: 1, tags: [] };
 
     const wrapperDefault = mount(BaseDocumentCard, {
       props: basePropsDerivedStatus({

@@ -298,7 +298,8 @@ def test_admin_create_service_returns_400_when_select_field_missing_options(api_
 
 @pytest.mark.django_db
 def test_admin_create_service_returns_400_with_friendly_message_on_duplicate_field_order(api_client, admin_user):
-    """Two fields with the same ``order`` in a stage must surface a friendly
+    """Two fields with the same ``order`` in a stage must surface a friendly.
+
     400 that names the conflicting field labels (R3 — error 500 antes opaco).
     """
     api_client.force_authenticate(user=admin_user)
@@ -1728,6 +1729,7 @@ def test_submit_accepts_valid_select_multiple_options(
 
 @pytest.mark.django_db
 def test_admin_delete_service_marks_is_deleted_true(api_client, admin_user, sample_service):
+    """Admin delete service marks is deleted true."""
     api_client.force_authenticate(user=admin_user)
     url = reverse("services-admin-delete", kwargs={"service_id": sample_service.id})
 
@@ -1741,6 +1743,7 @@ def test_admin_delete_service_marks_is_deleted_true(api_client, admin_user, samp
 
 @pytest.mark.django_db
 def test_admin_delete_service_requires_admin(api_client, client_user, sample_service):
+    """Admin delete service requires admin."""
     api_client.force_authenticate(user=client_user)
     url = reverse("services-admin-delete", kwargs={"service_id": sample_service.id})
 
@@ -1753,6 +1756,7 @@ def test_admin_delete_service_requires_admin(api_client, client_user, sample_ser
 
 @pytest.mark.django_db
 def test_admin_delete_service_already_deleted_returns_404(api_client, admin_user, sample_service):
+    """Admin delete service already deleted returns 404."""
     sample_service.is_deleted = True
     sample_service.save(update_fields=["is_deleted"])
     api_client.force_authenticate(user=admin_user)
@@ -1765,6 +1769,7 @@ def test_admin_delete_service_already_deleted_returns_404(api_client, admin_user
 
 @pytest.mark.django_db
 def test_deleted_service_excluded_from_list_services(api_client, client_user, sample_service):
+    """Deleted service excluded from list services."""
     sample_service.is_deleted = True
     sample_service.save(update_fields=["is_deleted"])
     api_client.force_authenticate(user=client_user)
@@ -1778,6 +1783,7 @@ def test_deleted_service_excluded_from_list_services(api_client, client_user, sa
 
 @pytest.mark.django_db
 def test_deleted_service_excluded_from_admin_list(api_client, admin_user, sample_service):
+    """Deleted service excluded from admin list."""
     sample_service.is_deleted = True
     sample_service.save(update_fields=["is_deleted"])
     api_client.force_authenticate(user=admin_user)
@@ -1791,6 +1797,7 @@ def test_deleted_service_excluded_from_admin_list(api_client, admin_user, sample
 
 @pytest.mark.django_db
 def test_deleted_service_returns_404_on_detail(api_client, client_user, sample_service):
+    """Deleted service returns 404 on detail."""
     sample_service.is_deleted = True
     sample_service.save(update_fields=["is_deleted"])
     api_client.force_authenticate(user=client_user)

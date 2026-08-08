@@ -326,7 +326,7 @@ describe("document_utils.downloadFile", () => {
 });
 
 describe("document_utils.getProcessedDocumentContent (additional)", () => {
-  test("replaces variables only for Completed/PendingSignatures/FullySigned", () => {
+  test("replaces variables only for final and archived states", () => {
     const doc = {
       state: "Draft",
       content: "Hello {{ name }}",
@@ -340,6 +340,26 @@ describe("document_utils.getProcessedDocumentContent (additional)", () => {
     expect(getProcessedDocumentContent({ ...doc, state: "Completed" })).toBe("Hello Carlos");
     expect(getProcessedDocumentContent({ ...doc, state: "PendingSignatures" })).toBe("Hello Carlos");
     expect(getProcessedDocumentContent({ ...doc, state: "FullySigned" })).toBe("Hello Carlos");
+  });
+
+  test("replaces variables for archived (Rejected) documents", () => {
+    const doc = {
+      state: "Rejected",
+      content: "Hello {{ name }}",
+      variables: [{ name_en: "name", value: "Carlos" }],
+    };
+
+    expect(getProcessedDocumentContent(doc)).toBe("Hello Carlos");
+  });
+
+  test("replaces variables for archived (Expired) documents", () => {
+    const doc = {
+      state: "Expired",
+      content: "Hello {{ name }}",
+      variables: [{ name_en: "name", value: "Carlos" }],
+    };
+
+    expect(getProcessedDocumentContent(doc)).toBe("Hello Carlos");
   });
 
   test("formats summary_field=value with COP currency", () => {

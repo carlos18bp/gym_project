@@ -161,6 +161,28 @@
           </MenuItems>
         </Menu>
 
+        <!-- Minutas scope filter: all minutas / shared-edit only / the lawyer's own -->
+        <div
+          v-if="isLawyerMinutasContext"
+          class="inline-flex w-full sm:w-auto rounded-md border border-gray-300 overflow-hidden"
+          role="group"
+          aria-label="Filtrar minutas por alcance"
+        >
+          <button
+            v-for="(scope, index) in MINUTAS_SCOPES"
+            :key="scope.value"
+            type="button"
+            @click="minutasScope = scope.value"
+            :class="[
+              'flex-1 sm:flex-initial px-3 py-2 text-sm font-medium',
+              index > 0 ? 'border-l border-gray-300' : '',
+              minutasScope === scope.value ? 'bg-secondary text-white' : 'bg-white text-gray-700 hover:bg-gray-50',
+            ]"
+          >
+            {{ scope.label }}
+          </button>
+        </div>
+
         <div class="flex gap-2 w-full sm:w-auto">
           <button
             v-if="selectedDocuments.length > 0"
@@ -216,6 +238,9 @@
               <!-- Columna Cliente eliminada para mantener estructura original -->
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Estado
+              </th>
+              <th v-if="isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Creado por
               </th>
               <th v-if="!isLawyerMinutasContext" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Contraparte
@@ -283,6 +308,17 @@
               <td class="px-6 py-4 whitespace-nowrap">
                 <span :class="getStatusBadgeClass(document)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                   {{ getStatusText(document) }}
+                </span>
+              </td>
+              <td v-if="isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
+                <span class="text-sm text-gray-900">
+                  {{ document.created_by_name || '-' }}
+                </span>
+                <span
+                  v-if="document.allow_shared_edit"
+                  class="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                >
+                  Compartida
                 </span>
               </td>
               <td v-if="!isLawyerMinutasContext" class="px-6 py-4 whitespace-nowrap">
@@ -467,7 +503,7 @@
       :user-role="activeModals.edit.userRole || userStore.currentUser?.role || 'client'"
       :show-editor-button="!activeModals.edit.renameOnly"
       @close="closeModal('edit')"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
     />
 
     <SendDocumentModal
@@ -475,7 +511,7 @@
       :is-open="safeActiveModals.email.isOpen"
       :document="safeActiveModals.email.document"
       @close="closeModal('email')"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
     />
 
     <DocumentSignaturesModal
@@ -483,7 +519,7 @@
       :is-open="activeModals.signatures.isOpen"
       :document="activeModals.signatures.document"
       @close="closeModal('signatures')"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
     />
 
     <DocumentPermissionsModal
@@ -491,7 +527,7 @@
       :is-open="activeModals.permissions.isOpen"
       :document="activeModals.permissions.document"
       @close="closeModal('permissions')"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
     />
 
     <LetterheadModal
@@ -499,7 +535,7 @@
       :is-visible="activeModals.letterhead.isOpen"
       :document="activeModals.letterhead.document"
       @close="closeModal('letterhead')"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
     />
 
     <DocumentRelationshipsModal
@@ -518,7 +554,7 @@
       :context="props.context || 'list'"
       :user-store="userStore"
       @close="showActionsModal = false"
-      @refresh="emit('refresh')"
+      @refresh="refreshCurrentView"
       @action="handleModalAction"
     />
 
@@ -685,6 +721,30 @@ const relationshipsModalState = computed(() => {
   const rel = modals?.relationships;
   return rel || { isOpen: false, document: null };
 });
+/**
+ * Refresh the current view preserving all active filters and the current
+ * page, then notify the parent (badge counters) via the refresh event.
+ */
+const refreshCurrentView = async () => {
+  // Notify the parent first (badge counters) so both requests run
+  // concurrently instead of the badges waiting on the heavier list fetch.
+  emit('refresh');
+  if (isServerPaginated.value) {
+    await fetchWithFilters(currentPage.value);
+  }
+};
+
+// Emit proxy handed to useDocumentActions: intercepts 'refresh' so document
+// actions re-fetch with the table's own filters instead of delegating the
+// data reload to the parent (which would fetch unfiltered).
+const actionEmit = (event, ...args) => {
+  if (event === 'refresh') {
+    refreshCurrentView();
+    return;
+  }
+  emit(event, ...args);
+};
+
 const {
   handlePreviewDocument,
   deleteDocument,
@@ -693,10 +753,11 @@ const {
   copyDocument,
   publishDocument,
   moveToDraft,
+  toggleSharedEdit,
   formalizeDocument,
   signDocument,
   downloadSignedDocument
-} = useDocumentActions(documentStore, userStore, emit);
+} = useDocumentActions(documentStore, userStore, actionEmit);
 
 // Local state
 const localSearchQuery = ref("");
@@ -708,6 +769,14 @@ const filterByClient = ref(null);
 const dateFrom = ref("");
 const dateTo = ref("");
 const sortBy = ref('recent');
+// Minutas only: scope of the list — 'all' (shared visibility), 'shared'
+// (minutas flagged as collaboratively editable) or 'mine' (created by me).
+const MINUTAS_SCOPES = [
+  { value: 'all', label: 'Todas' },
+  { value: 'shared', label: 'Compartidas' },
+  { value: 'mine', label: 'Mías' },
+];
+const minutasScope = ref('all');
 const selectedDocuments = ref([]);
 const showActionsModal = ref(false);
 const selectedDocumentForActions = ref(null);
@@ -743,9 +812,17 @@ const fetchWithFilters = async (page = 1) => {
     sortBy: sortBy.value || 'recent',
   };
 
-  if (isLawyerMinutasContext.value && currentUser?.id) {
-    options.lawyerId = currentUser.id;
+  if (isLawyerMinutasContext.value) {
+    // Shared visibility: lawyers see all minutas, not only their own.
+    // Only the Draft/Published state scope is sent by default.
     options.states = ['Draft', 'Published'];
+    // Scope filters: 'mine' reuses the backend lawyer_id filter; 'shared'
+    // restricts to minutas flagged as collaboratively editable.
+    if (minutasScope.value === 'mine' && currentUser?.id) {
+      options.lawyerId = currentUser.id;
+    } else if (minutasScope.value === 'shared') {
+      options.shared = true;
+    }
   }
 
   if (isClientMyDocumentsContext.value && currentUser?.id) {
@@ -780,12 +857,10 @@ const documentsToDisplay = computed(() => {
 
   const currentUser = userStore.currentUser;
 
-  // Lawyer main legal documents view
+  // Lawyer main legal documents view (minutas)
+  // Shared visibility: show all minutas regardless of which lawyer created them.
   if (props.cardType === 'lawyer' && props.context === 'legal-documents') {
-    if (!currentUser?.id || typeof documentStore.getDocumentsByLawyerId !== 'function') {
-      return [];
-    }
-    return documentStore.getDocumentsByLawyerId(currentUser.id) || [];
+    return documentStore.allMinutas || [];
   }
 
   // "My Documents" view (client-style list) for the current user
@@ -959,6 +1034,7 @@ const clearAllFilters = () => {
   filterByClient.value = null;
   dateFrom.value = "";
   dateTo.value = "";
+  minutasScope.value = 'all';
 };
 
 // Computed: determine if current view is "Minutas" (Draft/Published only for lawyer legal-documents)
@@ -1362,6 +1438,9 @@ const handleMenuAction = async (action, document) => {
     case 'move-to-draft':
       await moveToDraft(document);
       break;
+    case 'toggleSharedEdit':
+      await toggleSharedEdit(document);
+      break;
     case 'formalize':
       await formalizeDocument(document);
       break;
@@ -1474,7 +1553,7 @@ watch(() => props.searchQuery, (newValue) => {
 }, { immediate: true });
 
 // Watch filter changes: reset to page 1 and re-fetch from backend
-watch([filterByTag, dateFrom, dateTo, sortBy], () => {
+watch([filterByTag, dateFrom, dateTo, sortBy, minutasScope], () => {
   if (!isServerPaginated.value) return;
   if (currentPage.value !== 1) {
     skipNextPageWatch = true;

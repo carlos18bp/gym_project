@@ -4,11 +4,12 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from gym_app.models import DynamicDocument, DocumentSignature
+from gym_app.models import DocumentSignature, DynamicDocument
 
 
 @pytest.fixture
 def api_client():
+    """Build an API client."""
     return APIClient()
 
 

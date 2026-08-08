@@ -190,6 +190,9 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
     # Document relationships count
     relationships_count = serializers.SerializerMethodField(read_only=True)
 
+    # Informational name of the lawyer who created the document
+    created_by_name = serializers.SerializerMethodField(read_only=True)
+
     created_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, allow_null=True)
 
@@ -200,12 +203,12 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'variables', 'requires_signature', 'signature_due_date',
             'signature_type', 'signatures', 'signers', 'signer_ids', 'fully_signed',
             'completed_signatures', 'total_signatures', 'tags', 'tag_ids',
-            'is_public', 'visibility_user_ids', 'usability_user_ids',
+            'is_public', 'allow_shared_edit', 'visibility_user_ids', 'usability_user_ids',
             'user_permission_level', 'can_view', 'can_edit', 'can_delete',
             'summary_counterparty', 'summary_object', 'summary_value',
             'summary_value_currency', 'summary_term',
             'summary_subscription_date', 'summary_start_date',
-            'summary_end_date', 'relationships_count'
+            'summary_end_date', 'relationships_count', 'created_by_name'
         ]
 
     def get_signer_ids(self, obj):
@@ -268,9 +271,21 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         Uses prefetched source_relationships + target_relationships — no extra DB query.
         """
         return len(obj.relationships_as_source.all()) + len(obj.relationships_as_target.all())
-    
 
-    
+    def get_created_by_name(self, obj):
+        """
+        Return the full name of the lawyer who created the document.
+        Informational only — does not determine permissions. Falls back to email.
+        Relies on select_related('created_by') in the optimized queryset (no extra query).
+        """
+        creator = obj.created_by
+        if not creator:
+            return None
+        first_name = getattr(creator, 'first_name', '') or ""
+        last_name = getattr(creator, 'last_name', '') or ""
+        full_name = f"{first_name} {last_name}".strip()
+        return full_name or getattr(creator, 'email', None)
+
     def _get_permission_level(self, obj):
         """
         Return the current user's permission level using prefetched data.
@@ -715,6 +730,10 @@ class DynamicDocumentSerializer(serializers.ModelSerializer):
         instance.requires_signature = requires_signature
         instance.signature_type = signature_type
         instance.save()
+        # Invalidate stale prefetched relations (variables/tags were replaced
+        # above); otherwise re-serializing this instance returns the old rows.
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
         return instance
 
 

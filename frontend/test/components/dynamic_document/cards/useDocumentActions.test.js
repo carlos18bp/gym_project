@@ -328,6 +328,7 @@ describe("useDocumentActions", () => {
   test("copyDocument: missing variables defaults to empty array", async () => {
     const documentStore = {
       createDocument: jest.fn().mockResolvedValue(),
+      fetchDocumentById: jest.fn().mockResolvedValue({ id: 1, title: "Doc", content: "C" }),
     };
     const emit = jest.fn();
 
@@ -335,10 +336,33 @@ describe("useDocumentActions", () => {
 
     const { copyDocument } = useDocumentActions(documentStore, {}, emit);
 
-    await copyDocument({ id: 1, title: "Doc", content: "C" });
+    await copyDocument({ id: 1, title: "Doc" });
 
     const copyData = documentStore.createDocument.mock.calls[0][0];
     expect(copyData.variables).toEqual([]);
+  });
+
+  test("copyDocument: fetches the full document before building the payload", async () => {
+    const documentStore = {
+      createDocument: jest.fn().mockResolvedValue(),
+      fetchDocumentById: jest.fn().mockResolvedValue({
+        id: 1,
+        title: "Doc",
+        content: "<p>full content</p>",
+      }),
+    };
+    const emit = jest.fn();
+
+    mockShowConfirmationAlert.mockResolvedValueOnce(true);
+
+    const { copyDocument } = useDocumentActions(documentStore, {}, emit);
+
+    // List rows omit `content`; the copy must use the fetched full document.
+    await copyDocument({ id: 1, title: "Doc" });
+
+    expect(documentStore.fetchDocumentById).toHaveBeenCalledWith(1, true);
+    const copyData = documentStore.createDocument.mock.calls[0][0];
+    expect(copyData.content).toBe("<p>full content</p>");
   });
 
   test("copyDocument: creates draft copy with date suffix and resets variable values", async () => {
@@ -347,6 +371,24 @@ describe("useDocumentActions", () => {
 
     const documentStore = {
       createDocument: jest.fn().mockResolvedValue(),
+      fetchDocumentById: jest.fn().mockResolvedValue({
+        id: 1,
+        title: "Doc",
+        content: "C",
+        variables: [
+          {
+            name_en: "a",
+            name_es: "b",
+            tooltip: "t",
+            field_type: "text",
+            select_options: [],
+            summary_field: "value",
+            currency: "COP",
+            value: "something",
+          },
+        ],
+        requires_signature: true,
+      }),
     };
     const emit = jest.fn();
 
@@ -354,22 +396,7 @@ describe("useDocumentActions", () => {
 
     const { copyDocument } = useDocumentActions(documentStore, {}, emit);
 
-    await copyDocument({
-      id: 1,
-      title: "Doc",
-      content: "C",
-      variables: [
-        {
-          name_en: "a",
-          name_es: "b",
-          tooltip: "t",
-          field_type: "text",
-          select_options: [],
-          value: "something",
-        },
-      ],
-      requires_signature: true,
-    });
+    await copyDocument({ id: 1, title: "Doc" });
 
     expect(documentStore.createDocument).toHaveBeenCalledTimes(1);
     const copyData = documentStore.createDocument.mock.calls[0][0];
@@ -386,6 +413,8 @@ describe("useDocumentActions", () => {
         tooltip: "t",
         field_type: "text",
         select_options: [],
+        summary_field: "value",
+        currency: "COP",
         value: "",
       },
     ]);
@@ -485,6 +514,7 @@ describe("useDocumentActions", () => {
   test("copyDocument: when createDocument fails, shows error notification", async () => {
     const documentStore = {
       createDocument: jest.fn().mockRejectedValue(new Error("fail")),
+      fetchDocumentById: jest.fn().mockResolvedValue({ id: 1, title: "Doc", content: "C", variables: [] }),
     };
     const emit = jest.fn();
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
@@ -493,7 +523,7 @@ describe("useDocumentActions", () => {
 
     const { copyDocument } = useDocumentActions(documentStore, {}, emit);
 
-    await copyDocument({ id: 1, title: "Doc", content: "C", variables: [] });
+    await copyDocument({ id: 1, title: "Doc" });
 
     expect(documentStore.createDocument).toHaveBeenCalled();
     expect(mockShowNotification).toHaveBeenCalledWith(
@@ -502,6 +532,57 @@ describe("useDocumentActions", () => {
     );
 
     consoleSpy.mockRestore();
+  });
+
+  test("toggleSharedEdit: enabling updates the flag and emits refresh", async () => {
+    const documentStore = {
+      updateDocument: jest.fn().mockResolvedValue({}),
+    };
+    const emit = jest.fn();
+
+    mockShowConfirmationAlert.mockResolvedValueOnce(true);
+
+    const { toggleSharedEdit } = useDocumentActions(documentStore, {}, emit);
+
+    await toggleSharedEdit({ id: 5, title: "Minuta", allow_shared_edit: false });
+
+    expect(documentStore.updateDocument).toHaveBeenCalledWith(5, { allow_shared_edit: true });
+    expect(mockShowNotification).toHaveBeenCalledWith(
+      "Edición compartida activada exitosamente",
+      "success"
+    );
+    expect(emit).toHaveBeenCalledWith("refresh");
+  });
+
+  test("toggleSharedEdit: disabling updates the flag to false", async () => {
+    const documentStore = {
+      updateDocument: jest.fn().mockResolvedValue({}),
+    };
+    const emit = jest.fn();
+
+    mockShowConfirmationAlert.mockResolvedValueOnce(true);
+
+    const { toggleSharedEdit } = useDocumentActions(documentStore, {}, emit);
+
+    await toggleSharedEdit({ id: 5, title: "Minuta", allow_shared_edit: true });
+
+    expect(documentStore.updateDocument).toHaveBeenCalledWith(5, { allow_shared_edit: false });
+  });
+
+  test("toggleSharedEdit: when not confirmed, does nothing", async () => {
+    const documentStore = {
+      updateDocument: jest.fn(),
+    };
+    const emit = jest.fn();
+
+    mockShowConfirmationAlert.mockResolvedValueOnce(false);
+
+    const { toggleSharedEdit } = useDocumentActions(documentStore, {}, emit);
+
+    await toggleSharedEdit({ id: 5, title: "Minuta", allow_shared_edit: false });
+
+    expect(documentStore.updateDocument).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalledWith("refresh");
   });
 
   test("publishDocument and moveToDraft call updateDocument and emit refresh", async () => {

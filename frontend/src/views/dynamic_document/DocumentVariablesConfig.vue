@@ -238,11 +238,19 @@ onMounted(async () => {
       // overwrite the new content with the old version from the server and
       // later save the stale content again when publishing.
       const previousContent = store.selectedDocument.content;
+      const previousVariables = store.selectedDocument.variables;
 
       const fullDocument = await store.fetchDocumentById(store.selectedDocument.id, true);
 
       if (previousContent && previousContent !== fullDocument.content) {
         fullDocument.content = previousContent;
+        // Unsaved editor changes: the locally synced variables are the source
+        // of truth (DocumentEditor.syncVariables already merged backend
+        // metadata per variable). Keeping the backend variables here would
+        // drop any variable just added in the editor.
+        if (Array.isArray(previousVariables)) {
+          fullDocument.variables = previousVariables;
+        }
       }
 
       store.selectedDocument = fullDocument;

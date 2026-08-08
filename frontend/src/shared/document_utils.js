@@ -100,8 +100,10 @@ export const countProtectedVariableSpans = (content) =>
 
 /**
  * Returns the document content with variables replaced by their values
- * for final states (Completed, PendingSignatures, FullySigned).
- * For other states, returns the raw content.
+ * for final and archived states (Completed, PendingSignatures, FullySigned,
+ * Rejected, Expired). Rejected/Expired documents come from the signature
+ * workflow, so their variables are always fully filled.
+ * For other states (Draft/Published templates, Progress), returns the raw content.
  * @param {Object} document - The document whose content should be processed.
  * @returns {string} Processed HTML content
  */
@@ -111,7 +113,7 @@ export const getProcessedDocumentContent = (document) => {
   let processedContent = normalizeFragmentedVariables(document.content || "");
 
   // Only process variables for specific states
-  const statesToProcess = ['Completed', 'PendingSignatures', 'FullySigned'];
+  const statesToProcess = ['Completed', 'PendingSignatures', 'FullySigned', 'Rejected', 'Expired'];
   if (statesToProcess.includes(document.state) && document.variables && Array.isArray(document.variables)) {
     document.variables.forEach((variable) => {
       if (!variable || !variable.name_en) return;

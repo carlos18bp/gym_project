@@ -12,11 +12,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 
-from gym_app.models import Case, Process, User
+from gym_app.models import Process, User
 
 
 @pytest.fixture
 def other_client(db):
+    """Other client."""
     return User.objects.create_user(
         email="other_client@idor.test",
         password="testpassword",
@@ -26,6 +27,7 @@ def other_client(db):
 
 @pytest.fixture
 def victim_lawyer(db):
+    """Victim lawyer."""
     return User.objects.create_user(
         email="victim_lawyer@idor.test",
         password="testpassword",
@@ -36,6 +38,7 @@ def victim_lawyer(db):
 
 @pytest.fixture
 def victim_process(victim_lawyer, case_type, client_user):
+    """Victim process."""
     process = Process.objects.create(
         authority="Court",
         plaintiff="P",
@@ -55,6 +58,7 @@ class TestUpdateProcessIDOR:
     def test_unrelated_client_cannot_update_process(
         self, api_client, other_client, victim_process
     ):
+        """Unrelated client cannot update process."""
         api_client.force_authenticate(user=other_client)
         url = reverse("update-process", args=[victim_process.pk])
         response = api_client.put(
@@ -84,6 +88,7 @@ class TestUpdateProcessIDOR:
     def test_basic_user_cannot_update_process(
         self, api_client, basic_user, victim_process
     ):
+        """Basic user cannot update process."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("update-process", args=[victim_process.pk])
         response = api_client.put(
@@ -133,12 +138,14 @@ class TestUpdateCaseFileIDOR:
     def test_unrelated_client_cannot_upload_to_others_process(
         self, api_client, other_client, victim_process
     ):
+        """Unrelated client cannot upload to others process."""
         api_client.force_authenticate(user=other_client)
         response = self._upload(api_client, victim_process.pk)
         assert response.status_code == status.HTTP_403_FORBIDDEN
         assert victim_process.case_files.count() == 0
 
     def test_basic_user_cannot_upload(self, api_client, basic_user, victim_process):
+        """Basic user cannot upload."""
         api_client.force_authenticate(user=basic_user)
         response = self._upload(api_client, victim_process.pk)
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -146,12 +153,14 @@ class TestUpdateCaseFileIDOR:
     def test_listed_client_can_upload(
         self, api_client, client_user, victim_process
     ):
+        """Listed client can upload."""
         api_client.force_authenticate(user=client_user)
         response = self._upload(api_client, victim_process.pk)
         assert response.status_code == status.HTTP_201_CREATED
         assert victim_process.case_files.count() == 1
 
     def test_gym_lawyer_can_upload(self, api_client, lawyer_user, victim_process):
+        """Gym lawyer can upload."""
         api_client.force_authenticate(user=lawyer_user)
         response = self._upload(api_client, victim_process.pk)
         assert response.status_code == status.HTTP_201_CREATED
@@ -164,6 +173,7 @@ class TestProcessListIDOR:
     def test_basic_user_sees_no_processes(
         self, api_client, basic_user, victim_process
     ):
+        """Basic user sees no processes."""
         api_client.force_authenticate(user=basic_user)
         url = reverse("process-list")
         response = api_client.get(url)
@@ -173,6 +183,7 @@ class TestProcessListIDOR:
     def test_corporate_client_sees_no_processes(
         self, api_client, corporate_user, victim_process
     ):
+        """Corporate client sees no processes."""
         api_client.force_authenticate(user=corporate_user)
         url = reverse("process-list")
         response = api_client.get(url)
@@ -182,6 +193,7 @@ class TestProcessListIDOR:
     def test_unrelated_client_does_not_see_others_processes(
         self, api_client, other_client, victim_process
     ):
+        """Unrelated client does not see others processes."""
         api_client.force_authenticate(user=other_client)
         url = reverse("process-list")
         response = api_client.get(url)
@@ -192,6 +204,7 @@ class TestProcessListIDOR:
     def test_listed_client_sees_own_process(
         self, api_client, client_user, victim_process
     ):
+        """Listed client sees own process."""
         api_client.force_authenticate(user=client_user)
         url = reverse("process-list")
         response = api_client.get(url)
@@ -202,6 +215,7 @@ class TestProcessListIDOR:
     def test_gym_lawyer_sees_all_processes(
         self, api_client, lawyer_user, victim_process
     ):
+        """Gym lawyer sees all processes."""
         api_client.force_authenticate(user=lawyer_user)
         url = reverse("process-list")
         response = api_client.get(url)

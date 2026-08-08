@@ -17,6 +17,8 @@ from gym_app.models import (
     DocumentFolder,
     DocumentRelationship,
     DocumentVisibilityPermission,
+    DocumentUsabilityPermission,
+    RecentDocument,
 )
 from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
 
@@ -938,9 +940,15 @@ class Command(BaseCommand):
                 f'Seeded letterhead_image on {len(letterhead_targets)} documents'
             ))
 
-        # Ensure visibility permissions for all assigned documents so clients/basic/corporate can see them
+        # Ensure visibility permissions for all assigned documents so clients/basic/corporate can see them.
+        # A subset also gets usability (edit) permissions — these MUST be created
+        # AFTER the visibility permission because DocumentUsabilityPermission.clean()
+        # requires an existing visibility grant. RecentDocument rows are seeded on a
+        # subset so the "recently viewed" list is not empty.
         all_docs_with_assignee = DynamicDocument.objects.filter(assigned_to__isnull=False)
-        for doc in all_docs_with_assignee.select_related('assigned_to'):
+        usability_created = 0
+        recent_created = 0
+        for index, doc in enumerate(all_docs_with_assignee.select_related('assigned_to')):
             try:
                 DocumentVisibilityPermission.objects.get_or_create(
                     document=doc,
@@ -950,6 +958,30 @@ class Command(BaseCommand):
             except Exception:
                 # Fake data helper: swallow any unexpected errors here
                 continue
+
+            # Grant usability to ~50% of assigned docs (visibility now exists).
+            if index % 2 == 0:
+                try:
+                    _, u_created = DocumentUsabilityPermission.objects.get_or_create(
+                        document=doc,
+                        user=doc.assigned_to,
+                        defaults={'granted_by': doc.created_by},
+                    )
+                    usability_created += int(u_created)
+                except Exception:
+                    pass
+
+            # Seed "recently viewed" on ~33% of assigned docs.
+            if index % 3 == 0:
+                _, r_created = RecentDocument.objects.get_or_create(
+                    user=doc.assigned_to,
+                    document=doc,
+                )
+                recent_created += int(r_created)
+
+        self.stdout.write(self.style.SUCCESS(
+            f'Seeded {usability_created} usability permissions and {recent_created} recent-document rows'
+        ))
 
         # Create folders (DocumentFolder) for users with assigned documents.
         # Extended to ALL 4 roles (client, basic, corporate_client, lawyer) so Bugs

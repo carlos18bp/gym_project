@@ -1,8 +1,7 @@
 <!-- ActivityFeed.vue -->
 <!--
   Container for the dashboard tabs:
-  - NotificationsWidget — Notification Center summary (first tab, replaces the
-    standalone NotificationSummaryCard).
+  - NotificationsWidget — Notification Center summary (first tab).
   - FeedWidget — Recent user activity.
   - ContactsWidget — Contacts (clients) or Lawyers depending on role.
   - ReportsWidget — Reports/statistics, lawyer-only.
@@ -20,8 +19,8 @@
         <!-- Notifications tab (first) -->
         <div class="text-center flex-shrink-0">
           <button
-            class="inline-flex items-center gap-1 pb-2 font-medium relative whitespace-nowrap text-xs sm:text-sm"
-            :class="activeTab === 'notifications' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+            class="inline-flex items-center gap-1 pb-2 font-medium relative whitespace-nowrap text-xs sm:text-sm border-b-2"
+            :class="activeTab === 'notifications' ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-500 hover:text-gray-700'"
             @click="activeTab = 'notifications'"
             data-testid="activity-feed-tab-notifications"
           >
@@ -34,49 +33,45 @@
               {{ unreadCount > 99 ? '99+' : unreadCount }}
             </span>
           </button>
-          <div v-if="activeTab === 'notifications'" class="h-0.5 bg-blue-500 w-full mx-auto mt-2"></div>
         </div>
 
         <!-- Feed tab -->
         <div class="text-center flex-shrink-0">
           <button
-            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm"
-            :class="activeTab === 'feed' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm border-b-2"
+            :class="activeTab === 'feed' ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-500 hover:text-gray-700'"
             @click="activeTab = 'feed'"
             data-testid="activity-feed-tab-feed"
           >
             <RssIcon class="h-4 w-4 sm:hidden" />
             <span class="hidden sm:inline">Feed</span>
           </button>
-          <div v-if="activeTab === 'feed'" class="h-0.5 bg-blue-500 w-full mx-auto mt-2"></div>
         </div>
 
         <!-- Contacts tab -->
         <div class="text-center flex-shrink-0">
           <button
-            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm"
-            :class="activeTab === 'contacts' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm border-b-2"
+            :class="activeTab === 'contacts' ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-500 hover:text-gray-700'"
             @click="activeTab = 'contacts'"
             data-testid="activity-feed-tab-contacts"
           >
             <UsersIcon class="h-4 w-4 sm:hidden" />
             <span class="hidden sm:inline">{{ isLawyer ? 'Contactos' : 'Abogados' }}</span>
           </button>
-          <div v-if="activeTab === 'contacts'" class="h-0.5 bg-blue-500 w-full mx-auto mt-2"></div>
         </div>
 
         <!-- Reports tab - visible to lawyer / admin / staff / superuser. -->
         <div v-if="isLawyerLike" class="text-center flex-shrink-0">
           <button
-            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm"
-            :class="activeTab === 'reports' ? 'text-blue-500' : 'text-gray-500 hover:text-gray-700'"
+            class="inline-flex items-center gap-1 pb-2 font-medium whitespace-nowrap text-xs sm:text-sm border-b-2"
+            :class="activeTab === 'reports' ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-500 hover:text-gray-700'"
             @click="activeTab = 'reports'"
             data-testid="activity-feed-tab-reports"
           >
             <ChartBarIcon class="h-4 w-4 sm:hidden" />
             <span class="hidden sm:inline">Reportes</span>
           </button>
-          <div v-if="activeTab === 'reports'" class="h-0.5 bg-blue-500 w-full mx-auto mt-2"></div>
         </div>
       </div>
     </div>

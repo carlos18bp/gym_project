@@ -280,6 +280,24 @@ def test_example():
     assert ASTAnalyzer.count_patches(function) == 3
 
 
+def test_count_assertions_recognizes_pytest_raises_context_manager() -> None:
+    """ASTAnalyzer counts `with pytest.raises(...)` as an assertion."""
+    source = """
+import pytest
+
+def test_example():
+    with pytest.raises(ValueError):
+        do_something()
+"""
+
+    tree = ast.parse(source)
+    function = next(node for node in tree.body if isinstance(node, ast.FunctionDef))
+
+    count, _ = ASTAnalyzer.count_assertions(function)
+
+    assert count == 1
+
+
 def test_backend_nondeterministic_sources_warn_without_explicit_controls(tmp_path: Path) -> None:
     """Backend analyzer emits NONDETERMINISTIC when clock/random sources are uncontrolled."""
     report = _build_backend_report_for_source(

@@ -134,20 +134,19 @@ describe("Dynamic Document Store - Getters and Filters", () => {
     expect(store.progressAndCompletedDocumentsByClient(20).map((d) => d.id)).toEqual([3]);
   });
 
-  test("getDocumentsByLawyerId filters by created_by and Draft/Published", () => {
+  test("allMinutas returns Draft/Published documents from any creator", () => {
     const store = useDynamicDocumentStore();
 
     store.$patch({
       documents: [
         { id: 1, state: "Draft", created_by: 7 },
-        { id: 2, state: "Published", created_by: 7 },
+        { id: 2, state: "Published", created_by: 8 },
         { id: 3, state: "Progress", created_by: 7 },
-        { id: 4, state: "Draft", created_by: 8 },
+        { id: 4, state: "Completed", created_by: 9 },
       ],
     });
 
-    expect(store.getDocumentsByLawyerId(7).map((d) => d.id)).toEqual([1, 2]);
-    expect(store.getDocumentsByLawyerId(null)).toEqual([]);
+    expect(store.allMinutas.map((d) => d.id)).toEqual([1, 2]);
   });
 
   test("documentsByClient filters by client_id and returns [] when clientId is falsy", () => {

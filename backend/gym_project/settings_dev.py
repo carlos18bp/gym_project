@@ -18,3 +18,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
 ]
+
+# Matches settings_prod. Django defaults to 'same-origin', which severs
+# window.opener and breaks the Microsoft (MSAL) login popup in local development.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'

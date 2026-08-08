@@ -8,7 +8,7 @@ export const documentsContent = {
     <p>El módulo de Archivos Jurídicos permite crear, gestionar y firmar documentos legales de manera digital.</p>
     <p class="mt-2"><strong>Para Abogados:</strong> 8 pestañas principales</p>
     <ul class="list-disc list-inside mt-2 space-y-1">
-      <li><strong>Minutas:</strong> Plantillas de documentos creadas (Published, Draft)</li>
+      <li><strong>Minutas:</strong> Plantillas de todos los abogados (Published, Draft) — visibilidad y control compartidos</li>
       <li><strong>Mis Documentos:</strong> Documentos propios completados y en progreso</li>
       <li><strong>Carpetas:</strong> Organización de documentos en carpetas personalizadas</li>
       <li><strong>Documentos por Firmar:</strong> Pendientes de firma (PendingSignatures)</li>
@@ -88,9 +88,14 @@ export const documentsContent = {
           <li><strong>Mis Documentos:</strong> Similar a la vista de clientes, permite al abogado usar minutas para crear documentos propios y formalizarlos con firmas.</li>
           <li><strong>Carpetas:</strong> Organizar documentos en carpetas personalizadas para mejor gestión.</li>
         </ul>
+        <p class="mt-2"><strong>Visibilidad compartida de Minutas:</strong> Todos los abogados ven todas las minutas, sin importar quién las creó. La columna "Creado por" indica el creador, que es quien controla la minuta: solo él puede eliminarla, publicarla/moverla a borrador y activar o desactivar la edición compartida ("Compartir edición", activada por defecto). Cuando una minuta está compartida (badge "Compartida"), los demás abogados también pueden editarla; si no, solo pueden previsualizarla, copiarla o agregarla a carpetas. Usa el filtro "Todas / Compartidas / Mías" para alternar entre todas las minutas del equipo, las compartidas para edición y las que tú creaste.</p>
       `,
       features: [
-        'Minutas: Crear y gestionar plantillas de documentos (solo plantillas)',
+        'Minutas: Crear y gestionar plantillas de todos los abogados (visibilidad compartida)',
+        'Columna "Creado por": indica el abogado que creó y controla cada minuta',
+        'Edición compartida: activada por defecto; el creador puede desactivarla con "Dejar de compartir"',
+        'Minutas ajenas: siempre se pueden previsualizar y copiar; editar solo si están compartidas; eliminar y publicar son exclusivas del creador',
+        'Filtro "Todas / Compartidas / Mías": ver todas las minutas, solo las compartidas o solo las propias',
         'Mis Documentos: Usar minutas para crear documentos propios y formalizarlos',
         'Carpetas: Organizar documentos en carpetas personalizadas',
         'Dcs. Por Firmar: Documentos pendientes de firma',

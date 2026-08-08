@@ -267,6 +267,7 @@ describe("ServiceRequestDetail.vue", () => {
       // ``wrapper.html()`` includes the scoped <style> block (which mentions
       // the class name literally), so we assert on the highlighted card's
       // class attribute instead of a string substring.
+      // quality: allow-fragile-selector (the highlight class itself is the asserted visual behavior)
       const highlightedCard = wrapper.find(".notification-highlight");
       expect(highlightedCard.exists()).toBe(true);
     });
@@ -277,6 +278,7 @@ describe("ServiceRequestDetail.vue", () => {
       const wrapper = mountComponent();
       await flushPromises();
 
+      // quality: allow-fragile-selector (the highlight class itself is the asserted visual behavior)
       const highlightedCard = wrapper.find(".notification-highlight");
       expect(highlightedCard.exists()).toBe(false);
       expect(mockRouterReplace).not.toHaveBeenCalled();

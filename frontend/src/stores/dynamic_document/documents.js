@@ -73,6 +73,7 @@ export const documentActions = {
       states = null,
       clientId = null,
       lawyerId = null,
+      shared = false,
       search = '',
       tagId = null,
       dateFrom = '',
@@ -103,6 +104,7 @@ export const documentActions = {
       }
       if (clientId) params.append('client_id', clientId);
       if (lawyerId) params.append('lawyer_id', lawyerId);
+      if (shared) params.append('shared', 'true');
       if (search) params.append('search', search);
       if (tagId) params.append('tag_id', tagId);
       if (dateFrom) params.append('date_from', dateFrom);

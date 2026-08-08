@@ -3,8 +3,11 @@
 ## 📋 Requisitos Previos
 
 ### 1. Instalar dependencias
+El task queue (Huey) y el cliente de Redis ya están declarados en
+`requirements.txt` (`huey==2.5.2`, `redis`). Instalarlos con:
 ```bash
-pip install celery redis django-celery-beat
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 2. Instalar y configurar Redis
@@ -28,16 +31,15 @@ Crear archivo `.env` en el directorio backend (opcional):
 # Wompi Environment (test o production)
 WOMPI_ENVIRONMENT=test
 
-# Celery
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+# Redis / Huey — lo consume HUEY en gym_project/settings.py
+REDIS_URL=redis://localhost:6379/1
 ```
 
 ### 2. Migraciones
 
 Ya están aplicadas, pero si necesitas recrearlas:
 ```bash
-source ../gym_project_env/bin/activate
+source venv/bin/activate
 python manage.py migrate
 ```
 
@@ -45,21 +47,25 @@ python manage.py migrate
 
 ### 1. Servidor Django
 ```bash
-source ../gym_project_env/bin/activate
+source venv/bin/activate
 python manage.py runserver
 ```
 
-### 2. Celery Worker (en otra terminal)
+### 2. Huey Consumer (procesa las tareas)
+
+En **desarrollo** normalmente no hace falta: `HUEY` se configura con
+`immediate=not IS_PRODUCTION` (ver `settings.py`), así que las tareas se
+ejecutan de forma síncrona dentro del propio proceso de Django.
+
+En **producción** un único consumer procesa tanto las tareas encoladas como
+las periódicas (`@periodic_task`) — no existen procesos "worker" y "beat"
+separados:
 ```bash
-source ../gym_project_env/bin/activate
-celery -A gym_project worker --loglevel=info
+source venv/bin/activate
+python manage.py run_huey
 ```
 
-### 3. Celery Beat (tareas programadas - en otra terminal)
-```bash
-source ../gym_project_env/bin/activate
-celery -A gym_project beat --loglevel=info
-```
+En el servidor esto corre como el servicio systemd **`gym-project-huey`**.
 
 ## 📡 Endpoints Disponibles
 
@@ -117,12 +123,16 @@ Content-Type: application/json
 }
 ```
 
-## 🔄 Tareas Programadas (Celery)
+## 🔄 Tareas Programadas (Huey)
 
 ### Cobros Mensuales Automáticos
-- **Tarea:** `process_monthly_subscriptions`
-- **Frecuencia:** Diariamente a las 2:00 AM
-- **Función:** Procesa todas las suscripciones activas que tienen `next_billing_date` <= hoy
+- **Tarea:** `process_monthly_subscriptions` (`gym_app/tasks.py`, Huey `@task()`)
+- **Frecuencia:** diaria (madrugada). El disparo se agenda con un
+  `@periodic_task(crontab(...))` de Huey o un cron del sistema que encola la
+  tarea — igual que el resto de tareas periódicas del proyecto
+  (`gym_app/notification_tasks.py`, `secop_tasks.py`, etc.).
+- **Función:** procesa todas las suscripciones activas cuyo `next_billing_date`
+  ya venció.
 
 **Proceso:**
 1. Busca suscripciones activas vencidas
@@ -169,10 +179,10 @@ Reiniciar servidor Django después del cambio.
 
 ## 📊 Monitoreo
 
-### Ver logs de Celery
+### Ver logs de Huey
 ```bash
-# En la terminal donde corre celery worker
-# Los logs aparecen automáticamente
+# Desarrollo: el consumer imprime en la terminal donde corre run_huey.
+# Producción: journalctl -u gym-project-huey -f
 ```
 
 ### Ver logs de Django
@@ -180,10 +190,11 @@ Reiniciar servidor Django después del cambio.
 tail -f debug.log
 ```
 
-### Verificar tareas en Django Admin
-1. Ir a `/admin/`
-2. Buscar "Periodic tasks" (django_celery_beat)
-3. Ver historial de ejecuciones
+### Verificar la cola en Redis
+```bash
+# Huey usa la DB de Redis indicada en REDIS_URL (por defecto /1)
+redis-cli -n 1 keys 'huey*'
+```
 
 ## 🧪 Testing
 
@@ -199,7 +210,9 @@ ngrok http 8000
 ### Probar tarea de cobros manualmente
 ```python
 from gym_app.tasks import process_monthly_subscriptions
-process_monthly_subscriptions.delay()
+
+# Encola la tarea (en dev con immediate=True corre inline al instante).
+process_monthly_subscriptions()
 ```
 
 ## 🔐 Seguridad
@@ -212,8 +225,9 @@ process_monthly_subscriptions.delay()
 
 ## 📝 Notas Importantes
 
-1. **Redis es requerido** para Celery - asegúrate de que esté corriendo
-2. **Celery Beat** debe estar corriendo para tareas programadas
+1. **Redis es requerido** para Huey — asegúrate de que esté corriendo
+2. En **producción** el consumer **`run_huey`** (systemd `gym-project-huey`)
+   debe estar corriendo para las tareas encoladas y periódicas
 3. **Webhook URL** debe ser HTTPS en producción
 4. **payment_source_id** se guarda para cobros recurrentes
 5. **Roles de usuario** se actualizan automáticamente según plan
@@ -226,14 +240,18 @@ sudo systemctl status redis
 sudo systemctl restart redis
 ```
 
-### Celery no procesa tareas
+### Huey no procesa tareas
 ```bash
-# Verificar que worker está corriendo
-ps aux | grep celery
+# Verificar que el consumer está corriendo
+ps aux | grep run_huey
+# En el servidor:
+sudo systemctl status gym-project-huey
 
-# Reiniciar worker
-pkill -f 'celery worker'
-celery -A gym_project worker --loglevel=info
+# Reiniciar el consumer
+sudo systemctl restart gym-project-huey
+# O en desarrollo:
+pkill -f run_huey
+python manage.py run_huey
 ```
 
 ### Webhook no recibe eventos

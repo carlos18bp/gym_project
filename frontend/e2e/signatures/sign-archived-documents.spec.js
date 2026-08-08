@@ -58,3 +58,37 @@ test("lawyer sees expired documents on Dcs. Archivados tab", { tag: ['@flow:sign
   await page.getByRole("button", { name: "Dcs. Archivados" }).click();
   await expect(page.getByText("Contrato Expirado")).toBeVisible({ timeout: 10_000 });
 });
+
+// quality: allow-fragile-test-data (mock signer email in signature test double)
+test("archived document preview renders variable values instead of raw markers", { tag: ['@flow:sign-archived-documents', '@module:signatures', '@priority:P3', '@role:lawyer'] }, async ({ page }) => {
+  const userId = 8712;
+  const docs = [
+    buildMockDocument({
+      id: 4120, title: "Prorroga Rechazada", state: "Rejected",
+      createdBy: userId, requires_signature: true,
+      content: "<p>Contratista: {{ Nombre_contratista }}</p>",
+      variables: [
+        { name_en: "Nombre_contratista", name_es: "Nombre del contratista", value: "Julio Rivera", field_type: "input", tooltip: "" },
+      ],
+      signatures: [
+        { id: 32, signer_email: "client@example.com", signed: false, signer_name: "Cliente", rejected: true },
+      ],
+    }),
+  ];
+
+  await installDynamicDocumentApiMocks(page, { userId, role: "lawyer", hasSignature: true, documents: docs });
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Dcs. Archivados" }).click();
+  await page.getByTestId("signatures-list-row-4120").click();
+  await page.getByRole("button", { name: "Previsualizar" }).click();
+
+  await expect(page.getByText("Contratista: Julio Rivera").first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText("{{ Nombre_contratista }}")).toHaveCount(0);
+});

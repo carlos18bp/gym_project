@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth/auth";
 
 const mockRouterPush = jest.fn();
 const mockLoginWithGoogle = jest.fn();
+const mockLoginWithOutlook = jest.fn();
 const mockShowNotification = jest.fn();
 const mockFetchSiteKey = jest.fn();
 
@@ -23,6 +24,11 @@ jest.mock("@/router", () => ({
 jest.mock("@/shared/login_with_google", () => ({
   __esModule: true,
   loginWithGoogle: (...args) => mockLoginWithGoogle(...args),
+}));
+
+jest.mock("@/shared/login_with_outlook", () => ({
+  __esModule: true,
+  loginWithOutlook: (...args) => mockLoginWithOutlook(...args),
 }));
 
 jest.mock("@/shared/notification_message", () => ({

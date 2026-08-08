@@ -20,6 +20,7 @@ class TestAuthThrottling:
         return [api_client.post(url, data=payload, format="json").status_code for _ in range(n)]
 
     def test_sign_in_throttles_after_10_per_minute(self, api_client, settings):
+        """Sign in throttles after 10 per minute."""
         # Force the configured rate even if a runner overrode it.
         settings.REST_FRAMEWORK = {
             **settings.REST_FRAMEWORK,
@@ -40,6 +41,7 @@ class TestAuthThrottling:
         assert status.HTTP_429_TOO_MANY_REQUESTS in codes[10:]
 
     def test_send_passcode_throttles_after_5_per_minute(self, api_client, settings):
+        """Send passcode throttles after 5 per minute."""
         settings.REST_FRAMEWORK = {
             **settings.REST_FRAMEWORK,
             "DEFAULT_THROTTLE_RATES": {
@@ -59,6 +61,7 @@ class TestAuthThrottling:
     def test_send_verification_code_throttles_after_5_per_minute(
         self, api_client, settings
     ):
+        """Send verification code throttles after 5 per minute."""
         settings.REST_FRAMEWORK = {
             **settings.REST_FRAMEWORK,
             "DEFAULT_THROTTLE_RATES": {

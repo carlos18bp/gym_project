@@ -806,3 +806,91 @@ def test_document_usability_permission_allows_gym_lawyer(user_factory, document_
     assert permission.id is not None
 
 
+
+
+# ── prefetched permission chain + snapshot path (coverage batch 2026-07-16) ──
+
+
+@pytest.mark.django_db
+def test_get_user_permission_level_prefetched_assigned_and_published(
+    user_factory, document_factory
+):
+    """Prefetched variant resolves assigned users and published templates as usability."""
+    creator = user_factory("pref_creator@example.com")
+    assigned = user_factory("pref_assigned@example.com")
+    visitor = user_factory("pref_visitor@example.com")
+
+    assigned_doc = document_factory(created_by=creator, assigned_to=assigned)
+    published_doc = document_factory(created_by=creator, state="Published")
+
+    assert assigned_doc.get_user_permission_level_prefetched(assigned) == "usability"
+    assert published_doc.get_user_permission_level_prefetched(visitor) == "usability"
+
+
+@pytest.mark.django_db
+def test_get_user_permission_level_prefetched_permission_rows(
+    user_factory, document_factory
+):
+    """Prefetched variant resolves usability and view-only permission rows."""
+    creator = user_factory("pref_perm_creator@example.com")
+    usability_user = user_factory("pref_perm_usability@example.com")
+    view_user = user_factory("pref_perm_viewer@example.com")
+    document = document_factory(created_by=creator)
+
+    DocumentVisibilityPermission.objects.create(
+        document=document, user=usability_user, granted_by=creator
+    )
+    DocumentUsabilityPermission.objects.create(
+        document=document, user=usability_user, granted_by=creator
+    )
+    DocumentVisibilityPermission.objects.create(
+        document=document, user=view_user, granted_by=creator
+    )
+
+    assert document.get_user_permission_level_prefetched(usability_user) == "usability"
+    assert document.get_user_permission_level_prefetched(view_user) == "view_only"
+
+
+@pytest.mark.django_db
+def test_get_user_permission_level_prefetched_public_and_none(
+    user_factory, document_factory
+):
+    """Prefetched variant resolves public access and returns None otherwise."""
+    creator = user_factory("pref_pub_creator@example.com")
+    outsider = user_factory("pref_pub_outsider@example.com")
+
+    public_doc = document_factory(created_by=creator, is_public=True)
+    private_doc = document_factory(created_by=creator)
+
+    assert public_doc.get_user_permission_level_prefetched(outsider) == "public_access"
+    assert private_doc.get_user_permission_level_prefetched(outsider) is None
+
+
+@pytest.mark.django_db
+def test_check_fully_signed_informative_returns_stored_flag(
+    user_factory, document_factory
+):
+    """Informative documents report the persisted fully_signed flag as-is."""
+    creator = user_factory("informative@example.com")
+    doc = document_factory(created_by=creator)
+    doc.requires_signature = True
+    doc.signature_type = "informative"
+    doc.fully_signed = True
+
+    assert doc.check_fully_signed() is True
+
+
+def test_letterhead_template_snapshot_path_uses_instance_id():
+    """Snapshot upload path embeds the document id and keeps the extension."""
+    from types import SimpleNamespace
+
+    from gym_app.models.dynamic_document import (
+        document_letterhead_template_snapshot_path,
+    )
+
+    path = document_letterhead_template_snapshot_path(
+        SimpleNamespace(id=42), "Plantilla Final.DOCX"
+    )
+
+    assert path.startswith("document_letterhead_templates_snapshot/42/")
+    assert path.endswith(".docx")

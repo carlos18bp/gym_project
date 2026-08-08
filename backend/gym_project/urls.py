@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.urls import path, include, re_path
 from gym_app.admin import admin_site
-from gym_app.views.spa import SPAView
+from gym_app.views.spa import SPAView, outlook_callback
 from gym_app.views.health import health_check
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
@@ -25,6 +25,14 @@ if getattr(settings, 'ENABLE_SILK', False):
 # Redirect /admin (no trailing slash) to /admin/ so the catch-all doesn't intercept it
 urlpatterns += [
     path('admin', RedirectView.as_view(url='/admin/', permanent=True)),
+]
+
+# Microsoft (MSAL) OAuth redirect URI. Declared before the catch-all so the
+# login popup gets a minimal blank page instead of the whole SPA, which would
+# otherwise render the sign-in form inside the popup.
+urlpatterns += [
+    path('auth/outlook/callback', outlook_callback, name='outlook-callback'),
+    path('auth/outlook/callback/', outlook_callback, name='outlook-callback-slash'),
 ]
 
 # Catch-all pattern for Vue.js SPA routing

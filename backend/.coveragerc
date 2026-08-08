@@ -4,9 +4,11 @@ omit =
     */gym_app/tests/*
     */gym_app/tests/*/*
     */gym_app/tests/*/*/*
+    */gym_app/migrations/*
 
 [report]
 omit =
     */gym_app/tests/*
     */gym_app/tests/*/*
     */gym_app/tests/*/*/*
+    */gym_app/migrations/*

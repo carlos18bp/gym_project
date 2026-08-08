@@ -502,7 +502,9 @@ const editorConfig = computed(() => ({
       " | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr | table tableprops tablecellprops tablerowprops | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemergecells tablesplitcells"
     : "save return | undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | blocks fontsize lineheight | forecolor | removeformat | hr",
   contextmenu: isLawyer.value ? "table" : "",
-  height: "100vh",
+  // Compensate the global app zoom (see src/style.css): a bare 100vh would
+  // paint at 80%/75% of the screen and leave a gap under the editor.
+  height: "calc(100vh / var(--app-zoom, 1))",
   width: "100%",
 
   content_style: `
@@ -510,6 +512,12 @@ const editorConfig = computed(() => ({
     body, p, span, div, strong, em, u, i, b {
       font-family: 'Carlito', sans-serif !important;
     }
+    /* Match the Word/PDF export spacing model so the editor is WYSIWYG:
+       p/div and tables use 6pt bottom margin and 1.35 line-height. */
+    body { font-size: 12pt; }
+    p, div { margin: 0 0 6pt 0; line-height: 1.35; }
+    table { border-collapse: collapse; margin: 0 0 6pt 0; }
+    td, th { border: 1px solid #999; padding: 4pt 6pt; vertical-align: top; }
     .variable-protected {
       background-color: #ffeb3b !important;
       color: #d32f2f !important;

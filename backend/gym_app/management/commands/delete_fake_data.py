@@ -5,7 +5,12 @@ from gym_app.models import (
     DocumentVariable, ActivityFeed, LegalDocument, LegalUpdate, RecentProcess,
     RecentDocument, Organization, OrganizationMembership, OrganizationInvitation, OrganizationPost,
     SECOPProcess, ProcessClassification, SECOPAlert, AlertNotification, SyncLog, SavedView,
-    Notification,
+    Notification, Tag, UserSignature, IntranetProfile,
+    Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestSequence,
+    ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse,
+    ServiceRequestLawyerResponseFile,
+    CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse,
+    Subscription, PaymentHistory,
 )
 from ._seeder_constants import PROTECTED_EMAILS
 
@@ -153,5 +158,36 @@ class Command(BaseCommand):
 
         deleted = Notification.objects.all().delete()[0]
         self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} Notification(s)'))
+
+        # Services / trámites (requests first: ServiceRequest.service is PROTECT).
+        for model in (
+            ServiceRequestLawyerResponseFile, ServiceRequestLawyerResponse,
+            ServiceRequestFieldFile, ServiceRequestAnswer, ServiceRequest,
+            ServiceRequestSequence, ServiceField, ServiceStage, Service,
+        ):
+            deleted = model.objects.all().delete()[0]
+            self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} {model.__name__}(s)'))
+
+        # Corporate requests.
+        for model in (
+            CorporateRequestResponse, CorporateRequest, CorporateRequestFiles, CorporateRequestType,
+        ):
+            deleted = model.objects.all().delete()[0]
+            self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} {model.__name__}(s)'))
+
+        # Subscriptions and payments.
+        for model in (PaymentHistory, Subscription):
+            deleted = model.objects.all().delete()[0]
+            self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} {model.__name__}(s)'))
+
+        # User signatures and intranet profile.
+        for model in (UserSignature, IntranetProfile):
+            deleted = model.objects.all().delete()[0]
+            self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} {model.__name__}(s)'))
+
+        # Tags: created_by is SET_NULL, so tags survive document deletion and
+        # accumulate across delete→create cycles. Delete them explicitly.
+        deleted = Tag.objects.all().delete()[0]
+        self.stdout.write(self.style.SUCCESS(f'Deleted {deleted} Tag(s)'))
 
         self.stdout.write(self.style.SUCCESS('All fake data deleted successfully'))

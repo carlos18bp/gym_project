@@ -1,10 +1,12 @@
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 from faker import Faker
 
 from gym_app.models import (
     User,
     Organization,
     OrganizationMembership,
+    OrganizationInvitation,
     OrganizationPost,
 )
 
@@ -129,6 +131,52 @@ class Command(BaseCommand):
                         f'Created post "{post.title}" for organization "{organization.title}"'
                     ))
 
+        # ── Invitations ──────────────────────────────────────────────────────
+        # Seed OrganizationInvitation in every lifecycle state so the invitations
+        # inbox and history are populated. Only client/basic users that are not
+        # already members or invitees of the org are used (respects clean()).
+        invitations_created = 0
+        for organization in organizations:
+            leader = organization.corporate_client
+            member_ids = set(
+                OrganizationMembership.objects.filter(organization=organization)
+                .values_list('user_id', flat=True)
+            )
+            invited_ids = set(
+                OrganizationInvitation.objects.filter(organization=organization)
+                .values_list('invited_user_id', flat=True)
+            )
+            candidates = list(
+                User.objects.filter(role__in=['client', 'basic'])
+                .exclude(id__in=member_ids | invited_ids)
+                .exclude(id=leader.id)
+                .order_by('id')
+            )
+
+            for state, invited_user in zip(['PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'], candidates):
+                invitation = OrganizationInvitation(
+                    organization=organization,
+                    invited_user=invited_user,
+                    invited_by=leader,
+                    message='Le invitamos a unirse a nuestra organización.',
+                )
+                if state == 'EXPIRED':
+                    invitation.status = 'EXPIRED'
+                    invitation.expires_at = timezone.now() - timezone.timedelta(days=1)
+                    invitation.save()
+                else:
+                    invitation.clean()  # honor role/leader/duplicate-pending rules
+                    invitation.save()   # PENDING (save() sets expires_at = now + 30d)
+                    if state == 'ACCEPTED':
+                        invitation.accept()   # creates a MEMBER membership
+                    elif state == 'REJECTED':
+                        invitation.reject()
+                invitations_created += 1
+                self.stdout.write(self.style.SUCCESS(
+                    f'Invitation {state}: {invited_user.email} → "{organization.title}"'
+                ))
+
         self.stdout.write(self.style.SUCCESS(
-            f'Successfully ensured {len(organizations)} organizations with memberships and posts'
+            f'Successfully ensured {len(organizations)} organizations with memberships, posts '
+            f'and {invitations_created} invitations'
         ))

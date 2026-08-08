@@ -27,7 +27,7 @@ class TestActivityFeedSaveBranch:
         )
         ActivityFeed.objects.create(
             user=user,
-            action_type="create_process",
+            action_type="create",
             description="Test",
         )
 
@@ -42,7 +42,7 @@ class TestActivityFeedSaveBranch:
         for i in range(20):
             ActivityFeed.objects.create(
                 user=user,
-                action_type="create_process",
+                action_type="create",
                 description=f"Entry {i}",
             )
 
@@ -50,7 +50,7 @@ class TestActivityFeedSaveBranch:
 
         ActivityFeed.objects.create(
             user=user,
-            action_type="create_process",
+            action_type="create",
             description="Entry 21 triggers trim",
         )
 

@@ -159,14 +159,12 @@
           <span class="mx-4 text-gray-500">O continuar con</span>
           <div class="flex-grow border-t border-gray-300"></div>
         </div>
-        <div class="flex justify-center">
-          <GoogleLogin 
-            class="mt-6" 
-            :callback="handleLoginWithGoogle" 
-            select-account
-            :auto-login="false"
-          />
-        </div>
+        <SocialLoginButtons
+          class="mt-6"
+          :outlook-loading="isOutlookLoading"
+          @google="handleLoginWithGoogle"
+          @outlook="handleLoginWithOutlook"
+        />
       </div>
 
       <!--Terms and conditions and Privacy Policy -->
@@ -187,6 +185,7 @@
       <img
         src="@/assets/images/signIn/signIn.jpg"
         alt="illustration"
+        data-testid="auth-illustration"
         class="w-full h-full object-cover"
       />
     </div>
@@ -199,6 +198,8 @@ import router from "@/router";
 import { onMounted, reactive, ref } from "vue";
 import { useAuthStore } from "@/stores/auth/auth";
 import { loginWithGoogle } from "@/shared/login_with_google";
+import { loginWithOutlook } from "@/shared/login_with_outlook";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons.vue";
 import { showNotification } from "@/shared/notification_message";
 import VueRecaptcha from "vue3-recaptcha2";
 import { useCaptchaStore } from "@/stores/auth/captcha";
@@ -368,5 +369,20 @@ const checkInputs = () => {
  */
 const handleLoginWithGoogle = (response) => {
   loginWithGoogle(response, router, authStore);
+};
+
+// Keeps the Microsoft button disabled while its popup is open
+const isOutlookLoading = ref(false);
+
+/**
+ * Handles login with Microsoft (Outlook)
+ */
+const handleLoginWithOutlook = async () => {
+  isOutlookLoading.value = true;
+  try {
+    await loginWithOutlook(router, authStore);
+  } finally {
+    isOutlookLoading.value = false;
+  }
 };
 </script>

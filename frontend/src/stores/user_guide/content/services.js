@@ -888,6 +888,28 @@ export const authenticationContent = {
       ]
     },
     {
+      id: 'login-microsoft',
+      name: 'Iniciar sesión con Microsoft',
+      description: 'Accede rápidamente usando tu cuenta de Microsoft (Outlook, Hotmail, Live o Microsoft 365)',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic'],
+      content: `
+        <p>Usa tu cuenta de Microsoft para acceder sin necesidad de recordar otra contraseña. Es compatible con cuentas personales (Outlook.com, Hotmail, Live) y cuentas corporativas (Microsoft 365 / Azure AD).</p>
+      `,
+      features: [
+        'Acceso con un solo clic usando Microsoft',
+        'Compatible con cuentas personales y corporativas (Microsoft 365)',
+        'No requiere contraseña adicional',
+        'Registro automático si es tu primera vez'
+      ],
+      steps: [
+        { title: 'Ve a la página de inicio', description: 'Navega a la URL de la plataforma' },
+        { title: 'Haz clic en "Continuar con Microsoft"', description: 'Debajo del botón de Google' },
+        { title: 'Inicia sesión en la ventana de Microsoft', description: 'Ingresa tus credenciales de Microsoft en la ventana emergente' },
+        { title: 'Autoriza el acceso', description: 'Confirma los permisos solicitados' },
+        { title: 'Acceso completado', description: 'Serás redirigido al Dashboard automáticamente' }
+      ]
+    },
+    {
       id: 'register',
       name: 'Registrar nueva cuenta',
       description: 'Crea una cuenta nueva en la plataforma',
@@ -899,7 +921,7 @@ export const authenticationContent = {
         'Formulario de registro con datos personales',
         'Verificación de correo electrónico por código',
         'Aceptación de políticas de privacidad',
-        'Opción de registro con Google'
+        'Opción de registro con Google o Microsoft'
       ],
       steps: [
         { title: 'Haz clic en "Crear cuenta"', description: 'En la página de inicio de sesión' },

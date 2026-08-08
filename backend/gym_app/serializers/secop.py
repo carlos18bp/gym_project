@@ -175,6 +175,22 @@ class SavedViewSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'filters', 'is_favorite', 'created_at']
         read_only_fields = ['id', 'created_at']
 
+    def validate_name(self, value):
+        # Creation upserts by (user, name) on purpose; only renames must not
+        # collide with another existing view or MySQL raises IntegrityError (500).
+        if self.instance is not None:
+            user = self.context['request'].user
+            duplicate = (
+                SavedView.objects.filter(user=user, name=value)
+                .exclude(pk=self.instance.pk)
+                .exists()
+            )
+            if duplicate:
+                raise serializers.ValidationError(
+                    'Ya existe una vista guardada con ese nombre.'
+                )
+        return value
+
     def create(self, validated_data):
         """Create or update saved view for the current user."""
         user = self.context['request'].user

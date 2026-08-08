@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth/auth";
 // quality: allow-test-too-long (component tests with complex mount setup and validation)
 
 const mockRouterPush = jest.fn();
+const mockLoginWithOutlook = jest.fn();
 const mockShowNotification = jest.fn();
 const mockFetchSiteKey = jest.fn();
 
@@ -21,6 +22,11 @@ jest.mock("vue-router", () => ({
   useRouter: () => ({ push: mockRouterPush }),
   useRoute: () => mockRoute,
   RouterLink: { name: "RouterLink", template: "<a><slot /></a>" },
+}));
+
+jest.mock("@/shared/login_with_outlook", () => ({
+  __esModule: true,
+  loginWithOutlook: (...args) => mockLoginWithOutlook(...args),
 }));
 
 jest.mock("@/shared/notification_message", () => ({

@@ -7,15 +7,15 @@
 | Category | Technology | Version |
 |----------|-----------|---------|
 | Language | Python | 3.12 |
-| Framework | Django | 5.0.6 |
-| REST API | Django REST Framework | 3.15.2 |
-| Authentication | SimpleJWT | 5.3.1 |
+| Framework | Django | 5.2.14 |
+| REST API | Django REST Framework | 3.17.1 |
+| Authentication | SimpleJWT | 5.5.1 |
 | Task Queue | Huey | 2.5.2 |
 | Queue Backend | Redis | 5.2.1 |
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.7 |
 | Production Server | Gunicorn | 23.0.0 |
-| PDF Generation | xhtml2pdf 0.2.17, PyMuPDF 1.25.3, reportlab 4.2.5 |
+| PDF Generation | WeasyPrint 63.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.25.3, reportlab 4.2.5 |
 | Document Processing | python-docx 1.1.2, PyPDF2 3.0.1, pypdf 5.3.0, openpyxl 3.1.5, XlsxWriter 3.2.0, pandas 2.2.2 |
 | Image Processing | Pillow 10.4.0, opencv-python-headless 4.11.0.86 |
 | Digital Signatures | pyHanko 0.25.3 |
@@ -27,29 +27,29 @@
 | Query Profiling | django-silk 5.3.2 |
 | Test Data | Faker 25.9.1 |
 | Linting | Ruff |
-| Testing | pytest 8.3.5, pytest-django 4.11.1, pytest-cov 6.1.0, coverage 7.8.0 |
+| Testing | pytest 8.3.5, pytest-django 4.12.0, pytest-cov 6.1.0, coverage 7.8.0 |
 
 ### Frontend
 
 | Category | Technology | Version |
 |----------|-----------|---------|
 | Language | JavaScript (ES Modules) | — |
-| Framework | Vue | 3.4 |
-| Build Tool | Vite | 6.4.1 |
-| State Management | Pinia | 2.1.7 |
-| Routing | Vue Router | 4.3.2 |
-| Styling | TailwindCSS | 3.4.3 |
+| Framework | Vue | 3.5.34 |
+| Build Tool | Vite | 6.4.2 |
+| State Management | Pinia | 2.3.1 |
+| Routing | Vue Router | 4.6.4 |
+| Styling | TailwindCSS | 3.4.19 |
 | UI Components | Headless UI 1.7.23, Heroicons 2.1.5, Flowbite 2.3.0, Bootstrap Icons 1.11.3 |
-| HTTP Client | Axios | 1.7.2 |
-| Rich Text Editor | TinyMCE | 7.7.0 |
+| HTTP Client | Axios | 1.16.1 |
+| Rich Text Editor | TinyMCE | 7.9.2 |
 | Animations | GSAP | 3.12.7 |
 | Alerts | SweetAlert2 | 11.14.0 |
 | Carousel | Swiper | 11.2.6 |
 | Document Export | docx 9.1.1, file-saver 2.0.5 |
 | Auth | vue3-google-login 2.0.33, vue3-recaptcha2 1.8.0 |
-| PWA | vite-plugin-pwa | 1.2.0 |
-| Unit Testing | Jest 29.7.0, @vue/test-utils 2.4.6 |
-| E2E Testing | Playwright | 1.41.2 |
+| PWA | vite-plugin-pwa | 1.3.0 |
+| Unit Testing | Jest 29.7.0, @vue/test-utils 2.4.10 |
+| E2E Testing | Playwright | 1.60.0 |
 | Linting | ESLint 9.39.2 (jest, jest-dom, playwright plugins) |
 | Node.js | >= 22.13.0 (pinned in .nvmrc) |
 
@@ -176,12 +176,12 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
-| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 86 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 170 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 170) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 170) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 170) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 189 spec files | `frontend/e2e/` |
+| Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 94 test files | `backend/gym_app/tests/` |
+| Frontend Stores | Jest + Vue Test Utils | 181 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 181) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 181) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 181) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 195 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -220,20 +220,20 @@ gym_project/
 ├── backend/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
-│   │   ├── models/           # 14 files → 55 model classes (+ Notification, StageAlert; + User via AbstractUser + UserManager)
+│   │   ├── models/           # 14 files → 54 model classes (53 models.Model subclasses + User via AbstractUser; UserManager is a manager, not a model)
 │   │   ├── views/            # 29 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/, notification)
 │   │   ├── serializers/      # 12 files (incl. notification)
 │   │   ├── services/         # 7 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf, notification_service, signature_notification_service)
 │   │   ├── utils/            # 3 files (auth_utils, captcha, email_notifications)
 │   │   ├── management/commands/ # 12 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
 │   │   ├── templates/        # 21 email/PDF templates
-│   │   ├── tests/            # 86 test files (models, serializers, tasks, utils, views, services, commands) — verified 2026-04-28
+│   │   ├── tests/            # 94 test files (models, serializers, tasks, utils, views, services, commands) — verified 2026-07-16
 │   │   ├── tasks.py          # Huey tasks (subscription billing)
 │   │   ├── secop_tasks.py    # Huey tasks (SECOP sync, alerts, purge)
 │   │   ├── notification_tasks.py    # Huey periodic — reactivate snoozed notifications every 15 min
 │   │   ├── process_alert_tasks.py   # Huey periodic — daily 14:00 UTC stage-alert reminders (email + in-app)
 │   │   ├── signature_reminder_task.py # Huey periodic — daily signature reminders
-│   │   ├── urls.py           # 189 URL patterns
+│   │   ├── urls.py           # 194 URL patterns
 │   │   └── admin.py          # Django admin configuration
 │   ├── requirements.txt      # production dependencies
 │   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
@@ -242,13 +242,13 @@ gym_project/
 │   ├── src/
 │   │   ├── components/       # 113 Vue components
 │   │   ├── views/            # 44 page-level components
-│   │   ├── stores/           # 43 store files (domain directories + root files)
-│   │   ├── composables/      # 11 composable files (incl. usePendingSignatures)
-│   │   ├── router/           # 1 file, 66 route definitions
+│   │   ├── stores/           # 44 store files (domain directories + root files; excl. services/request_http.js helper — 45 raw)
+│   │   ├── composables/      # 14 composable files (incl. usePendingSignatures)
+│   │   ├── router/           # 1 file, 67 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 170 unit test files (11 subdirectories)
-│   ├── e2e/                  # 189 E2E spec files
+│   ├── test/                 # 181 unit test files (11 subdirectories)
+│   ├── e2e/                  # 195 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

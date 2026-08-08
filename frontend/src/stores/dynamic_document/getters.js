@@ -139,15 +139,15 @@ export const getters = {
   },
 
   /**
-   * Get documents created by a specific lawyer
+   * Get all minutas (templates) regardless of creator.
+   * Minutas are documents in Draft or Published state. Shared visibility lets
+   * every lawyer see and manage minutas created by any team member.
    * @param {object} state - Store state
-   * @returns {function} - Function that takes a lawyer ID and returns their documents
+   * @returns {Array} - All Draft/Published documents
    */
-  getDocumentsByLawyerId: (state) => (lawyerId) => {
-    if (!lawyerId) return [];
-    return state.documents.filter(doc => 
-      doc.created_by === parseInt(lawyerId) && 
-      (doc.state === "Draft" || doc.state === "Published")
+  allMinutas: (state) => {
+    return state.documents.filter(doc =>
+      doc.state === "Draft" || doc.state === "Published"
     );
   },
 };

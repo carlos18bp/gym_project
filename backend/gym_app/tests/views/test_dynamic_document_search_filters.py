@@ -213,7 +213,8 @@ class TestListDocumentsSortParam:
 
         assert response.status_code == status.HTTP_200_OK
         titles = [d["title"] for d in response.data["items"]]
-        assert titles == sorted(titles)
+        # casefold mirrors MySQL's case-insensitive (_ci) collation ordering
+        assert titles == sorted(titles, key=str.casefold)
 
     def test_sort_by_name_desc(self, api_client, lawyer, docs_for_search):
         """sort_by=name-desc returns documents ordered by title descending."""
@@ -222,7 +223,8 @@ class TestListDocumentsSortParam:
 
         assert response.status_code == status.HTTP_200_OK
         titles = [d["title"] for d in response.data["items"]]
-        assert titles == sorted(titles, reverse=True)
+        # casefold mirrors MySQL's case-insensitive (_ci) collation ordering
+        assert titles == sorted(titles, key=str.casefold, reverse=True)
 
 
 class TestListDocumentsDateFilter:

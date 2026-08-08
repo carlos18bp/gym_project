@@ -199,6 +199,68 @@ class TestDynamicDocumentViews:
         returned_ids = {item['id'] for item in response.data['items']}
         assert returned_ids == {doc1.id, doc2.id}
 
+    def test_list_minutas_shows_all_creators_for_lawyer(self, api_client):
+        """A lawyer sees minutas created by any lawyer (shared visibility)."""
+        lawyer_1 = User.objects.create_user(email='shared1@example.com', password='pwd', role='lawyer')
+        lawyer_2 = User.objects.create_user(email='shared2@example.com', password='pwd', role='lawyer')
+        api_client.force_authenticate(user=lawyer_1)
+
+        own = DynamicDocument.objects.create(
+            title="Own Minuta", content="<p>x</p>", state="Draft", created_by=lawyer_1,
+        )
+        colleague = DynamicDocument.objects.create(
+            title="Colleague Minuta", content="<p>x</p>", state="Published", created_by=lawyer_2,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'states': 'Draft,Published'})
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {item['id'] for item in response.data['items']}
+        assert {own.id, colleague.id}.issubset(returned_ids)
+
+    def test_list_minutas_exposes_created_by_name(self, api_client):
+        """The minutas list exposes the informational created_by_name field."""
+        lawyer = User.objects.create_user(
+            email='named@example.com', password='pwd', role='lawyer',
+            first_name='Grace', last_name='Hopper',
+        )
+        api_client.force_authenticate(user=lawyer)
+        doc = DynamicDocument.objects.create(
+            title="Named Minuta", content="<p>x</p>", state="Draft", created_by=lawyer,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'states': 'Draft,Published'})
+
+        assert response.status_code == status.HTTP_200_OK
+        item = next(d for d in response.data['items'] if d['id'] == doc.id)
+        assert item['created_by_name'] == 'Grace Hopper'
+
+    def test_list_dynamic_documents_search_by_creator_name(self, api_client):
+        """Search matches minutas by the creator's name."""
+        author = User.objects.create_user(
+            email='author@example.com', password='pwd', role='lawyer',
+            first_name='Margaret', last_name='Hamilton',
+        )
+        other = User.objects.create_user(email='other@example.com', password='pwd', role='lawyer')
+        api_client.force_authenticate(user=other)
+
+        match = DynamicDocument.objects.create(
+            title="Apollo Guidance", content="<p>x</p>", state="Draft", created_by=author,
+        )
+        _no_match = DynamicDocument.objects.create(
+            title="Unrelated", content="<p>x</p>", state="Draft", created_by=other,
+        )
+
+        url = reverse('list_dynamic_documents')
+        response = api_client.get(url, {'search': 'Hamilton'})
+
+        assert response.status_code == status.HTTP_200_OK
+        returned_ids = {item['id'] for item in response.data['items']}
+        assert match.id in returned_ids
+        assert _no_match.id not in returned_ids
+
     def test_list_dynamic_documents_filter_by_client_and_states(self, api_client):
         """list_dynamic_documents debe filtrar por client_id y estados (caso Mis Documentos)."""
         # Creamos un cliente y otro usuario cualquiera
@@ -494,15 +556,9 @@ class TestDynamicDocumentExport:
     
     def test_download_dynamic_document_pdf_authenticated(self, api_client, user, sample_document, monkeypatch):
         """Test downloading a dynamic document as PDF when authenticated."""
-        # Mock the pisa.CreatePDF function to avoid actual PDF creation
-        class MockPisaStatus:
-            err = False
-            
-        def mock_create_pdf(*args, **kwargs):
-            return MockPisaStatus()
-            
-        monkeypatch.setattr('xhtml2pdf.pisa.CreatePDF', mock_create_pdf)
-        
+        # Stub the WeasyPrint render so the test avoids a real (slow) PDF pass.
+        monkeypatch.setattr(document_views, "render_document_pdf", lambda **k: b"%PDF-1.7 fake")
+
         # Authenticate the user
         api_client.force_authenticate(user=user)
         
@@ -547,20 +603,14 @@ class TestDynamicDocumentExport:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert "Font file not found" in response.data['detail']
 
-    def test_download_dynamic_document_pdf_pisa_error_returns_500(self, api_client, user, sample_document, monkeypatch):
-        """Verify download dynamic document pdf pisa error returns 500."""
+    def test_download_dynamic_document_pdf_render_error_returns_500(self, api_client, user, sample_document, monkeypatch):
+        """Verify a WeasyPrint render failure returns a 500 with a helpful detail."""
         api_client.force_authenticate(user=user)
 
-        class MockPisaStatus:
-            err = True
+        def boom(*args, **kwargs):
+            raise Exception("render boom")
 
-        def mock_create_pdf(*args, **kwargs):
-            return MockPisaStatus()
-
-        monkeypatch.setattr(document_views.os.path, "exists", lambda path: True)
-        monkeypatch.setattr(document_views.pdfmetrics, "registerFont", lambda *args, **kwargs: None)
-        monkeypatch.setattr(document_views, "TTFont", lambda *args, **kwargs: object())
-        monkeypatch.setattr(document_views.pisa, "CreatePDF", mock_create_pdf)
+        monkeypatch.setattr(document_views, "render_document_pdf", boom)
 
         url = reverse('download_dynamic_document_pdf', kwargs={'pk': sample_document.pk})
         response = api_client.get(url)
@@ -826,10 +876,8 @@ class TestDownloadPDF:
         assert resp.status_code == 500
         assert "Font file" in resp.data.get("detail", "")
 
-    @patch("gym_app.views.dynamic_documents.document_views.pisa.CreatePDF", side_effect=Exception("PDF boom"))
-    @patch("gym_app.views.dynamic_documents.document_views.os.path.exists", return_value=True)
-    @patch("gym_app.views.dynamic_documents.document_views.pdfmetrics.registerFont")
-    def test_general_error(self, _reg, _exists, _pisa, api, lawyer, doc_with_var):  # noqa: PT019
+    @patch("gym_app.views.dynamic_documents.document_views.render_document_pdf", side_effect=Exception("PDF boom"))
+    def test_general_error(self, _render, api, lawyer, doc_with_var):  # noqa: PT019
         """Lines 455-456: general exception returns 500."""
         api.force_authenticate(user=lawyer)
         url = reverse("download_dynamic_document_pdf", kwargs={"pk": doc_with_var.pk})
@@ -872,6 +920,78 @@ class TestDownloadWord:
         resp = api.get(url)
         assert resp.status_code == 200
         assert "wordprocessing" in resp.get("Content-Type", "")
+
+    @staticmethod
+    def _download_docx(api, lawyer, content):
+        import io
+
+        from docx import Document as DocxDocument
+
+        doc = DynamicDocument.objects.create(
+            title="WordSpacingDoc", content=content, state="Draft", created_by=lawyer,
+        )
+        api.force_authenticate(user=lawyer)
+        url = reverse("download_dynamic_document_word", kwargs={"pk": doc.pk})
+        resp = api.get(url)
+        assert resp.status_code == 200
+        return DocxDocument(io.BytesIO(b"".join(resp.streaming_content)))
+
+    def test_word_body_does_not_duplicate_table_cell_text(self, api, lawyer):
+        """The template wrapper <div> and <p> inside <td> must not re-emit.
+
+        their text as body paragraphs (find_all is recursive).
+        """
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<p>Intro</p><table><tr><td><p>Cell A</p></td></tr></table><p>Fin</p>",
+        )
+        body_texts = [p.text for p in docx_doc.paragraphs]
+        assert all("Cell A" not in text for text in body_texts)
+
+    # quality: disable too_many_assertions (single export verified from several angles)
+    def test_word_keeps_paragraphs_and_tables_in_structure(self, api, lawyer):
+        """Non-empty paragraphs stay as body paragraphs and tables keep their cells."""
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<p>Intro</p><table><tr><td><p>Cell A</p></td></tr></table>"
+            "<p>&nbsp;</p><table><tr><td>B</td></tr></table><p>Fin</p>",
+        )
+        body_texts = [p.text for p in docx_doc.paragraphs]
+        assert "Intro" in body_texts
+        assert "Fin" in body_texts
+        assert len(docx_doc.tables) == 2
+        assert docx_doc.tables[0].rows[0].cells[0].text == "Cell A"
+        assert docx_doc.tables[1].rows[0].cells[0].text == "B"
+
+    def test_word_div_wrapped_paragraph_emitted_once(self, api, lawyer):
+        """A <div> that only wraps a <p> must produce exactly one paragraph."""
+        docx_doc = self._download_docx(api, lawyer, "<div><p>X</p></div>")
+        assert [p.text for p in docx_doc.paragraphs if p.text.strip()] == ["X"]
+
+    def test_word_paragraphs_use_unified_spacing(self, api, lawyer):
+        """Body paragraphs mirror the PDF stylesheet: 0pt before / 6pt after."""
+        from docx.shared import Pt
+
+        docx_doc = self._download_docx(api, lawyer, "<p>Uno</p><p>Dos</p>")
+        spacing = [
+            (p.paragraph_format.space_before, p.paragraph_format.space_after)
+            for p in docx_doc.paragraphs if p.text.strip()
+        ]
+        assert spacing == [(Pt(0), Pt(6)), (Pt(0), Pt(6))]
+
+    def test_word_preserves_single_blank_line_between_blocks(self, api, lawyer):
+        """One empty <p> survives as an empty body paragraph (it used to be dropped)."""
+        docx_doc = self._download_docx(api, lawyer, "<p>Uno</p><p>&nbsp;</p><p>Dos</p>")
+        assert [p.text.strip() for p in docx_doc.paragraphs] == ["Uno", "", "Dos"]
+
+    def test_word_adjacent_tables_are_separated(self, api, lawyer):
+        """Directly adjacent tables get a spacer so Word does not auto-merge them."""
+        docx_doc = self._download_docx(
+            api, lawyer,
+            "<table><tr><td>A</td></tr></table><table><tr><td>B</td></tr></table>",
+        )
+        assert len(docx_doc.tables) == 2
+        assert len(docx_doc.paragraphs) >= 1
 
 
 # ======================================================================

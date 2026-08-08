@@ -16,6 +16,16 @@ export default {
   ],
   theme: {
     extend: {
+      // Viewport-unit utilities must compensate the global `zoom` applied to
+      // <html> in src/style.css. CSS `zoom` scales the used value of lengths,
+      // but viewport units resolve against the UNZOOMED viewport, so a plain
+      // `100vh` paints at only 80% (desktop) / 75% (phone) of the screen.
+      // Dividing by --app-zoom restores "exactly one viewport". The `, 1`
+      // fallback keeps these utilities valid where style.css is not loaded.
+      height: { screen: 'calc(100vh / var(--app-zoom, 1))' },
+      minHeight: { screen: 'calc(100vh / var(--app-zoom, 1))' },
+      maxHeight: { screen: 'calc(100vh / var(--app-zoom, 1))' },
+      width: { screen: 'calc(100vw / var(--app-zoom, 1))' },
       fontFamily: {
         'regular': ['Inter-Regular', 'sans-serif'],
         'italic': ['Inter-Italic', 'sans-serif'],

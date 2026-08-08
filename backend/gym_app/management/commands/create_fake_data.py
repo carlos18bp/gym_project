@@ -26,11 +26,17 @@ class Command(BaseCommand):
         else:
             call_command('create_clients_lawyers')
         call_command('create_organizations')
-        call_command('create_legal_requests', '--number_of_requests', num_legal_requests)
+        # --with_responses seeds LegalRequestResponse conversation threads.
+        call_command('create_legal_requests', '--number_of_requests', num_legal_requests, '--with_responses')
         call_command('create_processes', '--number_of_processes', number_of_records)
         call_command('create_dynamic_documents', '--num_documents', num_documents)
         call_command('create_activity_logs', '--activities_per_user', activities_per_user)
         call_command('create_secop_data')
+        # Services must run BEFORE notifications so service_request deep-links resolve.
+        call_command('create_services')
+        call_command('create_corporate_requests')
+        call_command('create_subscriptions')
+        call_command('create_intranet_content')
         call_command('create_fake_notifications')
 
         self.stdout.write(self.style.SUCCESS(

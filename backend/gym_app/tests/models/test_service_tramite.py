@@ -14,6 +14,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.db import IntegrityError, transaction
 
 from gym_app.models import (
     Service,
@@ -399,3 +400,62 @@ def test_deleting_service_request_without_disk_document_does_not_error(
     req.delete()
 
     assert not ServiceRequest.objects.filter(pk=req_pk).exists()
+
+
+# ------------------------------------------------------------------
+# unique_service_request_year_sequence constraint
+# ------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_multiple_drafts_coexist_while_tracking_fields_are_null(service, requester):
+    """Drafts leave tracking_year/tracking_sequence NULL, and NULLs never collide."""
+    ServiceRequest.objects.create(service=service, requester=requester)
+    ServiceRequest.objects.create(service=service, requester=requester)
+    ServiceRequest.objects.create(service=service, requester=requester)
+
+    assert ServiceRequest.objects.filter(tracking_year__isnull=True).count() == 3
+
+
+@pytest.mark.django_db
+def test_duplicate_year_sequence_pair_is_rejected(service, requester):
+    """The pair is enforced at the DB level, so a reused sequence cannot be stored."""
+    ServiceRequest.objects.create(
+        service=service,
+        requester=requester,
+        tracking_year=2099,
+        tracking_sequence=1,
+        tracking_number="2099-00001",
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ServiceRequest.objects.create(
+                service=service,
+                requester=requester,
+                tracking_year=2099,
+                tracking_sequence=1,
+                tracking_number="2099-99999",
+            )
+
+
+@pytest.mark.django_db
+def test_distinct_sequences_within_same_year_are_accepted(service, requester):
+    """Uniqueness applies to the pair, not to tracking_year on its own."""
+    ServiceRequest.objects.create(
+        service=service,
+        requester=requester,
+        tracking_year=2099,
+        tracking_sequence=1,
+        tracking_number="2099-00001",
+    )
+
+    ServiceRequest.objects.create(
+        service=service,
+        requester=requester,
+        tracking_year=2099,
+        tracking_sequence=2,
+        tracking_number="2099-00002",
+    )
+
+    assert ServiceRequest.objects.filter(tracking_year=2099).count() == 2

@@ -233,6 +233,7 @@ import LetterheadModal from '../common/LetterheadModal.vue';
 // Import hierarchical menu components
 import HierarchicalMenu from './HierarchicalMenu.vue';
 import { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
+import { getMinutaPermissions } from './menuOptionsHelper.js';
 
 // Composables
 const router = useRouter();
@@ -463,28 +464,40 @@ const cardConfigs = {
   
   lawyer: {
     getMenuOptions: (document, context) => {
+      // Minuta ownership rule: shared policy with menuOptionsHelper (single
+      // source of truth) — only the creator manages a Draft/Published minuta;
+      // other lawyers edit only when allow_shared_edit is on.
+      const { canManage: canManageMinuta, canEdit } = getMinutaPermissions(document, props.userStore);
+
       const baseOptions = [
-        { label: "Editar", action: "edit" },
-        { label: "Permisos", action: "permissions" },
-        { label: "Eliminar", action: "delete" },
+        ...(canEdit ? [{ label: "Editar", action: "edit" }] : []),
+        ...(canManageMinuta ? [
+          { label: "Permisos", action: "permissions" },
+          { label: "Eliminar", action: "delete" },
+        ] : []),
         { label: "Previsualización", action: "preview" },
         { label: "Crear una Copia", action: "copy" },
-        { label: "Gestionar Membrete", action: "letterhead" },
+        ...(canManageMinuta ? [{ label: "Gestionar Membrete", action: "letterhead" }] : []),
       ];
-      
+
       // Add state-based options
-      if (document.state === "Draft") {
+      if (document.state === "Draft" && canManageMinuta) {
         baseOptions.push({
           label: "Publicar",
           action: "publish",
           disabled: !canPublishDocument(document),
         });
       } else if (document.state === "Published") {
-        baseOptions.push({
-          label: "Mover a Borrador",
-          action: "draft",
-        });
-        
+        if (canManageMinuta) {
+          baseOptions.push({
+            label: "Mover a Borrador",
+            action: "draft",
+          });
+        }
+
+        // Formalization is open to any lawyer: formalized_by may legitimately
+        // differ from created_by (a lawyer builds the template, another user
+        // formalizes it).
         baseOptions.push({
           label: "Formalizar y Agregar Firmas",
           action: "formalize",

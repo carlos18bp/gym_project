@@ -120,8 +120,10 @@ class TestProcessViews:
         assert response.data[0]['ref'] == 'CASE-123'
     
     def test_process_list_lawyer_sees_all(self, api_client, lawyer_user, process):
-        """Lawyers are gym staff and see every process (single-firm cooperative model,
-        consistent with dynamic_documents.permissions.apply_visibility_filter)."""
+        """Lawyers are gym staff and see every process (single-firm cooperative model,.
+
+        consistent with dynamic_documents.permissions.apply_visibility_filter).
+        """
         api_client.force_authenticate(user=lawyer_user)
         url = reverse('process-list')
 
@@ -994,7 +996,8 @@ class TestUpdateProcessEmailNotification:
     def test_update_process_email_includes_lawyer_when_lawyer_is_actor(
         self, api_client, process, lawyer_user, client_user,
     ):
-        """R3 fix: when the assigned LAWYER triggers the update they must
+        """R3 fix: when the assigned LAWYER triggers the update they must.
+
         still receive the notification email (and in-app notification).
         Previously the actor was excluded so the lawyer never saw their own
         edits in the notification center / inbox.

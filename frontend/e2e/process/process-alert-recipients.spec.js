@@ -13,7 +13,7 @@ import {
  */
 
 const TAGS = {
-  tag: ['@flow:process-alert-configure', '@module:processes', '@priority:P2', '@role:lawyer'],
+  tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'],
 };
 
 function buildProcessWithAlert({ notifyClients, isActive = true }) {

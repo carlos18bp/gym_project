@@ -434,6 +434,6 @@ curl -X GET http://localhost:8000/api/subscriptions/payments/ \
 
 1. **payment_source_id** es el token de Wompi que se obtiene al tokenizar una tarjeta
 2. **Webhooks** validan la firma HMAC-SHA256 automáticamente
-3. **Cobros automáticos** se procesan diariamente a las 2:00 AM vía Celery
+3. **Cobros automáticos** se procesan diariamente a las 2:00 AM vía Huey
 4. **Roles de usuario** se actualizan automáticamente según el plan
 5. **Plan básico** es gratuito y no requiere payment_source_id

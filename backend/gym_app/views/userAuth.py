@@ -1,4 +1,5 @@
 import secrets
+import jwt
 import requests
 from rest_framework import status
 from gym_app.models import User, PasswordCode, EmailVerificationCode
@@ -217,10 +218,10 @@ def sign_in(request):
     if not user:
         return Response(error_response, status=status.HTTP_401_UNAUTHORIZED)
 
-    # Detect Google-registered users without a usable password (BUG-11)
+    # Detect social-auth users without a usable password (BUG-11)
     if not user.has_usable_password():
         return Response(
-            {'error': 'This account was created with Google. Please use "Forgot Password" to set a password.'},
+            {'error': 'This account was created with Google or Microsoft/Outlook. Please use "Forgot Password" to set a password.'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -337,7 +338,187 @@ def google_login(request):
     except Exception as e:
         # Handle unexpected exceptions
         return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+
+# Microsoft Entra (Azure AD) OpenID Connect v2.0 endpoints. The "common"
+# authority supports both personal Microsoft accounts (Outlook/Hotmail/Live)
+# and work/school accounts (Microsoft 365 / Azure AD).
+MICROSOFT_JWKS_URI = 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
+MICROSOFT_ISSUER_HOST = 'https://login.microsoftonline.com/'
+
+# Well-known tenant id for personal Microsoft accounts (Outlook/Hotmail/Live).
+# Tokens from this tenant carry the account's own verified email.
+MICROSOFT_CONSUMERS_TENANT_ID = '9188040d-6c67-4c5b-b112-36a304b66dad'
+
+# Reuse a single PyJWKClient so signing keys are cached across requests.
+_microsoft_jwks_client = None
+
+
+def _get_microsoft_jwks_client():
+    """Return a cached PyJWKClient for Microsoft's JWKS endpoint."""
+    global _microsoft_jwks_client
+    if _microsoft_jwks_client is None:
+        _microsoft_jwks_client = jwt.PyJWKClient(MICROSOFT_JWKS_URI)
+    return _microsoft_jwks_client
+
+
+def _verify_microsoft_id_token(id_token):
+    """
+    Verify a Microsoft (Entra ID) ID token server-side.
+
+    Validates the token signature against Microsoft's public JWKS keys and the
+    audience against the project's MICROSOFT_CLIENT_ID. Because the "common"
+    authority is multi-tenant, the issuer is tenant-specific
+    (https://login.microsoftonline.com/{tid}/v2.0), so it is validated manually
+    against the expected host prefix instead of a fixed value.
+
+    Args:
+        id_token (str): The raw Microsoft ID token (JWT).
+
+    Returns:
+        dict: The decoded and verified token claims.
+
+    Raises:
+        jwt.InvalidTokenError: If the token signature, audience or issuer is invalid.
+    """
+    signing_key = _get_microsoft_jwks_client().get_signing_key_from_jwt(id_token)
+    claims = jwt.decode(
+        id_token,
+        signing_key.key,
+        algorithms=['RS256'],
+        audience=settings.MICROSOFT_CLIENT_ID,
+        options={'verify_iss': False},
+    )
+
+    issuer = claims.get('iss', '')
+    if not issuer.startswith(MICROSOFT_ISSUER_HOST) or not issuer.endswith('/v2.0'):
+        raise jwt.InvalidIssuerError('Invalid Microsoft token issuer.')
+
+    return claims
+
+
+def _microsoft_email_is_verified(claims):
+    """
+    Return True only when the token proves the email is owned/verified.
+
+    The "common" authority accepts validly-signed tokens from ANY Microsoft
+    tenant, including one an attacker self-provisions. Trusting the raw email
+    (or the attacker-controllable ``preferred_username``/UPN) would allow nOAuth
+    account takeover. The email is trusted only when one of:
+      - ``xms_edov`` is True (work/school: email domain is verified-owned), or
+      - the token comes from the personal Microsoft (consumers) tenant, where
+        the email is the account's own login, or
+      - the tenant id is in the operator allowlist ``MICROSOFT_TRUSTED_TENANTS``.
+    """
+    if claims.get('xms_edov') is True:
+        return True
+    tid = claims.get('tid')
+    if tid == MICROSOFT_CONSUMERS_TENANT_ID:
+        return True
+    trusted_tenants = getattr(settings, 'MICROSOFT_TRUSTED_TENANTS', ())
+    return tid in trusted_tenants
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def outlook_login(request):
+    """
+    Handle user login via Microsoft (Outlook) ID token verification.
+
+    This view processes POST requests containing a Microsoft ID token. The token
+    is verified server-side against Microsoft's public JWKS keys using the
+    project's MICROSOFT_CLIENT_ID. User information (email, name) is extracted
+    from the verified token payload — never trusted from the client directly.
+
+    The flow mirrors `google_login`: if the email does not exist a new user is
+    created, otherwise the existing user is logged in. JWT access/refresh tokens
+    are then generated. The email is the unique identifier regardless of the
+    auth provider, so an account previously created with Google can also sign in
+    with Microsoft using the same email.
+
+    Args:
+        request (Request): The HTTP request object containing the Microsoft ID token.
+
+    Returns:
+        Response: A Response object with JWT tokens if authentication is successful,
+                  or an error message if authentication fails.
+    """
+    id_token_value = request.data.get('id_token') or request.data.get('credential')
+
+    if not id_token_value:
+        return Response(
+            {'status': 'error', 'error_message': 'Microsoft ID token is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Verify the Microsoft ID token server-side
+    try:
+        claims = _verify_microsoft_id_token(id_token_value)
+    except jwt.PyJWTError:
+        return Response(
+            {'status': 'error', 'error_message': 'Invalid Microsoft token.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Only the `email` claim is used as the account identifier — never
+    # `preferred_username`/UPN, which an attacker can set freely in a self-served
+    # tenant (nOAuth account-takeover vector).
+    email = (claims.get('email') or '').strip().lower()
+    full_name = (claims.get('name') or '').strip()
+
+    if not email:
+        return Response(
+            {'status': 'error', 'error_message': 'Email not found in Microsoft token.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Require proof the email is verified-owned before using it to look up or
+    # create an account, to prevent cross-tenant account takeover.
+    if not _microsoft_email_is_verified(claims):
+        return Response(
+            {'status': 'error',
+             'error_message': 'No se pudo verificar el correo de tu cuenta de Microsoft.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Split the display name into first/last name (best-effort; name is optional)
+    given_name = claims.get('given_name', '')
+    family_name = claims.get('family_name', '')
+    if not given_name and full_name:
+        name_parts = full_name.split(' ', 1)
+        given_name = name_parts[0]
+        family_name = name_parts[1] if len(name_parts) > 1 else ''
+
+    try:
+        # Get or create the user based on the verified email
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                'first_name': given_name,
+                'last_name': family_name,
+                'role': 'basic',
+            }
+        )
+
+        # Serialize the user data
+        serializer = UserSerializer(user)
+
+        # Generate authentication token
+        tokens = generate_auth_tokens(user)
+
+        # Return the generated authentication tokens and user data
+        return Response({
+            'refresh': tokens['refresh'],
+            'access': tokens['access'],
+            'user': serializer.data,
+            'created': created
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        # Handle unexpected exceptions
+        return Response({'status': 'error', 'error_message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 from django.contrib.auth.models import update_last_login
 

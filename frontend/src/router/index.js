@@ -35,6 +35,9 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "auth" */ "@/views/auth/SignIn.vue"),
       meta: { requiresAuth: false, title: "Autenticación con Google", isCallback: true },
     },
+    // No route for /auth/outlook/callback on purpose: the MSAL popup redirect
+    // URI is served as a minimal static page by the backend, so the SPA never
+    // boots inside the popup and MSAL can read the response and close it.
     {
       path: "/home",
       name: "home",

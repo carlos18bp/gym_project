@@ -14,6 +14,45 @@ from gym_app.models.dynamic_document import DynamicDocument
 from gym_app.utils.auth_utils import is_gym_staff
 
 
+MINUTA_STATES = frozenset(['Draft', 'Published'])
+# Fields only the minuta creator (or admin) may change via update.
+MINUTA_OWNER_ONLY_FIELDS = (
+    'state', 'allow_shared_edit', 'is_public',
+    'visibility_user_ids', 'usability_user_ids',
+)
+
+
+def is_minuta_admin(user):
+    """Administrative override for minuta ownership rules (staff/superuser/admin role)."""
+    role = (getattr(user, 'role', '') or '').lower()
+    return bool(user.is_superuser or user.is_staff or role == 'admin')
+
+
+def can_modify_minuta(document, user, data=None):
+    """Modification policy for minutas (Draft/Published templates).
+
+    - Non-template states: unrestricted here (other checks apply).
+    - Creator, assigned user, and admins: full modification rights.
+    - Other lawyers: allowed ONLY when the creator enabled ``allow_shared_edit``,
+      and only for content-editing payloads (no state change, no flag/permission
+      changes — those fields are creator-only). ``data=None`` means a
+      non-payload operation (e.g. delete), which shared edit never grants.
+      The shared-edit grant is lawyer-only: clients never edit minutas.
+    """
+    if document.state not in MINUTA_STATES:
+        return True
+    user_pk = getattr(user, 'pk', None)
+    if document.created_by_id == user_pk:
+        return True
+    if document.assigned_to_id and document.assigned_to_id == user_pk:
+        return True
+    if is_minuta_admin(user):
+        return True
+    if document.allow_shared_edit and data is not None and document.is_lawyer(user):
+        return not any(field in data for field in MINUTA_OWNER_ONLY_FIELDS)
+    return False
+
+
 def apply_visibility_filter(queryset, user):
     """Apply queryset-level visibility filtering for non-lawyer users.
 

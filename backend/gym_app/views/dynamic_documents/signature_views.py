@@ -1,7 +1,6 @@
 import datetime
 import io
 import logging
-import os
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction
@@ -18,7 +17,9 @@ from gym_app.services.signature_notification_service import notify_signature_req
 from ..dynamic_documents.document_views import download_dynamic_document_pdf, get_optimized_document_queryset
 from gym_app.utils.documents import (
     normalize_fragmented_variables,
-    sanitize_soup_for_pdf,
+    sanitize_soup_for_export,
+    register_carlito_fonts,
+    render_document_pdf,
     get_letterhead_for_document,
     snapshot_letterhead_on_formalize,
     ensure_letterhead_snapshot,
@@ -41,15 +42,11 @@ from reportlab.lib.units import inch
 from django.http import FileResponse, HttpResponse
 import traceback
 from io import BytesIO
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from PyPDF2 import PdfReader, PdfWriter
 from bs4 import BeautifulSoup
-from xhtml2pdf import pisa
 from reportlab.pdfgen import canvas
 from django.core.mail import EmailMessage
 import hashlib
-import base64
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 
@@ -1171,35 +1168,6 @@ def get_user_signature(request, user_id):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def register_carlito_fonts():
-    """
-    Register Carlito font family in ReportLab.
-    Returns a dictionary with font paths for CSS styling.
-    """
-    font_dir = os.path.abspath(os.path.join(settings.BASE_DIR, 'static', 'fonts'))
-    font_paths = {
-        "Carlito-Regular": os.path.join(font_dir, "Carlito-Regular.ttf"),
-        "Carlito-Bold": os.path.join(font_dir, "Carlito-Bold.ttf"),
-        "Carlito-Italic": os.path.join(font_dir, "Carlito-Italic.ttf"),
-        "Carlito-BoldItalic": os.path.join(font_dir, "Carlito-BoldItalic.ttf"),
-    }
-
-    # Verify that all font files exist
-    for name, path in font_paths.items():
-        if not os.path.exists(path):  # pragma: no cover – font file missing
-            raise FileNotFoundError(f"Font file not found: {path}")
-
-    # Register fonts in ReportLab
-    try:
-        pdfmetrics.registerFont(TTFont('Carlito', font_paths["Carlito-Regular"]))
-        pdfmetrics.registerFont(TTFont('Carlito-Bold', font_paths["Carlito-Bold"]))
-        pdfmetrics.registerFont(TTFont('Carlito-Italic', font_paths["Carlito-Italic"]))
-        pdfmetrics.registerFont(TTFont('Carlito-BoldItalic', font_paths["Carlito-BoldItalic"]))
-    except Exception as e:  # pragma: no cover – font registration failure
-        raise
-
-    return font_paths
-
 def generate_original_document_pdf(document, fallback_user=None):
     """Generate the original document PDF and return its BytesIO buffer.
 
@@ -1223,195 +1191,19 @@ def generate_original_document_pdf(document, fallback_user=None):
             replacement_value or ""
         )
 
-    # Parse once; sanitize Word-pasted markup in place so xhtml2pdf
+    # Parse once; sanitize Word-pasted markup in place so the renderer
     # preserves table formatting and alignment.
-    soup = sanitize_soup_for_pdf(BeautifulSoup(processed_content, 'html.parser'))
+    soup = sanitize_soup_for_export(BeautifulSoup(processed_content, 'html.parser'))
 
-    # Create temporary buffer for initial PDF
-    temp_buffer = BytesIO()
-
-    # Register fonts
-    font_paths = register_carlito_fonts()
-
-    # Define background image style if letterhead exists
-    background_style = ""
-    body_extra_top_padding = ""
     letterhead_image = get_letterhead_for_document(document, fallback_user=fallback_user)
-    if letterhead_image:  # pragma: no cover – letterhead image processing
-        try:
-            # Get the absolute path to the letterhead image
-            letterhead_path = os.path.abspath(letterhead_image.path)
-            if os.path.exists(letterhead_path):
-                # Convert image to base64 for better xhtml2pdf compatibility
-                import base64
-                with open(letterhead_path, 'rb') as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode()
-                    img_mime = 'image/png'  # Assuming PNG as per validation
-                    background_style = f"""
-        background-image: url('data:{img_mime};base64,{img_data}');
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: contain;
-        background-attachment: fixed;"""
-                    body_extra_top_padding = "\n        padding-top: 1.5cm;"
-        except (ValueError, AttributeError, IOError):
-            # Image file doesn't exist or path is invalid
-            background_style = ""
 
-    # Define CSS styles for PDF (force Letter size: 8.5 x 11 inches, same as standard PDF download)
-    styles = f"""
-    <style>
-    @page {{
-        size: letter;
-        margin: 2cm;{background_style}
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Regular"]}') format('truetype');
-        font-weight: normal;
-        font-style: normal;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Bold"]}') format('truetype');
-        font-weight: bold;
-        font-style: normal;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-Italic"]}') format('truetype');
-        font-weight: normal;
-        font-style: italic;
-    }}
-
-    @font-face {{
-        font-family: 'Carlito';
-        src: url('{font_paths["Carlito-BoldItalic"]}') format('truetype');
-        font-weight: bold;
-        font-style: italic;
-    }}
-
-    body {{
-        font-family: 'Carlito', sans-serif !important;
-        font-size: 12pt;{body_extra_top_padding}
-    }}
-
-    p, span {{
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    /*
-     * xhtml2pdf applies an oversized default margin to <p> blocks, which
-     * causes paragraphs to render with huge empty gaps between them even when
-     * the editor shows them with normal line spacing. Tighten those margins
-     * so the signed PDF matches the editor (issue: client R3 — PDFs con
-     * espaciado gigante entre párrafos).
-     *
-     * ``!important`` and the inclusion of ``div`` mirror the rule in
-     * ``document_views.py``: it is defence-in-depth alongside the
-     * ``_strip_excessive_inline_margins`` helper in ``utils/documents.py``,
-     * so any inline ``margin-*: Xpt`` that slips past the helper still loses
-     * to the global rule for normal blocks.
-     */
-    p, div {{
-        margin-top: 0 !important;
-        margin-bottom: 6pt !important;
-        line-height: 1.35;
-    }}
-
-    br {{
-        line-height: 1.35;
-    }}
-
-    ul, ol {{
-        margin: 0 0 6pt 18pt;
-        padding: 0;
-    }}
-
-    li {{
-        margin: 0 0 2pt 0;
-        line-height: 1.35;
-    }}
-
-    strong {{
-        font-weight: bold !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    em {{
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    strong em {{
-        font-weight: bold !important;
-        font-style: italic !important;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    u {{
-        text-decoration: underline !important;
-    }}
-
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin: 8pt 0;
-        table-layout: fixed;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    td, th {{
-        border: 1px solid #999;
-        padding: 4pt 6pt;
-        vertical-align: top;
-        text-align: left;
-        word-wrap: break-word;
-        font-family: 'Carlito', sans-serif !important;
-    }}
-
-    th {{
-        font-weight: bold;
-        background-color: #f5f5f5;
-    }}
-
-    tr {{
-        page-break-inside: avoid;
-    }}
-    </style>
-    """
-
-    # Construct the final HTML for the PDF
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{document.title}</title>
-        {styles}
-    </head>
-    <body>
-        {str(soup)}
-    </body>
-    </html>
-    """
-
-    # Generate the initial PDF with xhtml2pdf
-    pisa_status = pisa.CreatePDF(
-        html_content.encode('utf-8'),
-        dest=temp_buffer
-    )
-
-    # Check for errors in PDF generation
-    if pisa_status.err:  # pragma: no cover – PDF conversion failure
-        raise Exception("HTML to PDF conversion failed")
-
-    # No watermark: return the generated PDF as-is
-    temp_buffer.seek(0)
-    return temp_buffer
+    # Render with WeasyPrint (browser-grade CSS/table layout → matches editor)
+    return BytesIO(render_document_pdf(
+        title=document.title,
+        body_html=str(soup),
+        letterhead_image=letterhead_image,
+        top_padding="1.5cm",
+    ))
 
 def create_signatures_pdf(document, request):
     """

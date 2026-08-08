@@ -386,6 +386,23 @@
           </p>
         </div>
       </div>
+
+      <!-- Correction Mode: signature due date for the reopened signature workflow -->
+      <div v-if="route.params.mode === 'correction'" class="mt-4">
+        <label class="block text-sm font-medium text-primary mb-1">
+          Fecha límite para firmar (opcional)
+        </label>
+        <p class="text-xs text-gray-500 mb-2">
+          Después de esta fecha, el documento pasará automáticamente al estado "Expirado" si no ha sido firmado completamente. Déjala vacía para reenviar sin fecha límite.
+        </p>
+        <input
+          v-model="signatureDueDate"
+          type="date"
+          :min="minSignatureDate"
+          data-testid="correction-signature-due-date"
+          class="block w-full rounded-md border-0 py-1.5 text-primary shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-secondary sm:text-sm sm:leading-6"
+        />
+      </div>
     </div>
   </div>
   <div v-else class="text-center text-gray-500">
@@ -686,12 +703,19 @@ onMounted(async () => {
     if (route.params.mode === "formalize") {
       document.value.state = "Published";
       document.value.requires_signature = true;
-      
+
       // If document already has signers, load them
       if (document.value.signer_ids && document.value.signer_ids.length > 0) {
         const users = await userStore.getUsersByIds(document.value.signer_ids);
         selectedSigners.value = users;
       }
+    }
+
+    if (route.params.mode === "correction") {
+      const existingDue = document.value.signature_due_date;
+      // Only prefill future dates; a stale past date would re-expire the
+      // document immediately after resending it for signature.
+      signatureDueDate.value = existingDue && existingDue >= minSignatureDate.value ? existingDue : "";
     }
   }
 });
@@ -963,7 +987,10 @@ const saveDocument = async (state = 'Draft') => {
               currency: variable.summary_field === 'value' ? (variable.currency || null) : null,
             };
           }),
-          signature_due_date: signatureDueDate.value || document.value.signature_due_date || null,
+          // Empty string clears the deadline on the backend (null would keep
+          // the previous one, which may be a stale past date that re-expires
+          // the document immediately).
+          signature_due_date: signatureDueDate.value || '',
           title: document.value.title,
         };
         const response = await store.correctDocument(document.value.id, correctionData);

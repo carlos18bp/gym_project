@@ -116,6 +116,20 @@ export const useAuthStore = defineStore("auth", {
       localStorage.setItem("signInSecondsRemaining", 0);
       localStorage.removeItem("token");
       localStorage.removeItem("userAuth");
+
+      // Drop the Microsoft (MSAL) session cache so a stale account or a
+      // leftover interaction flag does not affect the next sign in. The keys
+      // are removed inline instead of importing @/shared/msal_config so the
+      // MSAL bundle stays in the lazily loaded auth chunk.
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        const storage = window.sessionStorage;
+        const msalKeys = [];
+        for (let index = 0; index < storage.length; index += 1) {
+          const key = storage.key(index);
+          if (key && key.startsWith("msal.")) msalKeys.push(key);
+        }
+        msalKeys.forEach((key) => storage.removeItem(key));
+      }
     },
     /**
      * Clears the authorization header from Axios.

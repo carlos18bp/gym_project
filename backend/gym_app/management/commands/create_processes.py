@@ -2,10 +2,11 @@ import os
 import random
 from datetime import timedelta
 from django.core.files import File
+from django.db.models import Q
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
-from gym_app.models import Process, Stage, StageAlert, CaseFile, User, Case
+from gym_app.models import Process, Stage, StageAlert, CaseFile, User, Case, RecentProcess
 
 class Command(BaseCommand):
     help = 'Create processes with random stages, files, and cases'
@@ -349,7 +350,20 @@ class Command(BaseCommand):
             )
             alert_ready_count += 1
 
+        # ── Recently-viewed processes ────────────────────────────────────────
+        # Seed RecentProcess for the preferred test users so the "recently
+        # viewed" widget is populated (it was previously deleted but never seeded).
+        recent_created = 0
+        for user in [u for u in (special_client, special_basic, special_lawyer) if u]:
+            user_processes = Process.objects.filter(
+                Q(clients=user) | Q(lawyer=user)
+            ).distinct()[:5]
+            for process in user_processes:
+                _, created = RecentProcess.objects.get_or_create(user=user, process=process)
+                recent_created += int(created)
+
         self.stdout.write(self.style.SUCCESS(
             f'{number_of_processes} processes created successfully '
-            f'(+{alert_ready_count} alert-ready with upcoming dates)'
+            f'(+{alert_ready_count} alert-ready with upcoming dates, '
+            f'+{recent_created} recent-process rows)'
         ))

@@ -206,7 +206,7 @@
             :show-client-filter="true"
             :show-associations-column="true"
             context="legal-documents"
-            @refresh="handleRefresh"
+            @refresh="handleTableRefresh"
           />
         </div>
 
@@ -221,7 +221,7 @@
             :show-client-filter="false"
             :show-associations-column="true"
             context="my-documents"
-            @refresh="handleRefresh"
+            @refresh="handleTableRefresh"
           />
         </div>
 
@@ -490,7 +490,7 @@
           :show-client-filter="false"
           :show-associations-column="true"
           context="my-documents"
-          @refresh="handleRefresh"
+          @refresh="handleTableRefresh"
         />
         <SignaturesListTable
           v-else-if="activeTab === 'pending-signatures'"
@@ -773,6 +773,16 @@ const closeModal = () => {
 const handleRefresh = async () => {
   await documentStore.init(true);
   // Keep the per-tab badges in sync after a document action changes state.
+  fetchTabUnreadCounts();
+};
+
+/**
+ * Refresh handler for DocumentListTable: the table already re-fetched its own
+ * filtered data, so only the tab badges need updating here. Calling
+ * documentStore.init(true) would clobber the table's filtered fetch
+ * (states/lawyer/search/page) with an unfiltered page-1 fetch.
+ */
+const handleTableRefresh = () => {
   fetchTabUnreadCounts();
 };
 
