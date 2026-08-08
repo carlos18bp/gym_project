@@ -6,6 +6,8 @@ argument-hint: "<descripción de la tarea a planear, en lenguaje natural>"
 
 # Plan Task — Wrapper parametrizado de `/plan`
 
+Gating e invocación: los de [[plan]] (alias, regla de `## Skills alias` de [[_output-protocol]]).
+
 ## Goal
 Aplicar el workflow `/plan` sobre una tarea cuya descripción ya viene completa en los argumentos. Producir un plan que otro agente o ingeniero pueda implementar sin tomar nuevas decisiones de producto o arquitectura, **sin pedir al usuario que repita el alcance** que ya entregó como parámetro.
 

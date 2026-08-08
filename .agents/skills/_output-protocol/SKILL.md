@@ -63,7 +63,7 @@ Códigos de emoji (para celdas de la tabla):
 | ✅ | done — completado correctamente |
 | ⚠️ | warning — completado con observaciones, no bloquea |
 | ❌ | error — falló, requiere acción |
-| ⏭️ | skipped — saltado por flag, no-aplica, o protegido |
+| ⏭️ | skipped — saltado por flag o no-aplica |
 | ℹ️ | info — informativo, sin estado binario |
 | 🚫 | refused — bloqueado por safety gate (decisión segura, no fue error) |
 | ⏸️ | paused — esperando intervención manual del operador (OAuth, admin console) |
@@ -100,14 +100,25 @@ declarar la excepción en su propio `## Output final`.
 Cada bullet debe ser **accionable sin interpretación**: comando exacto + dónde
 correrlo + qué actor lo hace.
 
-### 4. Acciones disponibles (menú interactivo — opcional por skill)
+### 4. Acciones disponibles y picker de invocación (menú interactivo)
 
-Dos posiciones, un mismo esquema:
+Dos posiciones, un mismo esquema de fila:
 
-- **Pre-run (gating):** skills cuyo primer paso ES elegir modo
-  (`--check|--apply|--validate`…). Patrón ya canónico en `init-fleet`,
-  `bootstrap-ssh-fleet`, `bootstrap-tailscale-fleet`, `sync-ai-ecosystems` —
-  no cambiarlo.
+- **Pre-run (picker de invocación) — OBLIGATORIO** para toda skill cuyo
+  `argument-hint` incluya un flag de modo mutante o de alcance (`--apply`,
+  `--all-*`, `--cutover`, `--revoke`, selectores `--check|--apply`…). Se
+  declara en una sección propia **`## Cómo invocar este skill`** (tras el
+  intro, antes de las fases) con: (a) las reglas de gating de abajo
+  instanciadas para la skill, (b) las Q-specs en formato tabla
+  `label · description · preview` — la misma forma del menú post-run —,
+  (c) el párrafo **"Qué NO se pregunta"** (flags que se tipean a propósito:
+  overrides del blocklist, defaults simétricos). Una skill cuyos flags son
+  sólo tuning aditivo (puertos, filtros, `--records=N`) puede eximirse con la
+  línea literal `Sin picker por diseño: <razón>` dentro de esa sección —
+  picker O waiver, nunca silencio (así el lint es decidible). Referencias
+  canónicas: [[sync-ai-ecosystems]] (Q1/Q2/Q3, targets gateados) e
+  `init-fleet` (probe de entorno antes de armar opciones; multiSelect para
+  add-ons; documenta qué flags quedan fuera del picker).
 - **Post-run (escalaciones):** skills con default mínimo/read-only. DESPUÉS del
   reporte (§1-§3), UNA sola `AskUserQuestion` que ofrezca las demás acciones de
   la skill, para que el operador descubra capacidades sin memorizar flags.
@@ -122,6 +133,16 @@ Dos posiciones, un mismo esquema:
    sesión interactiva single-target.
 5. Máx **4 opciones** ("Other" ya existe siempre); lo que no entra se nombra en
    `## Next steps`.
+6. **multiSelect cuando las opciones combinan** (`multiSelect: true` para
+   add-ons, listas de targets, capas — opciones no excluyentes entre sí);
+   selección única sólo para modos excluyentes.
+7. **Una sola llamada:** todas las preguntas aplicables se fusionan en UNA
+   `AskUserQuestion` (Q1+Q2+Q3 juntas, estilo [[client-message]]). Un dato
+   faltante posterior se pide en texto plano una única vez (≤3 bullets) —
+   nunca un segundo picker.
+8. **Runtimes sin `AskUserQuestion`** (Codex/`.agents`, Windsurf): renderizar
+   las mismas filas como lista numerada en texto y esperar la respuesta
+   tipeada — la spec es la misma, sólo cambia el medio.
 
 **Esquema de fila:** `label` corto (sufijo `(Recommended)` sólo si la acción es
 segura y reversible) · `description` de 1 línea que incluya costo/efecto real
@@ -132,11 +153,11 @@ ejecutaría.
 
 - `/deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
   como texto en Next steps).
-- Merge de una rama release (`--allow-release-merge` se tipea, no se clickea).
+- Merge de una rama release: no se ofrece ni se tipea — lo decide
+  `release_merge:` en projects.yml (fuente de verdad, consultada por
+  [[merge-when-green]] en cada invocación).
 - `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
   es una confirmación de downtime).
-- Cualquier acción sobre un proyecto `production+active` protegido
-  (`is_protected_project`) — el override `--project=<X>` se tipea.
 - `--include-projects` de bootstrap/init-fleet como Recommended (es
   deploy-equivalente).
 - Git destructivo: `reset --hard`, `push --force`, `stash drop` masivo
@@ -146,9 +167,13 @@ ejecutaría.
 - Restarts/acciones de servicio antes de leer el journal (regla de incident).
 - Deletes no evidenciados: siempre por lote, con lista y evidencia visibles.
 
-**Cómo lo declara una skill:** una sección `## Acciones disponibles` con su
-tabla de filas (label · description · preview) ANTES del `## Output final`. Los
-alias heredan el menú de su skill base (regla de `## Skills alias`).
+**Cómo lo declara una skill:** el picker pre-run vive en `## Cómo invocar este
+skill`; el menú post-run en una sección `## Acciones disponibles` con su tabla
+de filas (label · description · preview) ANTES del `## Output final`. Los alias
+heredan ambos de su skill base (regla de `## Skills alias`). Una skill exenta
+del menú post-run lo declara con la línea literal `Sin menú por diseño (§4):
+<razón>` (p. ej. las output-es-el-producto de §2) — así se distingue excepción
+de drift.
 
 ## Reglas
 

@@ -67,7 +67,7 @@ Códigos de emoji (para celdas de la tabla):
 | ✅ | done — completado correctamente |
 | ⚠️ | warning — completado con observaciones, no bloquea |
 | ❌ | error — falló, requiere acción |
-| ⏭️ | skipped — saltado por flag, no-aplica, o protegido |
+| ⏭️ | skipped — saltado por flag o no-aplica |
 | ℹ️ | info — informativo, sin estado binario |
 | 🚫 | refused — bloqueado por safety gate (decisión segura, no fue error) |
 | ⏸️ | paused — esperando intervención manual del operador (OAuth, admin console) |

@@ -10,6 +10,12 @@ description: "Checklist for new features — ensures fake data creation follows 
 > como fases ordenadas con las guardas de producción ya cableadas (y salta
 > fake-data en prod solo). Esta checklist queda como la vía granular manual.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión (la feature recién implementada) → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la feature a cubrir (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+
+Sin picker por diseño: no hay flags de modo — el argumento es la feature cuya fake data y cobertura se cierran.
+
 ## 1. Fake Data Creation / Validation (Backend)
 
 Before creating test data, verify that fake data complies with:
@@ -80,6 +86,8 @@ Update `docs/USER_FLOW_MAP.md` **and** `frontend/e2e/flow-definitions.json` if n
 ---
 
 ## Output final
+
+Sin menú por diseño (§4): es un checklist-guía; la ejecución canónica es /qa.
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 `/new-feature-checklist`:

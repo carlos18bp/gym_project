@@ -12,9 +12,11 @@ This document applies to:
 
 | Test Type | Location | Runner |
 |-----------|----------|--------|
-| Backend unit/integration | `backend/core_app/tests/**` | pytest |
-| Frontend unit/component | `frontend/test/**` | Jest |
+| Backend unit/integration | `backend/<app>/tests/**` | pytest |
+| Frontend unit/component | `frontend/test/**` or `frontend/src/**/__tests__/**` | Jest / Vitest |
 | Frontend E2E flows | `frontend/e2e/**` | Playwright |
+
+> The exact location of frontend unit tests depends on the project structure. Common patterns: `frontend/test/` (standalone test dir), `src/**/__tests__/` (co-located). Configure the pattern in `jest.config.cjs` / `vitest.config.js`.
 
 > **Note:** These standards focus on test quality and maintainability only. They do not change production business logic.
 
@@ -110,33 +112,32 @@ Tests must be organized by domain/layer, not by coverage goals.
 **Backend Structure:**
 
 ```
-backend/core_app/tests/
+backend/<app>/tests/
+├── conftest.py       # Shared pytest fixtures
+├── factories.py      # Model factories and payload helpers
 ├── models/           # Model unit tests (validation, properties, methods)
 │   ├── test_user.py
-│   ├── test_product.py
-│   └── test_order.py
+│   └── test_product.py
 ├── serializers/      # Serializer unit tests (validation, transformation)
-│   ├── test_user_serializers.py
 │   └── test_product_serializers.py
 ├── views/            # API endpoint tests (integration-light)
-│   ├── test_auth_views.py
 │   └── test_product_views.py
-├── services/         # Business logic service tests
-│   └── test_email_service.py
+├── services/         # Business logic service tests (if services/ exists)
 ├── utils/            # Utility function tests
-│   └── test_helpers.py
-└── tasks/            # Background task tests (Celery, jobs)
-    └── test_notification_tasks.py
+├── contracts/        # OpenAPI/schema contract tests
+├── integration/      # Cross-layer integration tests
+├── management/       # Management command tests
+└── test_admin.py     # Django admin tests (standalone)
 ```
 
 **Frontend Structure:**
 
 ```
 frontend/
-├── test/                    # Unit/component tests (Jest)
-│   ├── stores/              # Pinia store tests
-│   ├── components/          # Vue component tests
-│   ├── composables/         # Composable/hook tests
+├── test/                    # Unit/component tests (Jest / Vitest)
+│   ├── stores/              # Store tests (Pinia / Redux / Zustand)
+│   ├── components/          # Component tests (Vue Test Utils / React Testing Library)
+│   ├── composables/         # Composable / custom hook tests
 │   ├── router/              # Router guard tests
 │   └── shared/              # Shared test utilities
 └── e2e/                     # E2E flows (Playwright)
@@ -144,6 +145,8 @@ frontend/
     ├── products/            # Product management flows
     └── helpers/             # E2E utilities and mocks
 ```
+
+> Location of unit tests may differ by project: `frontend/test/` (standalone) or `src/**/__tests__/` (co-located). Both are valid — configure the pattern in your test runner config.
 
 ---
 
@@ -1193,6 +1196,51 @@ def test_validation_error_messages():
 await page.locator('.external-datepicker .day-15').click();
 ```
 
+### Junk-rule allow markers (2026-07)
+
+The junk detectors have their own opt-out markers. Each one silences exactly one
+rule, must live **inside the block of the test it exempts** (the detectors read
+the test's source slice, not the file header), and the reason in parentheses is
+**mandatory**. Active markers appear in the gate report's `active_exceptions`
+and are audited like any other exception.
+
+| Marker | Rule silenced | Legitimate when |
+|--------|---------------|-----------------|
+| `// quality: allow-no-interaction (reason)` | `no_user_interaction` | the flow genuinely has no interactable step (e.g. a redirect/guard whose whole behavior is navigation) |
+| `// quality: allow-deep-link (reason)` | `deep_link_entry` | the URL itself is the documented entry point of the display flow (e.g. an emailed permalink) |
+| `// quality: allow-render-only (reason)` | `no_data_assertion` | the view under test is deliberately static and its content is pinned by another test |
+| `// quality: allow-duplicate (reason)` | `duplicate_coverage` | the same body must run twice by design (e.g. a per-role or per-viewport contract) |
+| `// quality: allow-mock-only (reason)` | `mock_only_assertion` | the outbound call IS the contract (e.g. telemetry/analytics emission with no observable state) |
+| `// quality: allow-reimpl (reason)` | `reimplements_sut` | recomputing is the spec itself (e.g. a property/identity the test intentionally re-states) |
+| `// quality: allow-flow-tag-mismatch (reason)` | `flow_tag_mismatch` | the spec legitimately exercises the tagged flow through vocabulary the heuristic cannot map (e.g. the UI copy names the action differently than the flow id) |
+| `// quality: allow-url-alternation (reason)` | `tautological_url` | the test genuinely accepts two destinations (e.g. a geo-dependent localized home) — the default shape `toHaveURL(/sign-in\|<navigated-segment>/)` cannot fail and is junk |
+
+### Draft marker — `// qa: draft-unvalidated` (2026-07)
+
+Different family from the `quality: allow-*` markers: those are block-scoped
+exemptions that **promote** (silence one rule); this one is **file-scoped** and
+**demotes**. The /qa e2e engineer writes it at the top of any spec authored
+while no app was reachable:
+
+```javascript
+// qa: draft-unvalidated (2026-07-26 — app not running)
+```
+
+Semantics:
+
+- Every test in the file counts as `unvalidated` evidence in the flow coverage
+  audit: it never buys coverage credit (a flow backed only by drafts reports
+  `unvalidated`, not `covered`) and never subtracts from credit earned by real
+  tests in other files. A draft test that is also junk stays junk — junk wins.
+- The marker means "**never executed green once**", NOT "green forever". It is
+  removed only after the spec first runs green against a live app (the /qa
+  Phase 5b validation); a validated spec that later regresses is an ordinary
+  red test, never re-marked.
+- **Never add non-draft tests to a marked file** — the marker taints the whole
+  file. Validate-and-unmark first, or use a new file.
+- Inert everywhere else by design: the junk detectors and the quality gate
+  ignore it, so repos on an older core see a plain comment.
+
 ### Exception Tracking
 
 All exceptions are tracked and reported:
@@ -1295,7 +1343,7 @@ scripts/
     ├── patterns.py               # Compiled regex patterns
     ├── backend_analyzer.py       # Python/pytest analyzer (AST-based)
     ├── js_ast_bridge.py          # Bridge to Node.js Babel parser
-    ├── frontend_unit_analyzer.py # Jest/Vue Test Utils analyzer
+    ├── frontend_unit_analyzer.py # Jest / Vitest unit analyzer (framework-agnostic)
     └── frontend_e2e_analyzer.py  # Playwright E2E analyzer
 
 frontend/scripts/
@@ -1389,6 +1437,40 @@ While this document focuses on quality over quantity, reasonable coverage target
 | E2E | Critical paths | Login, checkout, main workflows |
 
 > **Remember:** Coverage measures lines executed, not behavior verified. A test with no assertions gives coverage but no value.
+
+### Flow coverage states (`flow_coverage_audit.py`)
+
+Every flow declared in `flow-definitions.json` resolves to exactly one state.
+Precedence, worst-signal first when evidence mixes:
+
+| State | Meaning | Counts as covered? |
+|-------|---------|--------------------|
+| `covered` | every declared outcome class has a **qualifying, executed** test | ✅ |
+| `partial` | some declared classes qualified, others not (the gaps may be junk, drafted or absent — see `junk_only_outcomes` / `unvalidated_outcomes`) | ❌ |
+| `junk-only` | tests exist, **none qualify** (`no_user_interaction` / `flow_tag_mismatch`). Worse than `missing`: it reports green in the runtime reporter | ❌ |
+| `unvalidated` | only draft evidence (`// qa: draft-unvalidated` files): authored, structurally sound, **never executed**. Junk in the same evidence wins (`junk-only`) | ❌ |
+| `missing` | declared, no test references it | ❌ |
+| `exempt` | `expectedSpecs: 0` — intentionally uncovered, not a gap | n/a |
+
+Real qualifying tests are never demoted by drafts elsewhere: a flow with a
+green test in one file and a draft twin in another stays `covered`.
+
+**Zero-assertion evidence is disqualified (F49):** a test whose full reach
+(helpers resolved, comments stripped) contains no `expect(` proves nothing —
+the audit treats it exactly like junk, so a flow backed only by such tests
+reads `junk-only`, never `covered`. **Outcome tags resolve through constants
+(F48):** `@outcome:` entries inside an imported/aliased tag constant now
+credit their class just like inline tags; the inline call-site idiom remains
+the recommended convention.
+
+**Suspect flag (F47, orthogonal to the state):** an outcome-untagged test
+credits only `success`, so a flow whose declared classes exclude `success`
+can report `missing`/`partial` while flow-tagged evidence exists in the
+wrong bucket — masking either junk or real coverage. The audit flags these
+with per-flow `stray_evidence_outcomes`, the `suspect` summary counter and a
+`SUSPECT FLOWS` report section. The state itself does not change (warning
+only; `covered` and `exempt` are never flagged): apply the `@outcome`
+tagging pass, then trust the recomputed state.
 
 ---
 

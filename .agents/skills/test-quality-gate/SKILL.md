@@ -1,6 +1,7 @@
 ---
 name: test-quality-gate
 description: "Phased plan to raise the Test Quality Gate score by refactoring high-impact backend and frontend tests. Use when the user wants to improve test quality or fix quality gate failures."
+argument-hint: "[--include-file <archivo> …] [--include-glob '<patrón>'] [--external-lint run] [--junk-severity=error]"
 ---
 
 # Test Quality Improvement Strategy
@@ -17,6 +18,15 @@ Create and execute a phased strategy to improve test quality by selecting a crit
 | [[fix-broken-tests]] | Why is this specific test failing? |
 | [[qa]] | Runs this gate as its Phase 5 via `qa-agent.sh --verify` |
 | **test-quality-gate** | **How do I raise the gate score on tests I am keeping?** |
+
+## Cómo invocar este skill
+
+Sin picker por diseño: los flags son tuning del gate; --write-junk-baseline se
+TIPEA (el ratchet sólo se congela deliberadamente — blocklist §4).
+
+Con flags o intención clara → ejecutar directo. Invocada por [[qa]] (Phase 5,
+vía `qa-agent.sh --verify`): hereda su gating y ahí NUNCA pregunta; tampoco en
+fleet/headless/cron.
 
 ## Non-negotiable Constraints
 
@@ -120,6 +130,20 @@ python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semanti
 ```
 
 The JSON report lands at `test-results/test-quality-report.json` by default.
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Gate strict (Recommended) | read-only: gate completo, reporte JSON en `test-results/test-quality-report.json` | `python3 scripts/test_quality_gate.py --repo-root . --external-lint run --semantic-rules strict` |
+| Gate acotado a lo tocado | mismo gate sólo sobre los archivos refactorizados | `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --include-file <archivo>` |
+| Cobertura de flows | covered / partial / junk-only / missing / exempt por flow | `python3 scripts/flow_coverage_audit.py --repo-root .` |
+
+NO ofrecer `--write-junk-baseline` como fila clickeable: congelar el ratchet es
+una decisión deliberada que se tipea (blocklist §4).
 
 ## Output final
 

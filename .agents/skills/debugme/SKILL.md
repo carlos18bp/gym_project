@@ -10,6 +10,8 @@ Use the same workflow as [[debug]]:
 - gather evidence first
 - return observations, root cause, recommended fix, and verification steps
 
+Gating e invocación: los de [[debug]] (alias, regla de `## Skills alias` de [[_output-protocol]]).
+
 ---
 
 ## Output final

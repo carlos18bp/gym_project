@@ -11,6 +11,12 @@ description: "Initialize or refresh the Memory Bank methodology system. Creates 
 - **Refresh**: After major feature additions, when counts drift, or after methodology updates
 - **Chained**: the [[qa]] conductor runs this as its Phase 1 (product understanding) when `docs/methodology/` is missing or stale
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión (el proyecto se infiere del cwd) → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto que resuelvan el proyecto → UNA sola pregunta corta en texto por el proyecto a inicializar/refrescar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+
+Sin picker por diseño: no hay flags de modo — el argumento es el proyecto cuyo Memory Bank se inicializa o refresca.
+
 ## Step 1: Ensure Directory Structure
 
 ```bash
@@ -84,6 +90,8 @@ Fix any discrepancies found.
 ---
 
 ## Output final
+
+Sin menú por diseño (§4): inicializa/refresca archivos de metodología; el cierre lista lo creado.
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 `/methodology-setup`:

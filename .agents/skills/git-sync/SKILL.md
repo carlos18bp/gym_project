@@ -44,6 +44,29 @@ Rebase the current branch onto its parent (`main` / `master`) so it picks up wor
 > (p.ej. `projectapp` en `feat/…` y `gym_project_staging` en `release-august-2026-c`),
 > y rebasarlos sobre master los rompería.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara por la sesión (p.ej. "sincronizá todo el fleet") →
+proponer el comando en una línea y esperar confirmación; (3) sin argumentos /
+intención difusa → UNA sola AskUserQuestion con Q1; (4) nunca dentro de un
+barrido `--all-repos`/`--all-vps` ni en headless/cron — sólo en sesión
+interactiva single-target.
+
+**Q1 — Alcance** (`multiSelect: false` — los dos ejes combinados forman 4 modos excluyentes):
+
+| label | description | preview |
+|---|---|---|
+| Repo actual (Recommended) | el repo del cwd contra su upstream + target PR-aware, sólo este host | `/git-sync` |
+| --all-repos (este host) | LOCAL_PROJECTS + toolkit de ESTE host, flujo interactivo completo | `/git-sync --all-repos` |
+| --all-vps (fleet) | sólo `vps-ops-toolkit` en TODOS los VPS; el remoto recibe el core no-interactivo (conflicto ⇒ abort + reporte, sin stash inspection ni retargeting PR-aware) | `/git-sync --all-vps` |
+| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet; en los remotos siempre el core no-interactivo | `/git-sync --all-repos --all-vps` |
+
+**Qué NO se pregunta:** `--all` (retirado, error-by-design con guía) jamás se
+ofrece; los drops de stash no son picker pre-run — se ofrecen post-run,
+per-stash y con la evidencia OBSOLETO/VIEJO de esta corrida (ya están en
+`## Acciones disponibles`).
+
 ---
 
 ## Phase 0 — Resolución de la lista de repos

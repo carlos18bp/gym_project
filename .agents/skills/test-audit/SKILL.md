@@ -1,6 +1,7 @@
 ---
 name: test-audit
 description: "Audit the whole test corpus for junk tests — specs that raise coverage without verifying behavior. Classifies every finding, decides DELETE / REWRITE / MERGE / KEEP, and applies the cleanup in operator-approved batches. Default dry-run."
+argument-hint: "[--check | --apply] [--suite=e2e|unit|backend] [--since=<ref>]"
 ---
 
 # Test Audit
@@ -47,6 +48,25 @@ Only this skill will conclude that a test should be deleted.
   Not a gate flag: it materializes as
   `git diff --name-only <ref> -- '*test*' '*spec*'`, feeding one repeated
   `--include-file` per changed file into `test_quality_gate.py`.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara en la sesión ("auditá la basura de tests", "aplicá la
+limpieza") → proponer el comando en una línea y esperar confirmación; (3) sin
+argumentos → UNA sola AskUserQuestion (Q1); (4) nunca en modo fleet/headless/cron
+ni como subagente de [[qa]] (Phase 6 del conductor): ahí NUNCA pregunta — hereda
+el modo con el que corre el conductor.
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| --check (Recommended) | dry-run: triage completo DELETE/REWRITE/MERGE/KEEP + reporte, no escribe nada | `/test-audit --check` |
+| --apply | borra/reescribe tests POR LOTES con aprobación del operador — es la única skill que concluye que un test debe morir | `/test-audit --apply` |
+
+**Qué NO se pregunta:** `--suite=`, `--since=`, `--json` y `--name-only` son
+tuning de alcance y formato — se tipean cuando hacen falta, no van en el picker.
 
 ## Phase 0 — Preflight
 
@@ -178,6 +198,19 @@ Only with `--apply`, and only after the operator approves each batch.
   it and report it so the detectors get calibrated.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Aplicar lotes de limpieza | propone cada lote como lista `file:line — test — verdict — reason` y espera aprobación POR LOTE; un commit aislado por lote | `/test-audit --apply` |
+| Re-auditar una suite | re-corre el triage acotado a una capa tras limpiar | `/test-audit --suite=e2e` |
+
+Los DELETE jamás se ofrecen sueltos ni sin evidencia: siempre por lote, con la
+lista visible y la aprobación explícita de ese lote (blocklist §4).
 
 ## Output final
 
