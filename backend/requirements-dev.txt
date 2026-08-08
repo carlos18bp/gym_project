@@ -3,3 +3,6 @@
 # Developer tooling
 pre-commit==3.7.1
 ruff==0.6.8
+
+# Note: pytest, pytest-cov, pytest-django and pytest-xdist live in
+# requirements.txt (the CI job installs only that file).
