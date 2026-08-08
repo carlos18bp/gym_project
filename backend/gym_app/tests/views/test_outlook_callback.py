@@ -17,7 +17,7 @@ CALLBACK_URL = "/auth/outlook/callback"
 
 
 def _spa_build_present():
-    """True when one of the paths SpaView serves from actually exists."""
+    """Report whether one of the paths SPAView serves from actually exists."""
     base_dir = settings.BASE_DIR
     candidates = [
         os.path.join(base_dir.parent, "frontend", "dist", "index.html"),
@@ -58,8 +58,11 @@ def test_outlook_callback_is_never_cached(client):
 
 
 def test_outlook_callback_does_not_sever_the_popup_opener(client):
-    """A stricter COOP moves the popup to a new browsing context group on its way
-    back from Microsoft, severing window.opener so MSAL can never close it."""
+    """Keep the popup in its opener's browsing context group.
+
+    A stricter COOP moves the popup to a new browsing context group on its way
+    back from Microsoft, severing window.opener so MSAL can never close it.
+    """
     response = client.get(CALLBACK_URL)
 
     assert response["Cross-Origin-Opener-Policy"] == "unsafe-none"

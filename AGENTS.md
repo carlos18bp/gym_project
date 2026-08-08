@@ -1,5 +1,5 @@
 <!-- fleet-base:begin v=1 -->
-# AGENTS.md — G&M Staging (`gym_project_staging`)
+# AGENTS.md — G&M Consultores Jurídicos (`gym_project`)
 
 Este archivo es el equivalente Codex de `CLAUDE.md`. Mismo cuerpo de
 instrucciones general, distinto frontmatter/estructura. Sincronizado desde

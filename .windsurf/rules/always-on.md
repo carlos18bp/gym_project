@@ -4,7 +4,7 @@ trigger: always_on
 ---
 
 <!-- fleet-base:begin v=1 -->
-# Reglas base del fleet — G&M Staging
+# Reglas base del fleet — G&M Consultores Jurídicos
 
 ## Convencion de lenguaje
 
