@@ -28,7 +28,10 @@ from gym_app.models import (
 FIXED_TODAY = datetime.date.today()
 FIXED_NOW = timezone.make_aware(datetime.datetime.combine(FIXED_TODAY, datetime.time(10, 0, 0)))
 REPORT_START_DATE = (FIXED_TODAY - datetime.timedelta(days=60)).strftime("%Y-%m-%d")
-REPORT_END_DATE = FIXED_TODAY.strftime("%Y-%m-%d")
+# +1 day buffer: CI suites can straddle midnight UTC — the module is imported
+# (FIXED_TODAY resolved) before 00:00 and the rows are stamped by auto_now_add
+# after it, which put them past an endDate of "today" and emptied every report.
+REPORT_END_DATE = (FIXED_TODAY + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
 @pytest.fixture
 def sample_users():

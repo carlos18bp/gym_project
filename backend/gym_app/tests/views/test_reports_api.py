@@ -16,7 +16,8 @@ from gym_app.models import (
 
 FIXED_TODAY = datetime.date(2026, 1, 15)
 REPORT_START_DATE = (FIXED_TODAY - datetime.timedelta(days=30)).strftime('%Y-%m-%d')
-REPORT_END_DATE = FIXED_TODAY.strftime('%Y-%m-%d')
+# +1 day buffer against CI suites straddling midnight UTC (see test_reports.py).
+REPORT_END_DATE = (FIXED_TODAY + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
 
 @pytest.fixture
