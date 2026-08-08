@@ -74,7 +74,7 @@ async function installDashboardWithActivitiesMocks(page, { userId, role, activit
   });
 }
 
-test("dashboard renders activity feed with entries", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+test("dashboard renders activity feed with entries", { tag: ['@flow:dashboard-activity-feed', '@module:dashboard', '@priority:P2', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 4000;
   const now = new Date();
 

@@ -51,7 +51,7 @@
             </div>
             <ChevronDownIcon class="h-4 w-4 flex-shrink-0" />
           </MenuButton>
-          <MenuItems class="absolute left-0 z-10 mt-2 w-64 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          <MenuItems data-testid="tag-filter-menu" class="absolute left-0 z-10 mt-2 w-64 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
             <div class="p-2">
               <!-- Search input -->
               <div class="relative mb-2">

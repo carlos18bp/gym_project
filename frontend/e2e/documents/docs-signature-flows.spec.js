@@ -106,19 +106,16 @@ test("lawyer opens electronic signature modal and sees upload/draw options", { t
   await page.goto("/dynamic_document_dashboard");
   await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
 
-  // Look for Firma Electrónica button
-  const firmaBtn = page.getByRole("button", { name: /firma electr/i }).or(page.locator('[data-testid="electronic-signature-btn"]')).first();
-  const visible = await firmaBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+  await page.getByRole("button", { name: "Firma Electrónica" }).click();
 
-  if (visible) {
-    await firmaBtn.click();
-    // Should show upload and draw options
-    // quality: allow-fragile-selector (stable application ID)
-    await expect(page.locator("#app")).toBeVisible();
-  }
+  await expect(page.getByRole("heading", { name: "Firma Electrónica", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Añadir firma electrónica" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+  // Choosing "Dibujar firma" swaps in the drawing pad with its save action.
+  await page.getByRole("button", { name: "Dibujar firma" }).click();
+  await expect(page.getByRole("button", { name: "Guardar", exact: true })).toBeVisible({ timeout: 10_000 });
 });
 
 test("client without signature sees upload and draw options on signature modal", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:client'] }, async ({ page }) => {
@@ -134,10 +131,26 @@ test("client without signature sees upload and draw options on signature modal",
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("client");
+  await page.getByRole("button", { name: "Firma Electrónica" }).click();
+
+  await expect(page.getByRole("heading", { name: "Firma Electrónica", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Añadir firma electrónica" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
+
+  // Choosing "Subir imagen" swaps in the upload dropzone.
+  await page.getByRole("button", { name: "Subir imagen" }).click();
+  await expect(page.getByText("Haz clic para subir una imagen o arrástrala aquí")).toBeVisible({ timeout: 10_000 });
+
+  // Selecting an image reveals the preview with its save action.
+  await page.locator('input[type="file"][accept="image/png,image/jpeg"]').setInputFiles({
+    name: "firma-e2e.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      "base64"
+    ),
+  });
+  await expect(page.getByRole("button", { name: "Guardar", exact: true })).toBeVisible({ timeout: 10_000 });
 });

@@ -178,7 +178,7 @@ describe("corporate_client/sections/OrganizationPostsSection.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Nuevo Post"));
 
-    expect(newBtn).toBeTruthy();
+    expect(newBtn.text()).toContain("Nuevo Post");
 
     await newBtn.trigger("click");
     await flushPromises();

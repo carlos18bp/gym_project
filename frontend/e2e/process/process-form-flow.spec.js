@@ -74,7 +74,7 @@ async function completeSuccessDialog(page) {
   await okBtn.click();
 }
 
-test("lawyer can create a process from ProcessForm", { tag: ['@flow:process-create', '@module:processes', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer can create a process from ProcessForm", { tag: ['@flow:process-create', '@module:processes', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   const lawyerId = 1400;
   const clientId = 1401;

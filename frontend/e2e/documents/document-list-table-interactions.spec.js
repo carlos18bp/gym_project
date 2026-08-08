@@ -37,26 +37,28 @@ async function setupLawyerDashboard(page, { userId, documents = [] }) {
 }
 
 function buildDocsWithVariety(userId) {
+  // Distinct updated_at values make the default "recent" sort deterministic:
+  // doc 1 is the most recently updated, doc 5 the oldest.
   return [
     buildMockDocument({
       id: 1, title: "Contrato Laboral Draft", state: "Draft",
-      createdBy: userId, tags: [TAGS[0]],
+      createdBy: userId, tags: [TAGS[0]], updatedAt: "2024-05-05T10:00:00.000Z",
     }),
     buildMockDocument({
       id: 2, title: "Contrato Comercial Published", state: "Published",
-      createdBy: userId, tags: [TAGS[1]],
+      createdBy: userId, tags: [TAGS[1]], updatedAt: "2024-05-04T10:00:00.000Z",
     }),
     buildMockDocument({
       id: 3, title: "Poder General Progress", state: "Progress",
-      createdBy: userId, assignedTo: 9999, tags: [TAGS[0], TAGS[2]],
+      createdBy: userId, assignedTo: 9999, tags: [TAGS[0], TAGS[2]], updatedAt: "2024-05-03T10:00:00.000Z",
     }),
     buildMockDocument({
       id: 4, title: "Acta Completada", state: "Completed",
-      createdBy: userId, assignedTo: 9999, tags: [TAGS[2]],
+      createdBy: userId, assignedTo: 9999, tags: [TAGS[2]], updatedAt: "2024-05-02T10:00:00.000Z",
     }),
     buildMockDocument({
       id: 5, title: "Minuta Sin Tags", state: "Draft",
-      createdBy: userId, tags: [],
+      createdBy: userId, tags: [], updatedAt: "2024-05-01T10:00:00.000Z",
     }),
   ];
 }
@@ -95,22 +97,28 @@ test.describe("DocumentListTable sort", { tag: ['@flow:docs-list-table', '@modul
     const userId = 6010;
     await setupLawyerDashboard(page, { userId, documents: buildDocsWithVariety(userId) });
     await page.goto("/dynamic_document_dashboard");
-    await page.waitForLoadState("networkidle");
 
-    await goToMisDocumentos(page);
+    // Minutas tab (default) — with "Más recientes" the most recently updated doc leads
+    const table = page.getByRole("table");
+    await expect(table.getByText("Contrato Laboral Draft")).toBeVisible({ timeout: 15_000 });
+    await expect(table.getByRole("row").nth(1)).toContainText("Contrato Laboral Draft");
 
-    // Click sort button
-    const sortBtn = page.getByRole("button", { name: /Más recientes|Ordenar/i }).first();
+    // Open sort dropdown
+    const sortBtn = page.getByRole("button", { name: /Más recientes/i }).first();
     await expect(sortBtn).toBeVisible();
     await sortBtn.click();
 
-    // Sort options should appear — look for "Nombre (A-Z)" option
-    const nameSort = page.getByText("Nombre (A-Z)");
-    if (await nameSort.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await nameSort.click();
-      // Sort order should change
-      await page.waitForLoadState("networkidle");
-    }
+    // Selecting "Nombre (A-Z)" triggers a server fetch with sort_by=name-asc
+    const sortRequest = page.waitForRequest(
+      (req) => req.url().includes("sort_by=name-asc"),
+      { timeout: 10_000 }
+    );
+    await page.getByText("Nombre (A-Z)").click();
+    await sortRequest;
+
+    // The sort button label updates and the table re-orders alphabetically
+    await expect(page.getByRole("button", { name: "Nombre (A-Z)" })).toBeVisible();
+    await expect(table.getByRole("row").nth(1)).toContainText("Contrato Comercial Published");
   });
 });
 
@@ -178,21 +186,29 @@ test.describe("DocumentListTable search on Minutas tab", { tag: ['@flow:docs-lis
     await page.goto("/dynamic_document_dashboard");
     await page.waitForLoadState("networkidle");
 
-    // Default tab is Minutas — search input should be visible
+    // Default tab is Minutas — all Draft/Published minutas are listed
+    const table = page.getByRole("table");
+    await expect(table.getByText("Contrato Laboral Draft")).toBeVisible({ timeout: 15_000 });
+    await expect(table.getByText("Minuta Sin Tags")).toBeVisible();
+
     const searchInput = page.getByPlaceholder("Buscar...");
     await expect(searchInput).toBeVisible();
 
-    // Type to search — filters locally
+    // Typing triggers a debounced server-side search by title
+    const searchRequest = page.waitForRequest(
+      (req) => req.url().includes("search=Contrato"),
+      { timeout: 10_000 }
+    );
     await searchInput.fill("Contrato");
-    // "Contrato Laboral Draft" should still be visible
-    // "Minuta Sin Tags" should be hidden
-    const contratoText = page.getByText("Contrato Laboral Draft");
-    if (await contratoText.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(contratoText).toBeVisible();
-    }
+    await searchRequest;
 
-    // Clear search
+    // Matching doc stays visible, non-matching doc is filtered out
+    await expect(table.getByText("Contrato Laboral Draft")).toBeVisible();
+    await expect(table.getByText("Minuta Sin Tags")).toBeHidden();
+
+    // Clearing the search restores the full list
     await searchInput.clear();
+    await expect(table.getByText("Minuta Sin Tags")).toBeVisible({ timeout: 10_000 });
   });
 });
 
@@ -203,25 +219,31 @@ test.describe("DocumentListTable tag filter", { tag: ['@flow:docs-list-table', '
     const userId = 6050;
     await setupLawyerDashboard(page, { userId, documents: buildDocsWithVariety(userId) });
     await page.goto("/dynamic_document_dashboard");
-    await page.waitForLoadState("networkidle");
 
-    await goToMisDocumentos(page);
+    // Minutas tab (default) — wait for the table so tags derive from displayed docs
+    await expect(page.getByRole("table").getByText("Contrato Laboral Draft")).toBeVisible({ timeout: 15_000 });
 
     // Click tag filter button (shows "Etiqueta")
     const tagBtn = page.getByRole("button", { name: /Etiqueta/i }).first();
     await expect(tagBtn).toBeVisible();
     await tagBtn.click();
 
-    // Tag dropdown menu should appear with "Todos" option
-    await expect(page.getByText("Todos").first()).toBeVisible();
+    // Dropdown lists "Todos" plus the tags of the displayed minutas
+    const tagMenu = page.getByTestId("tag-filter-menu");
+    await expect(tagMenu).toBeVisible();
+    await expect(tagMenu.getByText("Todos")).toBeVisible();
+    await expect(tagMenu.getByText("Laboral")).toBeVisible();
+    await expect(tagMenu.getByText("Comercial")).toBeVisible();
 
-    // Tag search input should appear inside dropdown
-    const tagSearch = page.getByPlaceholder("Buscar etiquetas...");
-    if (await tagSearch.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Just verify the search input is functional
-      await tagSearch.fill("test");
-      await tagSearch.clear();
-    }
+    // Searching narrows the tag list to matching names only
+    const tagSearch = tagMenu.getByPlaceholder("Buscar etiquetas...");
+    await tagSearch.fill("Lab");
+    await expect(tagMenu.getByText("Laboral")).toBeVisible();
+    await expect(tagMenu.getByText("Comercial")).toBeHidden();
+
+    // Clearing the search restores the full tag list
+    await tagSearch.clear();
+    await expect(tagMenu.getByText("Comercial")).toBeVisible();
   });
 });
 

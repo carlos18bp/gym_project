@@ -18,6 +18,7 @@ test(
       "@module:services",
       "@priority:P1",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {
@@ -52,14 +53,14 @@ test(
 );
 
 test(
-  "client can fill multi-stage form and submit request",
+  "client fills applicant stage and advances to the brand stage",
   {
     tag: [
-      "@flow:service-submit-request",
       "@flow:service-fill-form",
       "@module:services",
       "@priority:P1",
       "@role:client",
+      "@outcome:success",
     ],
   },
   async ({ page }) => {
@@ -88,16 +89,83 @@ test(
 
     await expect(page.getByRole("heading", { name: "Datos del Solicitante" })).toBeVisible({ timeout: 15_000 });
 
-    const nombreLabel = page.getByText("Nombre completo", { exact: false }).first();
-    await expect(nombreLabel).toBeVisible({ timeout: 10_000 });
-
     // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
     await page.locator('xpath=//label[contains(., "Nombre completo")]/following-sibling::input[1]').fill("Juan Perez");
     // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
     await page.locator('xpath=//label[contains(., "Correo electronico")]/following-sibling::input[1]').fill("juan@test.com");
 
+    // Advancing only succeeds if per-stage validation accepted the applicant data,
+    // so reaching stage 2 proves the fields were really filled and validated.
     await page.getByRole("button", { name: /^Siguiente$/i }).click();
     await expect(page.getByRole("heading", { name: "Informacion de la Marca" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Nombre de la marca")).toBeVisible();
+  }
+);
+
+test(
+  "client submits the completed request and receives a tracking number",
+  {
+    tag: [
+      "@flow:service-submit-request",
+      "@module:services",
+      "@priority:P1",
+      "@role:client",
+      "@outcome:success",
+    ],
+  },
+  async ({ page }) => {
+    const service = buildRegistroMarcarioService();
+
+    await installServiceTramiteApiMocks(page, {
+      userId: CLIENT_ID,
+      role: "client",
+      services: [service],
+    });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: {
+        id: CLIENT_ID,
+        role: "client",
+        first_name: "Client",
+        last_name: "E2E",
+        email: "client@example.com",
+        is_profile_completed: true,
+      },
+    });
+
+    await page.goto(`/services/${service.id}`);
+    await page.waitForLoadState("networkidle");
+
+    // Stage 1 — applicant data
+    await expect(page.getByRole("heading", { name: "Datos del Solicitante" })).toBeVisible({ timeout: 15_000 });
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Nombre completo")]/following-sibling::input[1]').fill("Juan Perez");
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Correo electronico")]/following-sibling::input[1]').fill("juan@test.com");
+    await page.getByRole("button", { name: /^Siguiente$/i }).click();
+
+    // Stage 2 — brand data (text + required single-select)
+    await expect(page.getByRole("heading", { name: "Informacion de la Marca" })).toBeVisible({ timeout: 10_000 });
+    // quality: allow-fragile-selector (form uses plain <label>+<input>; no for/id linkage)
+    await page.locator('xpath=//label[contains(., "Nombre de la marca")]/following-sibling::input[1]').fill("Marca E2E");
+    await page.getByRole("combobox").selectOption("Nominativa");
+    await page.getByRole("button", { name: /^Siguiente$/i }).click();
+
+    // Stage 3 — documents (optional) then submit
+    await expect(page.getByRole("heading", { name: "Documentos" })).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /^Enviar solicitud$/i }).click();
+
+    // SweetAlert2 confirms the submission and sets aria-hidden on the page behind it,
+    // so assert the toast, then dismiss it before querying the radicado panel.
+    // quality: allow-fragile-selector (SweetAlert2 portal class is a library-stable anchor)
+    const successToast = page.locator('[class~="swal2-popup"]');
+    await expect(successToast).toContainText(/enviada exitosamente/i, { timeout: 10_000 });
+    await successToast.getByRole("button", { name: "OK" }).click();
+
+    // Outcome: the request was created and its SIC tracking number (radicado) is shown.
+    await expect(page.getByRole("heading", { name: "Solicitud enviada con exito" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/Radicado generado/i)).toContainText("2026-00001");
   }
 );
 
@@ -166,10 +234,10 @@ test(
 
     await page.getByRole("button", { name: "Guardar borrador" }).click();
 
+    // Assert the confirmation text itself (state change), not just its visibility,
+    // so the test fails if the draft-save silently produced no acknowledgement.
     // quality: allow-fragile-selector (SweetAlert2 portal class is a library-stable anchor)
-    await expect(
-      page.locator(".swal2-popup").getByText(/Borrador guardado/i)
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator(".swal2-popup")).toContainText(/Borrador guardado/i, { timeout: 10_000 });
   }
 );
 
@@ -250,6 +318,7 @@ test(
       "@module:services",
       "@priority:P1",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {

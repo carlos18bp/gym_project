@@ -288,7 +288,9 @@ describe("document_utils.downloadFile", () => {
   test("throws when response has no data", async () => {
     get_request.mockResolvedValueOnce({});
 
-    await expect(downloadFile("/file", "a.pdf")).rejects.toBeTruthy();
+    await expect(downloadFile("/file", "a.pdf")).rejects.toThrow(
+      "[ERROR] No response data received."
+    );
     expect(console.error).toHaveBeenCalled();
   });
 

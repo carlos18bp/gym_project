@@ -1,6 +1,7 @@
 ---
 name: e2e-user-flows-check
 description: "User flow mapping — walk every view, module and component and enumerate the real user interactions in four outcome classes (success, error, failure, display), then map each to a qualifying E2E test and report the gaps."
+argument-hint: "[--mode freshness|migrate-outcomes (sólo el proposer, read-only)] [--emit-diff (mapping expectedSpecs→outcomes por flow)] [--out <path> (override del .proposed.json)]"
 ---
 
 # User Flow Map — per view, per outcome
@@ -12,6 +13,28 @@ description: "User flow mapping — walk every view, module and component and en
 You are a Senior QA/Product Analyst. Your mission is to produce a **complete map
 of the real interactions a user can perform**, view by view, and to identify
 which of them no qualifying test exercises.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara en la sesión ("¿el flow-map quedó viejo?") →
+proponer el comando en una línea y esperar confirmación; (3) sin argumentos en
+sesión interactiva → UNA sola AskUserQuestion (Q1).
+
+> **Invocada como subagente por [[qa]] (el conductor) o en un barrido fleet:
+> NUNCA pregunta — hereda el gating del conductor (regla 4 de §4).**
+
+**Q1 — Alcance** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Freshness del mapa (Recommended) | ¿quedó viejo vs rutas/componentes/endpoints? read-only, emite `.proposed.json` | `python3 scripts/propose_flow_definitions.py --repo-root . --mode freshness` |
+| Propuesta de outcomes | mapping `expectedSpecs`→`outcomes` por flow para review; nunca pisa el mapa | `python3 scripts/propose_flow_definitions.py --repo-root . --mode migrate-outcomes --emit-diff` |
+| Mapa completo + registro | Fases 0-7: matriz por vista y escribe `docs/USER_FLOW_MAP.md` + `flow-definitions.json` | `/e2e-user-flows-check` |
+
+**Qué NO se pregunta:** el tuning del proposer se tipea (`--emit-diff`,
+`--out <path>`); jamás ofrecer migrar los `expectedSpecs: 0` a `outcomes` —
+son `exempt` deliberado, no gap.
 
 ## What changed and why
 
@@ -151,6 +174,20 @@ nothing at all, and a spec without `@outcome:` credits only `success`.
 2. Gap list with suggested flow ids and priority
 3. Modules missing whole outcome classes
 4. Open questions
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Auditar cobertura contra el mapa | crédito sólo a tests calificados; junk-only primero | `python3 scripts/flow_coverage_audit.py --repo-root . --json test-results/flow-audit.json` |
+| Cerrar los gaps detectados | escribir los specs faltantes (junk-only antes que missing) | `/frontend-e2e-test-coverage` |
+| Re-chequear freshness | confirmar que el mapa registrado quedó al día | `python3 scripts/propose_flow_definitions.py --repo-root . --mode freshness` |
+
+Nunca ofrecer como fila clickeable `--write-junk-baseline` (el baseline sólo se
+congela tipeado) ni `/deploy-and-check` (manual-only).
 
 ---
 

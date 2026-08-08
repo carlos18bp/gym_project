@@ -16,8 +16,10 @@ from pathlib import Path
 from .base import ExternalLintFinding
 
 
-# Curated Ruff selection focused on pytest hygiene plus selected foundational families.
-CURATED_RUFF_RULE_SELECTORS: tuple[str, ...] = (
+# Curated Ruff selectors for backend test linting.
+# Keep pytest-style checks explicit while enabling targeted broader families.
+CURATED_RUFF_SELECTORS: tuple[str, ...] = (
+    # pytest-style rules
     "PT001",
     "PT002",
     "PT003",
@@ -36,11 +38,21 @@ CURATED_RUFF_RULE_SELECTORS: tuple[str, ...] = (
     "PT025",
     "PT026",
     "PT027",
+    "PT028",
+    "PT029",
+    "PT031",
+    # core Ruff families
     "F",
     "I",
     "UP",
     "D",
 )
+
+# Deprecated alias. Pre-canonical forks of this module exported the constant as
+# CURATED_RUFF_RULE_SELECTORS, and at least one fleet project (gym_project's
+# tooling regression test) imports that name — removing it breaks their suite
+# when the canonical core is synced over the fork.
+CURATED_RUFF_RULE_SELECTORS = CURATED_RUFF_SELECTORS
 
 
 # Normalized IDs used for cross-engine dedupe where meaningful.
@@ -80,7 +92,7 @@ class ExternalLintRunner:
         ]
 
     def run_ruff(self, targets: list[Path]) -> ExternalLintRunResult:
-        """Run Ruff on backend targets and normalize selected findings."""
+        """Run Ruff on backend pytest targets and normalize curated findings."""
         if not targets:
             return ExternalLintRunResult(source="ruff")
 
@@ -98,7 +110,7 @@ class ExternalLintRunner:
             "--output-format",
             "json",
             "--select",
-            ",".join(CURATED_RUFF_RULE_SELECTORS),
+            ",".join(CURATED_RUFF_SELECTORS),
             *[str(path) for path in targets],
         ]
 
@@ -133,7 +145,7 @@ class ExternalLintRunner:
 
         findings = []
         for entry in parsed:
-            code = str(entry.get("code") or "PT000")
+            code = str(entry.get("code") or "RUF000")
             relative_file = self._to_relative(entry.get("filename") or "")
             location = entry.get("location") or {}
             line = self._to_int(location.get("row"))
@@ -233,20 +245,6 @@ class ExternalLintRunner:
 
         return ExternalLintRunResult(source="eslint", findings=findings)
 
-    def _ruff_binary(self) -> str | None:
-        """Resolve Ruff binary from common project virtualenv locations or PATH."""
-        candidates = (
-            self.repo_root / "backend" / "venv" / "bin" / "ruff",
-            self.repo_root / "backend" / ".venv" / "bin" / "ruff",
-            self.repo_root / "venv" / "bin" / "ruff",
-            self.repo_root / ".venv" / "bin" / "ruff",
-        )
-        for candidate in candidates:
-            if candidate.exists():
-                return str(candidate)
-
-        return shutil.which("ruff")
-
     def _eslint_binary(self) -> str | None:
         local_bin = self.repo_root / "frontend" / "node_modules" / ".bin" / "eslint"
         if local_bin.exists():
@@ -254,6 +252,18 @@ class ExternalLintRunner:
 
         path_bin = shutil.which("eslint")
         return path_bin
+
+    def _ruff_binary(self) -> str | None:
+        """Locate Ruff binary from local virtualenvs before falling back to PATH."""
+        local_candidates = (
+            self.repo_root / "backend" / "venv" / "bin" / "ruff",
+            self.repo_root / "venv" / "bin" / "ruff",
+        )
+        for candidate in local_candidates:
+            if candidate.is_file():
+                return str(candidate)
+
+        return shutil.which("ruff")
 
     def _normalize_rule_id(self, source: str, external_rule_id: str) -> str:
         """Return a stable internal rule id for dedupe and reporting."""

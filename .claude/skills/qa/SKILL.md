@@ -2,7 +2,7 @@
 name: qa
 description: "QA conductor for a project: after a feature or fix is functionally complete, close and validate its test coverage end to end. Refreshes the E2E flow map, audits coverage (junk-only first), fans out backend / frontend-unit / e2e subagents to author tests to the 3-part definition of done, runs the quality gate, purges junk via test-audit, and lands the tests on the correct branch — never merging. Default dry-run; --apply to write and commit. From the toolkit, --all-repos / --all-vps run an analysis-only QA sweep of the fleet. Use when the operator says 'QA this', 'cover/validate the tests', 'self-QA', or has just finished a feature — NOT on every trivial edit."
 argument-hint: "[proyecto] [--apply] [--layers=backend,frontend-unit,e2e] [--project=X] [--all-repos] [--all-vps]"
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent
+allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
 hooks:
   Stop:
     - hooks:
@@ -17,13 +17,41 @@ quality verdict**, not a report. You run the chain the operator used to paste by
 hand — methodology → flow map → fake data → coverage → junk audit — as ordered
 phases, with production guards wired in, and you **never merge**.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) explicit flags → run direct, no menu;
+(2) clear intent from the session ("QA this" right after a feature landed
+here) → propose the command in one line and wait for confirmation; (3) bare
+`/qa` with no obvious project/feature → ONE AskUserQuestion with the fused
+questions below; (4) never inside fleet/headless sweeps (`--all-repos` /
+`--all-vps`) — and the skills this conductor dispatches (coverage skills,
+test-audit, fake-data-refresh) inherit THIS gating: they never ask on their own.
+
+**Q1 — Mode** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Dry-run (Recommended) | analyze coverage + quality gate; writes nothing, reports the worklist | `/qa <proyecto>` |
+| Apply | authors tests to the 3-part DoD, purges junk via test-audit, commits on the resolved work branch | `/qa <proyecto> --apply` |
+
+**Q2 — Layers** (`multiSelect: true` — combinable; no selection = all):
+
+| label | description | preview |
+|---|---|---|
+| backend | pytest layer | `--layers=backend` |
+| frontend-unit | jest/vitest layer | `--layers=frontend-unit` |
+| e2e | Playwright layer | `--layers=e2e` |
+
+**Qué NO se pregunta:** `--all-repos`/`--all-vps` (fleet sweep, analysis-only —
+typed only).
+
 ## Engine
 
 The deterministic parts live in
 `$HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh`. Call it; do not
 reimplement it.
 
-- `qa-agent.sh --preflight <proj>` → scope: layers, db engine, staging/protected,
+- `qa-agent.sh --preflight <proj>` → scope: layers, db engine, staging/production,
   `fake_data_allowed`, abstain decision, and the work coordinate.
 - `qa-agent.sh --check <proj>` → coverage audit + quality gate → worklist counts,
   verdict, and a `docs/audits/<date>-<proj>-qa.md` report.
@@ -87,10 +115,10 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
 
 1. **Dry-run by default.** Without `--apply`: describe the planned diffs, write
    nothing, commit nothing.
-2. **Production protected.** `--preflight` reports `protected=yes` for
-   production+active. On a fleet sweep those are read-only. Authoring on a
-   protected project needs an explicit `/qa --project=<X> --apply`. Staging-first
-   otherwise.
+2. **Production visibility.** `--preflight` reports `production=yes` for
+   production+active — informational: authoring follows the work coordinate
+   like any project (projects.yml decides), and fleet sweeps stay analysis-only
+   for every repo. Staging-first otherwise.
 3. **fake-data-refresh only off production.** `--preflight` reports
    `fake_data_allowed`. If `no`, SKIP the fake-data phase — never reseed prod.
 4. **Land on the resolved coordinate.** Commit only on `resolved_branch` from the
@@ -320,8 +348,7 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
   - **Prod-direct repo** (`resolved_branch` = `main`/`master`): land as a
     `qa/<fecha>` branch + PR targeting `resolved_branch`, per
     `git-branch-protocol` — NEVER push directly to a project repo's main.
-  **Do not merge.** Do not write to a production clone without an explicit
-  `--project`.
+  **Do not merge.**
 - **Git identity before committing:** `git var GIT_COMMITTER_IDENT` fails on a
   fresh clone — if it does, configure `user.name`/`user.email` **repo-local**
   with the operator's identity (never `--global`), then commit.
@@ -411,6 +438,8 @@ substitute for billing-blocked private repos and the Fase 5b runner.
 
 ## Output final
 
+Sin menú por diseño (§4): el cierre es el veredicto duro del gate; los siguientes pasos viven en el reporte y su Next steps.
+
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 (single-project):
 
@@ -453,8 +482,7 @@ Casos de veredicto:
   bridge ausente — `npm install` en `frontend/` habilita el análisis completo;
   el gate CI con node_modules es la última palabra).
 - 🔴 errores de CONTENIDO del gate, o un test (nuevo o existente) falla.
-- 🚫 REFUSED — intento de authoring sobre prod protegido sin `--project`, o commit
-  en `wrong-host`. Nombrar el override / el VPS correcto.
+- 🚫 REFUSED — intento de commit en `wrong-host`. Nombrar el VPS correcto.
 - ⏭️ abstención (sin infra de tests / nada que QA-ear).
 - ⏸️ release-hold, auth-pendiente de tailscale, o app no corriendo que requiere al
   operador.

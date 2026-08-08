@@ -31,8 +31,12 @@
           <p class="text-gray-400">Dibuja tu firma aquí</p>
         </div>
         
-        <button 
-          @click="clearCanvas" 
+        <button
+          @click="clearCanvas"
+          data-testid="draw-signature-clear"
+          type="button"
+          aria-label="Borrar firma dibujada"
+          title="Borrar firma dibujada"
           class="absolute -top-2 -right-2 bg-red-100 rounded-full p-1 text-red-500 shadow-sm hover:bg-red-200"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">

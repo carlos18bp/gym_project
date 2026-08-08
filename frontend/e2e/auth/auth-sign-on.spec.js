@@ -4,7 +4,7 @@ import { bypassCaptcha } from "../helpers/captcha.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("new user can register and is redirected to dashboard", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared', '@outcome:success'] }, async ({ page }) => {
   test.setTimeout(60_000);
   const userId = 2000;
 
@@ -38,10 +38,10 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   // Notification about verification code — dismiss it fully
   const notificationDialog = page.locator('[class~="swal2-popup"]');
   await expect(notificationDialog).toBeVisible({ timeout: 10_000 });
+  await expect(notificationDialog).toContainText("código de acceso");
   const okBtn = page.locator('[class~="swal2-confirm"]');
-  if (await okBtn.isVisible().catch(() => false)) {
-    await okBtn.click();
-  }
+  await expect(okBtn).toBeVisible();
+  await okBtn.click();
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll('.swal2-container').forEach(el => el.remove());
@@ -61,10 +61,10 @@ test("new user can register and is redirected to dashboard", { tag: ['@flow:auth
   // Wait for the success Swal to appear, then dismiss it to unblock navigation
   const successDialog = page.locator('[class~="swal2-popup"]');
   await expect(successDialog).toBeVisible({ timeout: 10_000 });
+  await expect(successDialog).toContainText("Registro exitoso");
   const confirmBtn = page.locator('[class~="swal2-confirm"]');
-  if (await confirmBtn.isVisible().catch(() => false)) {
-    await confirmBtn.click();
-  }
+  await expect(confirmBtn).toBeVisible();
+  await confirmBtn.click();
   await page.evaluate(() => {
     if (window.Swal) window.Swal.close();
     document.querySelectorAll('.swal2-container').forEach(el => el.remove());
@@ -116,7 +116,7 @@ test("registration with mismatched passwords shows warning", { tag: ['@flow:auth
   await expect(page).toHaveURL(/\/sign_on/);
 });
 
-test("registration with existing email shows error", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared'] }, async ({ page }) => {
+test("registration with existing email shows error", { tag: ['@flow:auth-register', '@module:auth', '@priority:P1', '@role:shared', '@outcome:error'] }, async ({ page }) => {
   const userId = 2002;
 
   await installAuthSignOnApiMocks(page, {

@@ -15,6 +15,12 @@ Act as an expert debugger. Your job is to **analyze and diagnose only**. Follow 
 > You must NOT: write code, apply fixes, create files, or run anything that MUTATES state (writes, migrations, deploys) — no changes to the codebase.
 > Your deliverable is a **diagnosis + recommended fix** — the user decides when and how to apply it.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por el bug a diagnosticar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+
+Sin picker por diseño: no hay flags de modo — el argumento es el bug: mensaje de error, stack trace o comportamiento inesperado.
+
 ---
 
 ## Phase 1 — Error Capture & Context Gathering
@@ -108,6 +114,8 @@ If the user reports the recommended fix did not work:
 ---
 
 ## Output final
+
+Sin menú por diseño (§4): read-only por diseño; el diagnóstico ES el entregable y el fix se decide fuera.
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill (read-only: diagnostica, NO aplica el fix):
 

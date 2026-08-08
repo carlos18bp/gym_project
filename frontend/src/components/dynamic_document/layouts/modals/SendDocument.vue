@@ -80,6 +80,7 @@
             >
               <div
                 v-show="file.hover"
+                data-testid="remove-file-button"
                 class="absolute p-0.5 mt-2 ml-2 rounded-full"
                 :class="file.style.xMark"
                 @click="removeFile(index)"

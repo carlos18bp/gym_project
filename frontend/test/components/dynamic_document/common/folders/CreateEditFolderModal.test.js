@@ -87,11 +87,12 @@ describe("CreateEditFolderModal.vue", () => {
   });
 
   test("submit button is disabled when name is empty", async () => {
+    // quality: allow-duplicate (distinct SUT vs UseDocumentByClient)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
   });
 
   test("submit button is enabled when name has content", async () => {
@@ -132,15 +133,15 @@ describe("CreateEditFolderModal.vue", () => {
     const wrapper = mountModal(pinia);
     await flushPromises();
 
-    const cancelBtn = wrapper.findAll("button").find(
+    const cancelBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Cancelar")
     );
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtns).toHaveLength(1);
 
-    await cancelBtn.trigger("click");
+    await cancelBtns[0].trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("successful submit in create mode calls createFolder and emits success", async () => {
@@ -159,7 +160,7 @@ describe("CreateEditFolderModal.vue", () => {
     expect(folderStore.createFolder).toHaveBeenCalledWith(
       expect.objectContaining({ name: "New Folder" })
     );
-    expect(wrapper.emitted("success")).toBeTruthy();
+    expect(wrapper.emitted("success")).toHaveLength(1);
   });
 
   test("successful submit in edit mode calls updateFolder", async () => {
@@ -181,7 +182,7 @@ describe("CreateEditFolderModal.vue", () => {
       5,
       expect.objectContaining({ name: "Updated Folder" })
     );
-    expect(wrapper.emitted("success")).toBeTruthy();
+    expect(wrapper.emitted("success")).toHaveLength(1);
   });
 
   test("edit mode pre-fills form with existing folder data", async () => {
@@ -223,7 +224,7 @@ describe("CreateEditFolderModal.vue", () => {
     await overlay.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("form resets when visibility changes to false", async () => {

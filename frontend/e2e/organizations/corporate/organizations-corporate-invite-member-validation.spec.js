@@ -5,7 +5,7 @@ import { installOrganizationsDashboardApiMocks } from "../../helpers/organizatio
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("corporate_client invite member: validation error shows inline and stats do not change", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate'] }, async ({ page }) => {
+test("corporate_client invite member: validation error shows inline and stats do not change", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate', '@outcome:error'] }, async ({ page }) => {
   test.setTimeout(60_000);
 
   const userId = 4900;

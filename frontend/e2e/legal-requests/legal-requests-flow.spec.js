@@ -3,7 +3,7 @@ import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { installLegalRequestsApiMocks } from "../helpers/legalRequestsMocks.js";
 
-test("client can create a legal request and is redirected to list", { tag: ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1', '@role:client'] }, async ({ page }) => {
+test("client can create a legal request and is redirected to list", { tag: ['@flow:legal-create-request', '@module:legal-requests', '@priority:P1', '@role:client', '@outcome:success'] }, async ({ page }) => {
   const userId = 900;
 
   await installLegalRequestsApiMocks(page, {

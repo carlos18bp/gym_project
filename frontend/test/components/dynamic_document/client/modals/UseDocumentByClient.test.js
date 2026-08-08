@@ -65,7 +65,7 @@ describe("UseDocumentByClient.vue", () => {
     await flushPromises();
 
     const submitBtn = wrapper.find('button[type="submit"]');
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
   });
 
   test("continue button is enabled when title has content", async () => {
@@ -80,6 +80,7 @@ describe("UseDocumentByClient.vue", () => {
   });
 
   test("close button emits close event", async () => {
+    // quality: allow-duplicate (distinct SUT vs EditDocumentModal)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -89,7 +90,7 @@ describe("UseDocumentByClient.vue", () => {
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("submit with documentId but no selectedDocument navigates to creator route", async () => {
@@ -129,10 +130,10 @@ describe("UseDocumentByClient.vue", () => {
     const wrapper = mountModal(pinia);
     await flushPromises();
 
-    const updateBtn = wrapper.findAll("button").find(
+    const updateBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Actualizar nombre")
     );
-    expect(updateBtn).toBeTruthy();
+    expect(updateBtns).toHaveLength(1);
   });
 
   test("'Actualizar nombre' is disabled when title unchanged", async () => {
@@ -145,7 +146,7 @@ describe("UseDocumentByClient.vue", () => {
     const updateBtn = wrapper.findAll("button").find(
       (b) => b.text().includes("Actualizar nombre")
     );
-    expect(updateBtn.attributes("disabled")).toBeDefined();
+    expect(updateBtn.attributes("disabled")).toBe("");
   });
 
   test("'Actualizar nombre' becomes enabled when title is changed", async () => {
@@ -186,7 +187,9 @@ describe("UseDocumentByClient.vue", () => {
       "Document name successfully updated.",
       "success"
     );
-    expect(wrapper.emitted("close")).toBeTruthy();
+    const closeEvents = wrapper.emitted("close");
+    expect(closeEvents).toHaveLength(1);
+    expect(closeEvents[0][0]).toEqual({ updatedDocId: 5 });
   });
 
   test("updateDocumentName error shows error notification", async () => {

@@ -9,6 +9,28 @@ argument-hint: "[optional: backend, frontend, docs, or all]"
 ## Goal
 Scan the repository for files that should be deleted, updated, or added to `.gitignore`. Produce a prioritized action list the user can approve before any destructive operation.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): si el operador pasó el argumento de alcance
+(`backend`/`frontend`/`docs`/`all`) → ejecutar directo, sin menú. Si la
+intención es clara por la sesión (p.ej. se venía hablando de basura en docs) →
+proponer el comando en una línea y esperar confirmación. Sin argumento y sin
+intención clara → UNA sola `AskUserQuestion` (Q1). Nunca preguntar en modo
+fleet/headless/cron ni dentro de un barrido.
+
+**Q1 — Alcance** (selección única — los alcances son excluyentes):
+
+| label | description | preview |
+|---|---|---|
+| Todo el repo (`all`) *(Recommended)* | audita backend + frontend + docs; read-only, sólo reporta | `/repo-cleanup all` |
+| Sólo backend | dead code Python, artefactos y configs huérfanas de `backend/` | `/repo-cleanup backend` |
+| Sólo frontend | componentes/composables sin referencias, builds trackeados | `/repo-cleanup frontend` |
+| Sólo docs | documentación stale, duplicada o vacía | `/repo-cleanup docs` |
+
+**Qué NO se pregunta:** nada más — no hay flags ocultos (el único argumento es
+el alcance). Los lotes de borrado no se preguntan acá: se aprueban después del
+reporte, con lista y evidencia visibles (ver `## Acciones disponibles`).
+
 ## What To Search For
 
 ### 1. Build & Test Artifacts Tracked in Git

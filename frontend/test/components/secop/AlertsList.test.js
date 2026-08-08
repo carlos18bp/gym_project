@@ -34,16 +34,10 @@ describe("AlertsList.vue", () => {
       },
     });
 
-    const toggleButton = wrapper.findAll("button").find(
-      (b) => b.text().includes("Pausar") || b.text().includes("Activar")
-    );
-    if (toggleButton) {
-      await toggleButton.trigger("click");
-      expect(wrapper.emitted("toggle")).toBeTruthy();
-    } else {
-      // Fallback: verify the component renders without error
-      expect(wrapper.text()).toContain("Toggle Me");
-    }
+    await wrapper.find("[data-testid='alert-toggle-1']").trigger("click");
+
+    expect(wrapper.emitted("toggle")).toHaveLength(1);
+    expect(wrapper.emitted("toggle")[0]).toEqual([1]);
   });
 
   test("emits delete event with alert id", async () => {
@@ -55,14 +49,9 @@ describe("AlertsList.vue", () => {
       },
     });
 
-    const deleteButton = wrapper.findAll("button").find(
-      (b) => b.text().includes("Eliminar") || b.text().includes("eliminar")
-    );
-    if (deleteButton) {
-      await deleteButton.trigger("click");
-      expect(wrapper.emitted("delete")).toBeTruthy();
-    } else {
-      expect(wrapper.text()).toContain("Delete Me");
-    }
+    await wrapper.find("[data-testid='alert-delete-1']").trigger("click");
+
+    expect(wrapper.emitted("delete")).toHaveLength(1);
+    expect(wrapper.emitted("delete")[0]).toEqual([1]);
   });
 });

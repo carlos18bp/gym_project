@@ -120,7 +120,7 @@ describe("UseDocumentTable.vue", () => {
 
     await findButtonByText(wrapper, "Volver a Mis Documentos").trigger("click");
 
-    expect(wrapper.emitted("go-back")).toBeTruthy();
+    expect(wrapper.emitted("go-back")).toHaveLength(1);
   });
 
   test("opens actions modal on row click", async () => {

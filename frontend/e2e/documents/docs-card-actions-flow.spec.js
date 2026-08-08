@@ -83,7 +83,7 @@ async function installCardActionsMocks(page, { userId, role = "lawyer", document
   });
 }
 
-test("lawyer sees document cards with titles and state badges on dashboard", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer filters the document list down to the Borrador state", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
   const userId = 7700;
   const documents = [
     buildMockDocument({ id: 7001, title: "Contrato Borrador", state: "Draft", createdBy: userId }),
@@ -97,9 +97,19 @@ test("lawyer sees document cards with titles and state badges on dashboard", { t
   });
 
   await page.goto("/dynamic_document_dashboard");
-  // Minutas tab is active by default
+  // Minutas tab is active by default; both states are listed with their badges
+  const table = page.getByRole("table");
   await expect(page.getByText("Contrato Borrador")).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Contrato Publicado")).toBeVisible();
+  await expect(table.getByText("Publicado", { exact: true })).toBeVisible();
+
+  // The state badge is what the state filter acts on.
+  await page.getByRole("button", { name: "Estado" }).click();
+  await page.getByRole("menuitem", { name: "Borrador" }).click();
+
+  await expect(page.getByText("Contrato Borrador")).toBeVisible();
+  await expect(page.getByText("Contrato Publicado")).toBeHidden();
+  await expect(table.getByText("Publicado", { exact: true })).toHaveCount(0);
 });
 
 test("lawyer clicks document row and sees actions modal", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -120,8 +130,10 @@ test("lawyer clicks document row and sees actions modal", { tag: ['@flow:docs-ca
 
   // Click on the document row to open actions
   await page.getByText("Doc Con Acciones").first().click();
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible();
+
+  // The actions modal opens with lawyer actions for a Draft minuta
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByTestId("document-action-preview")).toBeVisible();
 });
 
 test("client sees assigned documents with context-specific actions", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:client'] }, async ({ page }) => {
@@ -129,7 +141,7 @@ test("client sees assigned documents with context-specific actions", { tag: ['@f
   const lawyerId = 7703;
   const documents = [
     buildMockDocument({ id: 7020, title: "Doc Asignado Cliente", state: "Completed", createdBy: lawyerId, assignedTo: userId }),
-    buildMockDocument({ id: 7021, title: "Doc En Progreso", state: "InProgress", createdBy: lawyerId, assignedTo: userId }),
+    buildMockDocument({ id: 7021, title: "Doc En Progreso", state: "Progress", createdBy: lawyerId, assignedTo: userId }),
   ];
 
   await installCardActionsMocks(page, { userId, role: "client", documents, hasSignature: false });
@@ -139,13 +151,16 @@ test("client sees assigned documents with context-specific actions", { tag: ['@f
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // The client dashboard lists both assigned docs under "Mis Documentos"
+  await page.getByRole("button", { name: "Mis Documentos" }).click();
+  const table = page.getByRole("table");
+  await expect(table.getByText("Doc Asignado Cliente")).toBeVisible({ timeout: 15_000 });
+  await expect(table.getByText("Doc En Progreso")).toBeVisible();
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("client");
+  // Clicking an assigned document opens the actions modal for the client
+  await table.getByText("Doc Asignado Cliente").click();
+  await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
 });
 
 test("lawyer sees use-document templates as cards on Minutas tab", { tag: ['@flow:docs-card-actions', '@module:documents', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {

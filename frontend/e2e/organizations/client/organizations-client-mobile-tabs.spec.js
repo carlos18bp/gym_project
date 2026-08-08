@@ -5,7 +5,7 @@ import { installOrganizationsClientApiMocks } from "../../helpers/organizationsC
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("client mobile tabs dropdown switches sections and respects disabled state", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client'] }, async ({ page }) => {
+test("client mobile tabs dropdown switches sections and respects disabled state", { tag: ['@flow:org-client-view', '@module:organizations', '@priority:P2', '@role:client', '@outcome:display'] }, async ({ page }) => {
   const userId = 3550;
 
   await page.setViewportSize({ width: 375, height: 800 });

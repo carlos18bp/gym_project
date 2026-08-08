@@ -119,12 +119,13 @@ class JSASTBridge:
         self.parser_script = repo_root / "frontend" / "scripts" / "ast-parser.cjs"
         self._node_available: bool | None = None
         self._parser_available: bool | None = None
-    
+        self._node_cmd: str = "node"
+
     def _check_node(self) -> bool:
-        """Check if Node.js is available."""
+        """Check if Node.js is available, including NVM-managed installs."""
         if self._node_available is not None:
             return self._node_available
-        
+
         try:
             result = subprocess.run(
                 ["node", "--version"],
@@ -132,10 +133,34 @@ class JSASTBridge:
                 text=True,
                 timeout=5,
             )
-            self._node_available = result.returncode == 0
+            if result.returncode == 0:
+                self._node_available = True
+                self._node_cmd = "node"
+                return True
         except (subprocess.SubprocessError, FileNotFoundError):
-            self._node_available = False
-        
+            pass
+
+        # Fall back to NVM-managed node when not in PATH
+        import glob as _glob
+        import os as _os
+        nvm_pattern = _os.path.expanduser("~/.nvm/versions/node/*/bin/node")
+        candidates = sorted(_glob.glob(nvm_pattern), reverse=True)
+        for candidate in candidates:
+            try:
+                r = subprocess.run(
+                    [candidate, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if r.returncode == 0:
+                    self._node_available = True
+                    self._node_cmd = candidate
+                    return True
+            except (subprocess.SubprocessError, FileNotFoundError):
+                continue
+
+        self._node_available = False
         return self._node_available
     
     def _check_parser(self) -> bool:
@@ -156,6 +181,27 @@ class JSASTBridge:
     def is_available(self) -> bool:
         """Check if the bridge is usable."""
         return self._check_node() and self._check_parser()
+
+    def unavailable_reason(self) -> str:
+        """
+        Explain which precondition is missing, for an actionable gate message.
+
+        A generic "bridge not available" used to be a WARNING, so an entire
+        frontend suite could go unanalyzed while the gate still reported PASSED.
+        It is now an ERROR, which makes naming the exact missing piece necessary:
+        the operator has to know whether to install Node or run npm install.
+        """
+        if not self._check_node():
+            return "Node.js not found in PATH nor under ~/.nvm/versions/node/*/bin/node"
+        if not self.parser_script.exists():
+            return f"AST parser script missing at {self.parser_script}"
+        babel = self.repo_root / "frontend" / "node_modules" / "@babel" / "parser"
+        if not babel.exists():
+            return (
+                "@babel/parser not installed - run `npm install` in frontend/ "
+                "(frontend/node_modules is absent on hosts that prune dev deps)"
+            )
+        return "unknown reason"
     
     def parse_file(self, file_path: Path, is_e2e: bool = False) -> JSFileResult:
         """
@@ -175,7 +221,7 @@ class JSASTBridge:
             )
         
         try:
-            cmd = ["node", str(self.parser_script), str(file_path)]
+            cmd = [self._node_cmd, str(self.parser_script), str(file_path)]
             if is_e2e:
                 cmd.append("--e2e")
             

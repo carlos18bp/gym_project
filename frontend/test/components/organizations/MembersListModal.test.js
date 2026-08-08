@@ -193,12 +193,12 @@ describe("MembersListModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cerrar"));
 
-    expect(closeBtn).toBeTruthy();
+    expect(closeBtn.text()).toContain("Cerrar");
 
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("skips loading when organization lacks id", async () => {

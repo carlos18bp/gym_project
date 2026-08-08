@@ -111,14 +111,14 @@ describe("SignatureDocumentCard.vue", () => {
     });
 
     await wrapper.find("[data-test='emit-click']").trigger("click");
-    expect(wrapper.emitted("click")).toBeTruthy();
+    expect(wrapper.emitted("click")).toHaveLength(1);
     expect(wrapper.emitted("click")[0][0]).toEqual(doc);
 
     await wrapper.find("[data-test='emit-refresh']").trigger("click");
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
 
     await wrapper.find("[data-test='emit-remove']").trigger("click");
-    expect(wrapper.emitted("remove-from-folder")).toBeTruthy();
+    expect(wrapper.emitted("remove-from-folder")).toHaveLength(1);
     expect(wrapper.emitted("remove-from-folder")[0][0]).toEqual(doc);
   });
 

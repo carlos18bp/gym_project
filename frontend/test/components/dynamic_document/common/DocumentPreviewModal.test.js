@@ -43,6 +43,6 @@ describe("DocumentPreviewModal.vue", () => {
 
     await wrapper.find("button").trigger("click");
 
-    expect(wrapper.emitted().close).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

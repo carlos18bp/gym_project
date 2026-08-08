@@ -29,7 +29,7 @@ async function setupClientDashboard(page, { userId, documents = [], folders = []
 }
 
 test.describe("Client Document Dashboard", { tag: ['@flow:docs-dashboard-client', '@module:documents', '@priority:P1', '@role:client'] }, () => {
-  test("client navigates all dashboard tabs and sees folders by default", { tag: ['@flow:docs-dashboard-client', '@module:documents', '@priority:P1', '@role:client'] }, async ({ page }) => {
+  test("client navigates all dashboard tabs and sees folders by default", { tag: ['@flow:docs-dashboard-client', '@module:documents', '@priority:P1', '@role:client', '@outcome:display'] }, async ({ page }) => {
     const userId = 8000;
     const docs = [
       buildMockDocument({ id: 501, title: "Mi Contrato Laboral", state: "Progress", createdBy: 999, assignedTo: userId }),

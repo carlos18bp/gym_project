@@ -81,7 +81,7 @@ async function installDashboardWithReportsMocks(page, { userId, role, reportResp
   });
 }
 
-test("lawyer navigates to Reportes tab and generates an Excel report", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer navigates to Reportes tab and generates an Excel report", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const userId = 4100;
 
   await installDashboardWithReportsMocks(page, {
@@ -121,7 +121,7 @@ test("lawyer navigates to Reportes tab and generates an Excel report", { tag: ['
   await expect(page.getByLabel("Tipo de Reporte")).toBeVisible({ timeout: 10_000 });
 });
 
-test("lawyer sees validation when only one date is provided", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
+test("lawyer sees validation when only one date is provided", { tag: ['@flow:dashboard-reports', '@module:dashboard', '@priority:P2', '@role:lawyer', '@outcome:error'] }, async ({ page }) => {
   const userId = 4101;
 
   await installDashboardWithReportsMocks(page, {

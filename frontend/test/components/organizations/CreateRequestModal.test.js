@@ -256,7 +256,7 @@ describe("CreateRequestModal.vue", () => {
 
     const submitButton = wrapper.find('button[type="submit"]');
     expect(submitButton.exists()).toBe(true);
-    expect(submitButton.attributes("disabled")).toBeDefined();
+    expect(submitButton.attributes("disabled")).toBe("");
 
     await wrapper.find("select#organization").setValue("1");
     await wrapper.find("select#request_type").setValue("1");
@@ -329,7 +329,7 @@ describe("CreateRequestModal.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("created")).toBeTruthy();
+    expect(wrapper.emitted("created")).toHaveLength(1);
     expect(wrapper.emitted("created")[0][0].request_number).toBe("CORP-REQ-500");
 
     expect(wrapper.text()).toContain("¡Solicitud Enviada!");
@@ -530,7 +530,7 @@ describe("CreateRequestModal.vue", () => {
       .findAll("button")
       .find((b) => b.text().includes("Crear Otra Solicitud"));
 
-    expect(createAnotherButton).toBeTruthy();
+    expect(createAnotherButton.text()).toContain("Crear Otra Solicitud");
     await createAnotherButton.trigger("click");
     await flushPromises();
 
@@ -577,7 +577,7 @@ describe("CreateRequestModal.vue", () => {
       wrapper.findAll("button").find((button) => button.classes().includes("text-gray-400"));
 
     const initialCloseButton = getCloseButton();
-    expect(initialCloseButton).toBeTruthy();
+    expect(initialCloseButton.classes()).toContain("text-gray-400");
     await initialCloseButton.trigger("click");
     expect(wrapper.emitted("close")?.length ?? 0).toBe(1);
 
@@ -592,7 +592,7 @@ describe("CreateRequestModal.vue", () => {
 
     const closeEventsBefore = wrapper.emitted("close")?.length ?? 0;
     const loadingCloseButton = getCloseButton();
-    expect(loadingCloseButton).toBeTruthy();
+    expect(loadingCloseButton.classes()).toContain("text-gray-400");
     await loadingCloseButton.trigger("click");
     expect(wrapper.emitted("close")?.length ?? 0).toBe(closeEventsBefore);
 
@@ -606,7 +606,7 @@ describe("CreateRequestModal.vue", () => {
     await flushPromises();
 
     const finalCloseButton = getCloseButton();
-    expect(finalCloseButton).toBeTruthy();
+    expect(finalCloseButton.classes()).toContain("text-gray-400");
     await finalCloseButton.trigger("click");
 
     expect(wrapper.emitted("close")?.length ?? 0).toBe(closeEventsBefore + 1);

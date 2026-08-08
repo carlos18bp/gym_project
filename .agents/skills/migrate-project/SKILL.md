@@ -7,7 +7,7 @@ allowed-tools: Bash, Read, Edit, AskUserQuestion
 
 ## Qué hace esta skill
 
-Migra un proyecto Django entre dos VPS del fleet (origin → target) componiendo los scripts existentes vía `FORCE_SINGLE_PROJECT` + `FORCE_PROJECTS` env vars. NO migra un VPS completo (para eso usar `docs/migration-runbook.md`).
+Migra un proyecto Django entre dos VPS del fleet (origin → target) componiendo los scripts existentes vía la env var `FORCE_SINGLE_PROJECT` (narrowing de `LOCAL_PROJECTS` a un solo proyecto). NO migra un VPS completo (para eso usar `docs/migration-runbook.md`).
 
 **Casos de uso típicos:**
 - Mover un proyecto de un VPS saturado a uno nuevo
@@ -49,6 +49,28 @@ La detección usa `resolve_server_alias` + `is_dev_machine` de `scripts/lib/boot
 | `--apply` | Pasos 1-15: snapshot + transfer + clone + DB + media + bootstrap en target. Services en origin SIGUEN VIVOS. Idempotente. | No |
 | `--cutover --confirm-downtime` | Paso 16: stop origin → final delta dump → start target → DNS guidance → smoke tests → commit `projects.yml` flip | **Sí, ≤5 min HTTP / ≈0 min si SSL blue-green** |
 | `--rollback` | Restart origin services, deja target en warm spare. DNS flip back es manual. | Reversión |
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4), en DOS niveles porque hay args posicionales:
+(1) posicionales + modo explícitos → directo, sin menú; (2) intención clara por contexto
+→ proponer el comando en una línea y esperar confirmación; (3) posicionales resueltos y
+sin modo → UNA AskUserQuestion (Q1); (4) nunca en fleet/headless/cron. **Posicionales
+primero:** si faltan `<proyecto>` y/o `<target_vps>`, pedirlos en TEXTO plano una sola
+vez (son datos, no flags — no van en un picker); recién con la coordenada resuelta
+entra Q1.
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| --check (Recommended) | preflight read-only de los 20 pasos, sin mutaciones | `bash scripts/maintenance/migrate-project.sh --check <proyecto> <target_vps>` |
+| --apply | snapshot + transfer + warm spare en target; origin sigue vivo, sin downtime | `bash scripts/maintenance/migrate-project.sh --apply <proyecto> <target_vps>` |
+
+**Qué NO se pregunta:** `--cutover` NUNCA es opción clickeable (blocklist §4: exige
+`--confirm-downtime` TIPEADO — un click no es confirmación de downtime); `--rollback`
+se tipea tras leer el runbook (`docs/migrate-project-runbook.md`). La continuación
+post-corrida vive en el menú position-aware de `## Acciones disponibles`.
 
 ## Flujo recomendado
 
@@ -114,7 +136,7 @@ cutover).
 ### Paso 4 — Clone project repo en target (PRIMER acto de modificación)
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 bash scripts/bootstrap/clone-projects.sh --apply
 ```
 
@@ -186,7 +208,7 @@ que el `mysql-users.env` del paso 6 (commiteado y pusheado por el
 operador) esté disponible.
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/setup-mysql.sh --apply
 ```
 
@@ -222,7 +244,7 @@ catastróficos).
 ### Paso 12 — Snapshot DB + media + extras en origin (HEAVY)
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 bash scripts/maintenance/backup-mysql-and-media.sh
 ```
 
@@ -244,7 +266,7 @@ HOST_ROLE != target.
 ### Paso 14 — Restore DB + media + extras en target
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/restore-from-backup.sh --apply --from=<dir>
 ```
 
@@ -254,7 +276,7 @@ Importa DB, extrae media tarball, y extrae extras tarball (kore
 ### Paso 15 — venv + pip + frontend build + systemd
 
 ```bash
-FORCE_SINGLE_PROJECT=<proj> FORCE_PROJECTS=<proj> \
+FORCE_SINGLE_PROJECT=<proj> \
 sudo bash scripts/bootstrap/setup-project-environments.sh --apply
 ```
 

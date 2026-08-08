@@ -12,18 +12,16 @@ import {
  * "Alerta activa" indicator at all.
  */
 
-const TAGS = {
-  tag: [
-    "@flow:process-alerts",
-    "@module:processes",
-    "@priority:P2",
-    "@role:lawyer",
-  ],
-};
-
 test(
   "alert indicator is hidden when the stage alert is inactive",
-  TAGS,
+  {
+    tag: [
+      "@flow:process-alerts",
+      "@module:processes",
+      "@priority:P2",
+      "@role:lawyer",
+    ],
+  },
   async ({ page }) => {
     const lawyerId = 9300;
     const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", isGymLawyer: true });

@@ -46,6 +46,19 @@ caídos, lo reporta sin error.
 
 ---
 
+## Cómo invocar este skill (§4)
+
+Gating ([[_output-protocol]] §4): correr **directo, sin menú** — con o sin
+flags, la intención (bajar los dev servers de este proyecto) es inequívoca;
+nunca preguntar en modo fleet/headless/cron.
+
+Sin picker por diseño: flags de tuning (puertos); --clean-logs se ofrece post-run.
+
+**Qué NO se pregunta:** `--backend-port=`/`--frontend-port=` (defaults
+8000/3000; se tipean sólo si `/dev-up` corrió en puertos custom).
+
+---
+
 ## Phase 0 — Discovery
 
 ```bash
@@ -156,6 +169,16 @@ fi
 - Complementaria de `/dev-up`.
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Borrar logs (`--clean-logs`) | `rm -rf /tmp/<proyecto>-dev/` — pierde los logs del post-mortem (irreversible) | `/dev-down --clean-logs` |
+| Volver a levantar | re-bootstrapea lo que falte y arranca backend + frontend de nuevo | `/dev-up` |
 
 ## Output final
 

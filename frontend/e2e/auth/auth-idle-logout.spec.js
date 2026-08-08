@@ -1,118 +1,61 @@
 import { test, expect } from "../helpers/test.js";
 import { setAuthLocalStorage } from "../helpers/auth.js";
 import { mockApi } from "../helpers/api.js";
+import { bypassCaptcha } from "../helpers/captcha.js";
+import { installAuthSignInApiMocks } from "../helpers/authSignInMocks.js";
+import { accelerateLongTimers, installLongTimerControl } from "../helpers/idleTimers.js";
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-function buildMockUser({ id, role = "lawyer" }) {
-  return {
-    id,
-    first_name: "E2E",
-    last_name: "Idle",
-    email: `idle-${id}@example.com`,
-    role,
-    contact: "",
-    birthday: "",
-    identification: "",
-    document_type: "",
-    photo_profile: "",
-    is_profile_completed: true,
-    is_gym_lawyer: role === "lawyer",
-    has_signature: false,
-  };
-}
+// Do NOT reach for `page.clock` here. `clock.install()` (Playwright 1.60) has no
+// `toFake` option and always fakes requestAnimationFrame alongside setTimeout;
+// one of this app's rAF-driven dashboard libraries clears a rAF handle with
+// clearInterval, and Playwright's fake registry throws on that mismatch
+// ("Cannot clear timer: timer created with requestAnimationFrame() but cleared
+// with clearInterval()"), so fastForward() dies before advancing any time and
+// the idle timer never runs. See e2e/helpers/idleTimers.js for the full note
+// and for the native-timer approach used below instead.
 
-async function installIdleLogoutMocks(page, { userId, role = "lawyer" }) {
-  const user = buildMockUser({ id: userId, role });
-  const nowIso = new Date().toISOString();
+test("idle timeout logs the user out and redirects to sign_in without any activity", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  test.setTimeout(60_000);
+  const userId = 8103;
+  const email = `lawyer.${userId}@test.local`;
 
-  await mockApi(page, async ({ route, apiPath }) => {
-    if (apiPath === "validate_token/") {
-      return { status: 200, contentType: "application/json", body: "{}" };
-    }
+  await installAuthSignInApiMocks(page, { userId, role: "lawyer", signInStatus: 200 });
 
-    if (apiPath === "users/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify([user]) };
-    }
+  // Wrap the native timers before the SPA boots: useIdleLogout's
+  // setTimeout(handleIdle, 15 min) is only scheduled by App.vue's real
+  // router/authStore wiring (watch(authStore.token) -> subscribe()) once login
+  // succeeds, well after this call — the wrapper has to be in place by then to
+  // record it.
+  await installLongTimerControl(page);
 
-    if (apiPath === `users/${userId}/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify(user) };
-    }
-
-    if (apiPath === `users/${userId}/signature/`) {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ has_signature: false }) };
-    }
-
-    if (apiPath === "user-activities/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "create-activity/") {
-      return {
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify({ id: 1, action_type: "other", description: "", created_at: nowIso }),
-      };
-    }
-
-    if (apiPath === "recent-processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "dynamic-documents/recent/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "legal-updates/active/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "processes/") {
-      return { status: 200, contentType: "application/json", body: "[]" };
-    }
-
-    if (apiPath === "google-captcha/site-key/") {
-      return { status: 200, contentType: "application/json", body: JSON.stringify({ site_key: "e2e-site-key" }) };
-    }
-
-    return null;
-  });
-}
-
-test("useIdleLogout composable is initialized and listens for activity events", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
-  const userId = 8100;
-
-  await installIdleLogoutMocks(page, { userId });
-
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: {
-      id: userId,
-      role: "lawyer",
-      is_gym_lawyer: true,
-      is_profile_completed: true,
-    },
+  await page.goto("/sign_in");
+  await expect(page.getByRole("heading", { name: "Te damos la bienvenida de nuevo" })).toBeVisible({
+    timeout: 15_000,
   });
 
-  await page.goto("/dashboard");
+  await page.locator('[id="email"]').fill(email);
+  await page.locator('[id="password"]').fill("password");
+  await bypassCaptcha(page);
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
+
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("token")), { timeout: 10_000 })
+    .toBe("e2e-access-token");
 
-  // Verify the idle logout composable is active by checking that
-  // activity event listeners are registered on the window
-  const hasActivityListeners = await page.evaluate(() => {
-    // Dispatch a mousemove event — if idle logout is wired up, it will be handled
-    // We can verify by checking that the app is still on dashboard after interaction
-    window.dispatchEvent(new MouseEvent("mousemove", { clientX: 100, clientY: 100 }));
-    return true;
-  });
-  expect(hasActivityListeners).toBe(true);
+  // No further interaction from here on. Re-arm the idle timer the app itself
+  // scheduled so it fires now instead of in 15 minutes; the browser invokes the
+  // real handleIdle. A count of 0 means login never armed one — the wiring
+  // regression this test exists to catch (useIdleLogout only ever receives a
+  // real router/authStore here; its unit test supplies mocks).
+  const armedTimers = await accelerateLongTimers(page, { fireInMs: 500 });
+  expect(armedTimers).toBeGreaterThan(0);
 
-  // User should remain on dashboard after activity
-  await expect(page).toHaveURL(/\/dashboard/);
-
-  // Token should still be present
+  await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
   const token = await page.evaluate(() => localStorage.getItem("token"));
-  expect(token).toBe("e2e-token");
+  expect(token).toBeNull();
 });
 
 test("unauthenticated user accessing dashboard is redirected to sign_in", { tag: ['@flow:auth-idle-logout', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {

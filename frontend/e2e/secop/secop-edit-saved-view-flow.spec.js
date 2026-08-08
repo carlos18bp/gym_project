@@ -32,7 +32,7 @@ test.describe("SECOP Edit Saved View Flow", () => {
   });
 
   test("lawyer can open edit modal for an existing saved view", {
-    tag: ['@flow:secop-edit-saved-view', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-edit-saved-view', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:display'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();
@@ -52,7 +52,7 @@ test.describe("SECOP Edit Saved View Flow", () => {
   });
 
   test("lawyer can rename a saved view and save it", {
-    tag: ['@flow:secop-edit-saved-view', '@module:secop', '@priority:P3', '@role:lawyer'],
+    tag: ['@flow:secop-edit-saved-view', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
     await expect(page.getByTestId("secop-tabs")).toBeVisible();

@@ -164,7 +164,7 @@ describe("OrganizationPostsSection.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Actualizar"));
 
-    expect(refreshButton).toBeTruthy();
+    expect(refreshButton.text()).toContain("Actualizar");
 
     await refreshButton.trigger("click");
     await flushPromises();

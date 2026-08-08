@@ -1,4 +1,17 @@
-"""Regression tests for test quality gate tooling helpers."""
+"""Regression tests for test quality gate tooling helpers.
+
+These exercise the quality core under `scripts/`, which since commit 7c3af01 is
+the canonical core propagated verbatim from vps-ops-toolkit instead of a fork
+owned by this repo. Two consequences shape the tests below:
+
+* Project-specific settings no longer live in `quality/base.py` defaults; they
+  are declared in `.testquality.yml` and read by `load_project_config()` on
+  every real run. Synthetic repo roots (`tmp_path`) have no such file, so a
+  bare `Config()` yields canonical defaults for another fleet project — the
+  tests must declare this project's values themselves (see `_gate_config`).
+* Assertions must pin the core's *contract* (rule ids, categories, severities),
+  not human-readable wording, which the canonical core is free to reword.
+"""
 
 import ast
 import json
@@ -36,10 +49,25 @@ from quality.js_ast_bridge import JSFileResult, JSIssueInfo, JSTestInfo  # noqa:
 from quality.patterns import Patterns  # noqa: E402
 from test_quality_gate import QualityReport  # noqa: E402
 
+# Django app whose test tree the synthetic repos below emulate. It must stay in
+# sync with the "backend/<app>/tests/..." paths used throughout this module and
+# with `backend_app_name` in the repo's .testquality.yml. The canonical quality
+# core defaults this to a different fleet project's app on purpose (per-project
+# values belong in .testquality.yml, not in the shared code), and a synthetic
+# tmp_path repo has no .testquality.yml to read — so with a bare, unparameterized
+# Config() the backend discovery walks backend/<other-app>/tests, finds nothing,
+# and every positive assertion below silently degrades to "no findings".
+BACKEND_APP = "gym_app"
+
+
+def _gate_config() -> Config:
+    """Build the Config a real gate run uses for this repo (see BACKEND_APP)."""
+    return Config(backend_app_name=BACKEND_APP)
+
 
 def _build_analyzers(tmp_path: Path) -> tuple[FrontendUnitAnalyzer, FrontendE2EAnalyzer]:
     """Create frontend analyzers with shared config/patterns for tests."""
-    config = Config()
+    config = _gate_config()
     patterns = Patterns(config)
     unit = FrontendUnitAnalyzer(tmp_path, config, patterns)
     e2e = FrontendE2EAnalyzer(tmp_path, config, patterns)
@@ -83,7 +111,7 @@ def _build_backend_report_for_source(tmp_path: Path, relative_path: str, source:
     target = _write_backend_test(tmp_path, relative_path, source).resolve()
     return QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         include_files=[str(target)],
     ).build()
@@ -218,7 +246,7 @@ def test_quality_report_include_file_filters_backend_suite(tmp_path: Path) -> No
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         include_files=[str(selected_abs)],
     ).build()
@@ -248,7 +276,7 @@ def test_quality_report_include_glob_filters_backend_suite(tmp_path: Path) -> No
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         include_globs=["backend/gym_app/tests/models/test_*.py"],
     ).build()
@@ -368,7 +396,7 @@ def test_semantic_off_backend():
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="off",
         include_files=[str(target.resolve())],
@@ -618,7 +646,14 @@ def test_reads_environment_state_only():
 
 
 def test_frontend_unit_reports_explicit_error_when_ast_bridge_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Unit analyzer emits PARSE_ERROR instead of silently returning an empty suite."""
+    """Unit analyzer emits PARSE_ERROR instead of silently returning an empty suite.
+
+    Pinned on the `ast_bridge_unavailable` rule id rather than on the sentence:
+    the canonical core reworded this finding from "unit tests were not analyzed"
+    to "AST-based unit rules were NOT run (junk detectors still applied)"
+    because the source-based detectors now do run in this degraded mode, which
+    makes the old wording inaccurate.
+    """
     unit_analyzer, _ = _build_analyzers(tmp_path)
     monkeypatch.setattr(unit_analyzer.bridge, "is_available", lambda: False)
 
@@ -629,11 +664,19 @@ def test_frontend_unit_reports_explicit_error_when_ast_bridge_unavailable(tmp_pa
     issue = result.all_issues[0]
     assert issue.category == IssueCategory.PARSE_ERROR
     assert issue.severity == Severity.ERROR
-    assert "not analyzed" in issue.message.lower()
+    assert issue.rule_id == "ast_bridge_unavailable"
+    assert "not run" in issue.message.lower()
 
 
 def test_frontend_e2e_reports_explicit_error_when_ast_bridge_unavailable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """E2E analyzer emits PARSE_ERROR instead of silently returning an empty suite."""
+    """E2E analyzer emits PARSE_ERROR instead of silently returning an empty suite.
+
+    Pinned on the `ast_bridge_unavailable` rule id rather than on the sentence:
+    the canonical core reworded this finding from "E2E tests were not analyzed"
+    to "AST-based E2E rules were NOT run (junk detectors still applied)" because
+    the source-based detectors now do run in this degraded mode, which makes the
+    old wording inaccurate.
+    """
     _, e2e_analyzer = _build_analyzers(tmp_path)
     monkeypatch.setattr(e2e_analyzer.bridge, "is_available", lambda: False)
 
@@ -644,7 +687,8 @@ def test_frontend_e2e_reports_explicit_error_when_ast_bridge_unavailable(tmp_pat
     issue = result.all_issues[0]
     assert issue.category == IssueCategory.PARSE_ERROR
     assert issue.severity == Severity.ERROR
-    assert "not analyzed" in issue.message.lower()
+    assert issue.rule_id == "ast_bridge_unavailable"
+    assert "not run" in issue.message.lower()
 
 
 def test_fragile_selector_uses_fragile_locator_category(tmp_path: Path) -> None:
@@ -720,7 +764,7 @@ await page.locator('.legacy-selector').click();
 
 def test_e2e_selector_strict_mode_escalates_to_warning(tmp_path: Path) -> None:
     """Fragile selector severity escalates from info to warning in strict semantic mode."""
-    config = Config()
+    config = _gate_config()
     patterns = Patterns(config)
     e2e_analyzer = FrontendE2EAnalyzer(tmp_path, config, patterns, semantic_rules="strict")
     file_path = tmp_path / "frontend" / "e2e" / "strict_selector.spec.js"
@@ -760,7 +804,7 @@ def test_e2e_wait_for_timeout_severity_depends_on_semantic_mode(tmp_path: Path, 
         issue_count=1,
     )
 
-    config = Config()
+    config = _gate_config()
     patterns = Patterns(config)
     soft = FrontendE2EAnalyzer(tmp_path, config, patterns, semantic_rules="soft")
     strict = FrontendE2EAnalyzer(tmp_path, config, patterns, semantic_rules="strict")
@@ -807,7 +851,7 @@ def test_e2e_vague_assertion_severity_depends_on_semantic_mode(tmp_path: Path, m
         issue_count=1,
     )
 
-    config = Config()
+    config = _gate_config()
     patterns = Patterns(config)
     soft = FrontendE2EAnalyzer(tmp_path, config, patterns, semantic_rules="soft")
     strict = FrontendE2EAnalyzer(tmp_path, config, patterns, semantic_rules="strict")
@@ -874,7 +918,7 @@ def test_frontend_unit_maps_semantic_issue_types(tmp_path: Path, monkeypatch: py
 
 def test_frontend_unit_semantic_rules_off_skips_semantic_issue_types(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Frontend unit analyzer suppresses semantic issues when semantic_rules=off."""
-    config = Config()
+    config = _gate_config()
     patterns = Patterns(config)
     unit_analyzer = FrontendUnitAnalyzer(tmp_path, config, patterns, semantic_rules="off")
 
@@ -950,7 +994,7 @@ test('legacy', () => {});
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="frontend-unit",
         include_files=[str(target.resolve())],
     ).build()
@@ -995,7 +1039,7 @@ def test_quality_report_semantic_rules_off_suppresses_frontend_unit_semantic_iss
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="frontend-unit",
         semantic_rules="off",
         include_files=[str(target.resolve())],
@@ -1041,7 +1085,7 @@ def test_quality_report_semantic_rules_off_suppresses_frontend_e2e_semantic_issu
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="frontend-e2e",
         semantic_rules="off",
         include_files=[str(target.resolve())],
@@ -1536,7 +1580,7 @@ def test_performance_budget_issues_emit_for_exceeded_suite_and_total_thresholds(
     """Performance budget helper emits warning issues for exceeded suite and total timings."""
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite_time_budget_seconds=1.0,
         total_time_budget_seconds=2.5,
     )
@@ -1567,7 +1611,7 @@ def test_performance_budget_issues_skip_when_thresholds_not_exceeded(tmp_path: P
     """Performance budget helper returns no issues when timings are within configured budgets."""
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite_time_budget_seconds=2.0,
         total_time_budget_seconds=5.0,
     )
@@ -1586,7 +1630,16 @@ def test_performance_budget_issues_skip_when_thresholds_not_exceeded(tmp_path: P
 
 
 def test_external_lint_runner_ruff_uses_curated_selectors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Ruff runner sends the curated selector set to --select."""
+    """Ruff runner sends the curated selector set to --select.
+
+    The old `"PT028" not in selected_rules` line pinned where this repo's fork
+    of the list happened to stop (PT027); the canonical core deliberately
+    curates PT028/PT029/PT031 in as well, and no rationale was ever recorded
+    for excluding them. What the assertion was really guarding is that pytest
+    rules stay enumerated one by one instead of being swept in by the "PT"
+    family selector, which would silently enable un-curated rules on every
+    ruff upgrade — so that is what it now asserts.
+    """
     result, captured_command = _run_ruff_with_captured_command(tmp_path, monkeypatch)
 
     assert result.status == "ok"
@@ -1596,7 +1649,8 @@ def test_external_lint_runner_ruff_uses_curated_selectors(tmp_path: Path, monkey
     select_index = captured_command.index("--select")
     selected_rules = set(captured_command[select_index + 1].split(","))
     assert selected_rules == set(CURATED_RUFF_RULE_SELECTORS)
-    assert "PT028" not in selected_rules
+    assert "PT" not in selected_rules
+    assert {"PT001", "PT028"} <= selected_rules
 
 
 def test_external_lint_misconfigured_is_warning_in_soft_mode(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1618,7 +1672,7 @@ def test_external_lint_misconfigured_is_warning_in_soft_mode(tmp_path: Path, mon
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="soft",
         external_lint="run",
@@ -1655,7 +1709,7 @@ def test_external_lint_misconfigured_is_error_in_strict_mode(tmp_path: Path, mon
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="strict",
         external_lint="run",
@@ -1692,7 +1746,7 @@ def test_external_lint_unavailable_reports_warning(tmp_path: Path, monkeypatch: 
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="soft",
         external_lint="run",
@@ -1742,7 +1796,7 @@ def test_external_lint_findings_are_info_in_semantic_off_mode(tmp_path: Path, mo
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="off",
         external_lint="run",
@@ -1793,7 +1847,7 @@ def test_external_wait_for_timeout_is_suppressed_in_semantic_off_mode(tmp_path: 
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="frontend-e2e",
         semantic_rules="off",
         external_lint="run",
@@ -1836,7 +1890,7 @@ def test_external_lint_deduplicates_by_fingerprint(tmp_path: Path, monkeypatch: 
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="soft",
         external_lint="run",
@@ -1873,7 +1927,7 @@ def test_cross_engine_dedupe_relaxes_line_mismatch_for_wait_for_timeout(tmp_path
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="frontend-e2e",
         include_files=[str(target.resolve())],
         semantic_rules="soft",
@@ -1908,7 +1962,7 @@ def test_external_lint_summary_contains_mode_results_and_timings(tmp_path: Path,
 
     report = QualityReport(
         repo_root=tmp_path,
-        config=Config(),
+        config=_gate_config(),
         suite="backend",
         semantic_rules="soft",
         external_lint="run",

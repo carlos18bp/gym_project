@@ -190,11 +190,11 @@ describe("DocumentForm.vue", () => {
     setupStores(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const generateBtn = wrapper.findAll("button").find(
+    const generateBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Generar")
     );
-    expect(generateBtn).toBeTruthy();
-    expect(generateBtn.attributes("disabled")).toBeDefined();
+    expect(generateBtns).toHaveLength(1);
+    expect(generateBtns[0].attributes("disabled")).toBe("");
   });
 
   test("complete/generate button becomes enabled when all fields are filled", async () => {
@@ -220,22 +220,22 @@ describe("DocumentForm.vue", () => {
     setupStores(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const saveBtn = wrapper.findAll("button").find(
+    const saveBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Guardar progreso")
     );
-    expect(saveBtn).toBeTruthy();
+    expect(saveBtns).toHaveLength(1);
   });
 
   test("cancel button navigates back to dashboard", async () => {
     setupStores(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const cancelBtn = wrapper.findAll("button").find(
+    const cancelBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Cancelar")
     );
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtns).toHaveLength(1);
 
-    await cancelBtn.trigger("click");
+    await cancelBtns[0].trigger("click");
     await flushPromises();
 
     expect(mockRouterPush).toHaveBeenCalledWith("/dynamic_document_dashboard");
@@ -287,10 +287,10 @@ describe("DocumentForm.vue", () => {
     setupStores(pinia);
     const wrapper = await mountComponent(pinia);
 
-    const saveBtn = wrapper.findAll("button").find(
+    const saveBtns = wrapper.findAll("button").filter(
       (b) => b.text().includes("Guardar cambios como Borrador")
     );
-    expect(saveBtn).toBeTruthy();
+    expect(saveBtns).toHaveLength(1);
   });
 
   test("textarea field spans full width (col-span-3)", async () => {
@@ -336,7 +336,7 @@ describe("DocumentForm.vue", () => {
     const formalizeBtn = wrapper.findAll("button").find((b) =>
       b.text().includes("Formalizar")
     );
-    expect(formalizeBtn.attributes("disabled")).toBeDefined();
+    expect(formalizeBtn.attributes("disabled")).toBe("");
   });
 
   test("correction mode shows Guardar y reenviar para firma button text", async () => {
@@ -367,12 +367,19 @@ describe("DocumentForm.vue", () => {
   test("correction mode prefills a future signature due date", async () => {
     mockRoute.params = { mode: "correction", id: "1", title: "Correction Doc" };
     const { docStore, mockDoc } = setupStores(pinia);
+    // Freeze only the clock (not the timers the mount flushing relies on) so
+    // the component and the test agree on "today" regardless of the run date.
+    jest.useFakeTimers({
+      doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "queueMicrotask", "nextTick"],
+    });
+    jest.setSystemTime(new Date("2026-07-01T12:00:00Z"));
     const futureDate = new Date(Date.now() + 10 * 86400000).toISOString().split("T")[0];
     docStore.fetchDocumentById.mockResolvedValue({ ...mockDoc, signature_due_date: futureDate });
 
     const wrapper = await mountComponent(pinia);
 
     expect(wrapper.find('[data-testid="correction-signature-due-date"]').element.value).toBe(futureDate);
+    jest.useRealTimers();
   });
 
   test("correction mode leaves the due date empty when the stored date is past", async () => {

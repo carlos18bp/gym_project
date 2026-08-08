@@ -237,36 +237,6 @@ describe("AllMembersModal.vue", () => {
     expect(wrapper.text()).toContain("No hay miembros");
   });
 
-  test("loadAllMembers returns early when organizations are empty", async () => {
-    const pinia = createPinia();
-    setActivePinia(pinia);
-
-    const getSpy = mockGetOrganizationMembers().mockResolvedValue([]);
-
-    const wrapper = mount(AllMembersModal, {
-      props: {
-        visible: false,
-        organizations: [],
-      },
-      global: {
-        plugins: [pinia],
-        stubs: {
-          TransitionRoot: TransitionRootStub,
-          TransitionChild: TransitionChildStub,
-          Dialog: DialogStub,
-          DialogPanel: DialogPanelStub,
-          DialogTitle: DialogTitleStub,
-        },
-      },
-    });
-
-    await wrapper.setProps({ visible: true });
-    await flushPromises();
-
-    expect(getSpy).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain("No hay miembros");
-  });
-
   test("loadAllMembers returns early when organizations prop is null", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
@@ -425,11 +395,11 @@ describe("AllMembersModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cerrar"));
 
-    expect(closeBtn).toBeTruthy();
+    expect(closeBtn.text()).toContain("Cerrar");
 
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

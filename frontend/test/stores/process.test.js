@@ -323,7 +323,7 @@ describe("Process Store behaviors", () => {
 
     // Activity registered
     const activityReq = mock.history.post.find((r) => r.url === "/api/create-activity/");
-    expect(activityReq).toBeTruthy();
+    expect(mock.history.post.filter((r) => r.url === "/api/create-activity/")).toHaveLength(1);
     const activityPayload = JSON.parse(activityReq.data);
     expect(activityPayload.action_type).toBe("create");
   });
@@ -736,7 +736,9 @@ describe("Process Store behaviors", () => {
 
     mock.onGet("/api/processes/").reply(200, []);
 
-    await expect(store.fetchProcessById(999)).rejects.toBeTruthy();
+    await expect(store.fetchProcessById(999)).rejects.toThrow(
+      "Process with ID 999 not found"
+    );
 
     consoleSpy.mockRestore();
   });

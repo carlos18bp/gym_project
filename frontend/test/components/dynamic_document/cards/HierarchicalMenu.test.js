@@ -50,11 +50,11 @@ describe("HierarchicalMenu.vue", () => {
     const btn = wrapper
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Previsualizar");
-    expect(btn).toBeTruthy();
+    expect(btn.text()).toBe("Previsualizar");
 
     await btn.trigger("click");
 
-    expect(wrapper.emitted("menu-action")).toBeTruthy();
+    expect(wrapper.emitted("menu-action")).toHaveLength(1);
     expect(wrapper.emitted("menu-action")[0][0]).toBe("preview");
   });
 
@@ -93,11 +93,11 @@ describe("HierarchicalMenu.vue", () => {
     const childBtn = wrapper
       .findAll("button")
       .find((b) => (b.text() || "").trim() === "Editar Documento");
-    expect(childBtn).toBeTruthy();
+    expect(childBtn.text()).toBe("Editar Documento");
 
     await childBtn.trigger("click");
 
-    expect(wrapper.emitted("menu-action")).toBeTruthy();
+    expect(wrapper.emitted("menu-action")).toHaveLength(1);
     expect(wrapper.emitted("menu-action")[0][0]).toBe("editDocument");
     expect(wrapper.find("[data-testid='submenu-panel']").exists()).toBe(false);
   });

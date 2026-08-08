@@ -1,6 +1,7 @@
 ---
 name: frontend-e2e-test-coverage
 description: "E2E coverage — close untested user flows with specs that exercise real interactions. Coverage is the readout, not the goal: a flow counts only when a qualifying test drives it through the UI."
+argument-hint: "[--apply (escribe los specs; default dry-run: describe el diff)] [--files=<a,b> (acota el lote)] [--semantic-rules strict] [--junk-severity=error]"
 ---
 
 # E2E Test Coverage
@@ -9,6 +10,29 @@ description: "E2E coverage — close untested user flows with specs that exercis
 > `qa-engineer-e2e`, que la precarga vía `skills:`); el flow-map que consume lo
 > refresca [[e2e-user-flows-check]] en la Fase 1. Invocable suelta para trabajo
 > puntual de una capa.
+
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara en la sesión ("cerrá los flows de checkout") →
+proponer el comando en una línea y esperar confirmación; (3) sin argumentos en
+sesión interactiva → UNA sola AskUserQuestion (Q1).
+
+> **Invocada como subagente por [[qa]] (el conductor) o en un barrido fleet:
+> NUNCA pregunta — hereda el gating del conductor (regla 4 de §4).**
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Análisis (Recommended) | corre el flow audit, prioriza junk-only/P1 y describe los specs propuestos; no escribe archivos | `/frontend-e2e-test-coverage` |
+| Escribir los specs | implementa specs `@flow`/`@outcome` al DoD de 3 puntos y valida con el gate; bajo `/qa --apply` quedan staged sin commitear | `/frontend-e2e-test-coverage --apply` |
+| Lote acotado | escribe sólo sobre los specs indicados | `/frontend-e2e-test-coverage --apply --files=<a,b>` |
+
+**Qué NO se pregunta:** el tuning se tipea (`--files=`, `--suite frontend-e2e`,
+`--semantic-rules`, `--junk-severity=`, `E2E_REUSE_SERVER=1`); los markers de
+escape (`allow-no-interaction`, `allow-deep-link`, …) se escriben con razón
+dentro del test, jamás se ofrecen; bajo [[qa]] el modo lo fija el conductor.
 
 ## Goal
 
@@ -210,6 +234,20 @@ abstention **is not a failure**. Fabricating a test to close the number is.
 
 8. Re-audit and confirm the flow moved to `covered` — o a `partial` si le
    faltan clases (nombrar cuáles): resultado legítimo, no fallo.
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Re-auditar cobertura de flows | confirma que los flows tocados pasaron a covered/partial | `python3 scripts/flow_coverage_audit.py --repo-root .` |
+| Re-correr el gate sobre el lote | valida los specs tocados contra las reglas anti-basura | `bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proyecto> --files=<a,b>` |
+| Pasar a escritura | implementar los specs que el análisis dejó descritos | `/frontend-e2e-test-coverage --apply` |
+
+Nunca ofrecer como fila clickeable `--write-junk-baseline` (el baseline sólo se
+congela tipeado) ni `/deploy-and-check` (manual-only).
 
 ---
 

@@ -10,7 +10,7 @@ import {
   installOrganizationsDashboardApiMocks,
 } from "../../helpers/organizationsDashboardMocks.js";
 
-test("corporate_client can open AllMembersModal and see members grouped by organization", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate'] }, async ({ page }) => {
+test("corporate_client can open AllMembersModal and see members grouped by organization", { tag: ['@flow:org-members-list', '@module:organizations', '@priority:P2', '@role:corporate', '@outcome:display'] }, async ({ page }) => {
   const userId = 4600;
 
   const orgA = buildMockOrganization({

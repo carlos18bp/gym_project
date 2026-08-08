@@ -100,7 +100,9 @@ describe("GlobalLetterheadModal.vue", () => {
 
     expect(mockStore.uploadGlobalLetterheadImage).toHaveBeenCalledWith(file);
     expect(mockStore.getGlobalLetterheadImage).toHaveBeenCalled();
-    expect(wrapper.emitted().uploaded).toBeTruthy();
+    const uploadedEvents = wrapper.emitted("uploaded");
+    expect(uploadedEvents).toHaveLength(1);
+    expect(uploadedEvents[0][0]).toEqual({});
     expect(wrapper.vm.$.setupState.selectedFile).toBe(null);
   });
 
@@ -116,7 +118,7 @@ describe("GlobalLetterheadModal.vue", () => {
 
     expect(mockShowConfirmationAlert).toHaveBeenCalled();
     expect(mockStore.deleteGlobalLetterheadImage).toHaveBeenCalled();
-    expect(wrapper.emitted().deleted).toBeTruthy();
+    expect(wrapper.emitted("deleted")).toHaveLength(1);
     expect(wrapper.vm.$.setupState.currentImageUrl).toBe(null);
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
   });
@@ -228,7 +230,9 @@ describe("GlobalLetterheadModal.vue — selección, subida y descargas (coverage
     expect(mockStore.uploadGlobalLetterheadImage).toHaveBeenCalledWith(file);
     // clearSelection() wipes the backend warnings right after a successful upload
     expect(state(wrapper).warnings).toEqual([]);
-    expect(wrapper.emitted("uploaded")).toBeTruthy();
+    const uploadedEvents = wrapper.emitted("uploaded");
+    expect(uploadedEvents).toHaveLength(1);
+    expect(uploadedEvents[0][0]).toEqual({ warnings: ["Revisa el margen"] });
     expect(state(wrapper).selectedFile).toBeNull();
   });
 
@@ -308,7 +312,8 @@ describe("GlobalLetterheadModal.vue — selección, subida y descargas (coverage
 
     expect(mockStore.uploadGlobalLetterheadWordTemplate).toHaveBeenCalled();
     expect(state(wrapper).hasWordTemplate).toBe(true);
-    expect(state(wrapper).currentWordTemplateName).toBeTruthy();
+    // The header-less reload response falls back to the default template name.
+    expect(state(wrapper).currentWordTemplateName).toBe("plantilla_word.docx");
     expect(state(wrapper).selectedWordTemplate).toBeNull();
   });
 

@@ -1,219 +1,108 @@
 ---
-description: Frontend & Component Testing
+description: Frontend unit coverage — cover untested behavior in stores, composables and components with tests that would fail if the behavior broke. Coverage is the readout, not the goal.
 auto_execution_mode: 2
 ---
-# Frontend Unit Test Coverage Strategy
+
+# Frontend Unit Test Coverage
 
 ## Goal
 
-Conduct a thorough analysis of frontend coverage reports. Reach **100% coverage** in all files, covering all logical branches and edge cases.
+Cover untested **behavior** in state management, shared logic and components.
 
-## Quality Standards Reference
+**The goal is not a percentage.** This skill used to say "reach 100% coverage in
+all files". Mounting a component and asserting that some element exists satisfies
+a line-coverage target while verifying nothing. An audit of one suite found
+**146 duplicated tests and 148 assertions too weak to fail.** The target is that
+**every behavior has a test that would fail if that behavior broke.**
 
-Before writing any frontend unit test, you **must consult**:
+## Definition of done — per test, all three required
 
-```
-docs/TESTING_QUALITY_STANDARDS.md
-```
+If you cannot write the third line, **do not write the test.**
 
-This document defines the **mandatory quality criteria** for every test. Key sections for Frontend Unit:
+1. **It exercises the unit** with real input: call the action, mount with the
+   props, trigger the event.
+2. **It asserts a concrete expected value** — the exact rendered text, the emitted
+   payload, the resulting state. Not that something merely exists.
+3. **It names the bug it would catch.** *"fails if the badge stops translating an
+   unknown status."*
 
-| When writing... | Consult section... |
-|-----------------|-------------------|
-| Any unit test | **Mandatory Rules** (naming, atomicity, assertions) |
-| Component tests | **No Implementation Coupling**, **Single Mount Per Test** |
-| Selectors | **Stable Selectors in Unit Tests** (data-testid, not CSS classes) |
-| Time/random | **Deterministic Tests** (fake timers, Math.random mocks) |
-| Mocks | **Mock Configuration Rules**, **Verify Observable Effects** |
-| Global state | **Test Isolation** (localStorage, timers, mocks restoration) |
-| Exceptions needed | **Documented Exceptions** (`quality: allow-*`) |
+### Assertions that do not qualify
 
-> ⚠️ Every test you write must comply with these standards. Do not invent patterns.
+| Anti-pattern | Why it cannot fail | Instead |
+|---|---|---|
+| `expect(wrapper.find('.x').exists()).toBe(true)` | matches incidental markup | assert the rendered text or `data-testid` |
+| `expect(items.length).toBeGreaterThanOrEqual(n)` | any surplus passes | assert the exact count |
+| `expect(x).toBeTruthy()` / `toBeDefined()` | almost anything is truthy | assert the value |
+| `expect(spy).toHaveBeenCalled()` alone | tests the mock, not the code | assert the resulting state or payload |
 
----
+Counting matches of a CSS-class selector with a `>=` matcher is reported as
+`tautological_selector`; the class list can change without the assertion ever
+failing.
 
-## Execution Rules
+## Before writing: check for an existing test
 
-1. **Run only modified test files** — never the entire suite:
-   ```bash
-   npm test -- path/to/file.spec.ts
-   # or
-   npx jest --runTestsByPath path/to/file.spec.ts
-   ```
-
-2. **Maximum per execution:**
-   - 20 tests per batch
-   - 3 commands per execution cycle
-
----
-
-## Coverage Prioritization
-
-Use the coverage report as a **triage map**. Follow this layer priority:
-
-| Priority | Layer | Rationale |
-|----------|-------|-----------|
-| 1 | **State Management** (Pinia/Vuex/Redux) | Core business logic, highest impact |
-| 2 | **Shared Logic** (Composables/Hooks/Utils) | Reused across components, high leverage |
-| 3 | **UI Components** (critical first) | User-facing, but prioritize interactive over presentational |
-
-Within each layer, prioritize by:
-
-| Signal | Action |
-|--------|--------|
-| Lowest % coverage (0% first) | Maximum impact per test |
-| Highest "Uncovered Lines" count | Biggest surface area |
-| Critical business logic | Revenue/auth/data flows first |
-
-**Do not** polish near-100% files until low-coverage critical files are addressed.
-
----
-
-## Test Implementation Requirements
-
-For each file you test, cover:
-
-- ✅ **Happy paths** — expected behavior with valid inputs
-- ✅ **Edge cases** — empty arrays, null/undefined, boundary values
-- ✅ **Error handling** — rejected promises, thrown exceptions, invalid states
-- ✅ **All branches** — if/else, ternaries, switch cases, early returns
-
-### Per-Test Checklist (from Testing Quality Standards)
-
-```
-□ Test name describes ONE specific behavior
-□ No conditionals or loops in test body (use test.each for multiple cases)
-□ Assertions verify observable outcomes (rendered UI, emitted events)
-□ No access to wrapper.vm.* or internal component state
-□ Selectors use data-testid, not CSS classes or IDs
-□ One mount/render per test (unless testing re-render behavior)
-□ Mocks have explicit return_value/mockResolvedValue
-□ jest.useFakeTimers() is restored with jest.useRealTimers()
-□ localStorage/sessionStorage cleaned in afterEach
-□ Global mocks restored after each test
+```bash
+grep -rn "<component or store name>" frontend/test/
 ```
 
-### Selector Quick Reference
+If a test already covers the behavior, **extend it**. Tests whose bodies are
+identical apart from the title are reported as `duplicate_coverage`.
 
-```javascript
-// ✅ CORRECT — stable selectors
-wrapper.find('[data-testid="submit-btn"]').trigger('click');
-wrapper.findComponent(SubmitButton).trigger('click');
-wrapper.find('button[type="submit"]').trigger('click');
+Tests that share a shape but assert different values are **not** duplicates —
+they are real coverage that should be a `test.each` / `it.each` table.
 
-// ❌ WRONG — fragile selectors
-wrapper.find('.btn-primary').trigger('click');
-wrapper.find('#submit-button').trigger('click');
-wrapper.find('div.form-actions > button').trigger('click');
-```
+## Prioritization
 
-### Component Testing Quick Reference
+| Priority | Layer | Why |
+|----------|-------|-----|
+| 1 | State management (Pinia/Vuex) | Core business logic |
+| 2 | Composables and shared utils | Reused everywhere |
+| 3 | Components with logic (conditionals, formatting, emits) | User-facing behavior |
+| 4 | Presentational components | Only where the render encodes a rule |
 
-```javascript
-// ✅ CORRECT — test observable behavior
-it('displays error message when validation fails', async () => {
-  const wrapper = mount(LoginForm);
-  
-  await wrapper.find('[data-testid="submit-btn"]').trigger('click');
-  
-  expect(wrapper.find('[data-testid="error-message"]').text()).toBe('Email is required');
-});
+A component that only renders its props has no behavior worth a unit test. Cover
+it where it is used instead.
 
-// ❌ WRONG — testing implementation details
-it('sets hasError to true', () => {
-  const wrapper = mount(LoginForm);
-  wrapper.vm.validate();
-  expect(wrapper.vm.hasError).toBe(true);  // Internal state!
-});
-```
+## Per-test checklist
 
-### Mock Quick Reference
+- Name describes ONE specific behavior
+- No conditionals or loops (use `test.each`)
+- Assertions verify observable output: rendered text, emitted events, state
+- No `wrapper.vm.*` access — that is implementation, not behavior
+- Selectors use `data-testid` or roles, never CSS classes
+- One mount per test
+- Mocks have explicit return values
+- `jest.useFakeTimers()` restored with `jest.useRealTimers()`
+- localStorage cleaned in `afterEach`
 
-```javascript
-// ✅ CORRECT — explicit mock configuration
-const mockFetch = jest.spyOn(api, 'fetchUser').mockResolvedValue({ id: 1, name: 'Test' });
+## Abstention is a valid outcome
 
-// After test
-expect(mockFetch).toHaveBeenCalledWith(1);
-expect(wrapper.find('[data-testid="user-name"]').text()).toBe('Test'); // Observable!
+Barrels, re-exports, constant files and trivial wrappers have no behavior.
+Record them as *not testable, with the reason*. Coverage not reached by declared
+abstention **is not a failure**.
 
-mockFetch.mockRestore();
+## Execution rules
 
-// ❌ WRONG — silent mock, no observable verification
-jest.spyOn(api, 'fetchUser').mockResolvedValue({});
-// ... no assertion on what changed in UI
-```
-
-### Determinism Quick Reference
-
-```javascript
-// ✅ CORRECT — controlled time
-beforeEach(() => {
-  jest.useFakeTimers();
-  jest.setSystemTime(new Date('2026-01-15T10:00:00Z'));
-});
-
-afterEach(() => {
-  jest.useRealTimers();
-});
-
-// ✅ CORRECT — controlled random
-const mockRandom = jest.spyOn(Math, 'random').mockReturnValue(0.5);
-// ... test
-mockRandom.mockRestore();
-```
-
----
+1. Run only the files you touched: `npm test -- path/to/file.spec.ts`
+2. **Quality ceiling beats volume:** if the gate reports a junk finding on your
+   batch, stop and fix it before writing another test.
 
 ## Workflow
 
-1. **Review** the coverage report provided below
-2. **Identify** lowest-coverage files in priority order (State → Shared → UI)
-3. **Consult** `docs/TESTING_QUALITY_STANDARDS.md` → **Frontend-Specific Standards**
-4. **Implement** tests following the quality criteria
-5. **Run** only the new/modified test files
-6. **Verify** tests pass and coverage improves
-
----
-
-## Output Format
-
-For each batch of tests, report:
-
-```
-### Layer: State Management | Shared Logic | UI Component
-### File: <source_file_path>
-### Test File: <test_file_path>
-
-**Coverage before:** X% statements, Y% branches
-**Coverage after:** X% statements, Y% branches
-
-**Tests added:**
-- [ ] test_name_1 (happy path)
-- [ ] test_name_2 (edge case: empty input)
-- [ ] test_name_3 (error: API failure)
-
-**Branches covered:**
-- Line XX: if condition (true/false)
-- Line YY: ternary (both paths)
-
-**Command executed:**
-npm test -- <path>
-
-**Result:** ✅ Pass / ❌ Fail (reason)
-```
-
----
-
-## Coverage Report
-
-<!-- Paste coverage data here -->
+1. Read the coverage report as a list of *behaviors*, not lines.
+2. Prioritize by layer (table above).
+3. Consult `docs/TESTING_QUALITY_STANDARDS.md`.
+4. Search for an existing test to extend.
+5. Implement, satisfying the three-part definition of done.
+6. Run only the new or modified files.
+7. Validate:
+   `python3 scripts/test_quality_gate.py --repo-root . --semantic-rules strict --files <file>`
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/frontend-unit-test-coverage-goal`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 
 ```markdown
 🟢 frontend-unit-test-coverage-goal OK
@@ -221,11 +110,11 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/frontend-uni
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Coverage report leído | ✅ | jest/vitest --coverage parseado |
-| Layers priorizadas | ✅ | Stores → Composables/Utils → UI components |
-| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
-| Quality standards | ✅ | data-testid, no wrapper.vm.*, timers restored |
-| Coverage delta | ✅ | X% → Y% statements/branches |
+| Coverage leído como comportamiento | ✅ | N behaviors sin test identificados |
+| Layers priorizadas | ✅ | stores → composables → componentes con lógica |
+| Búsqueda anti-duplicado | ✅ | N ya cubiertos → se extendió el existente |
+| Tests agregados | ✅ | N tests con valor esperado concreto |
+| Definition of done | ✅ | unidad real + valor concreto + "qué bug atrapa" |
+| Abstenciones declaradas | ℹ️ | N archivos sin comportamiento testeable, con razón |
+| Quality gate | ✅ | cero weak_assertion / tautological_selector / duplicate |
 ```
-
-Si hay regresión en otros archivos o coverage no llegó al objetivo, reemplazar el ✅ correspondiente por ⚠️ o ❌, omitir la línea ✨ y agregar `## Next steps` con el archivo concreto y el comando para correrlo.

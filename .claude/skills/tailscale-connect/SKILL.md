@@ -20,6 +20,23 @@ el OAuth; **este skill lo corre, scrapea la URL, espera tu aprobación y verific
 >   `hostname -s`). NUNCA usa `tailscale ssh` contra otro VPS — este skill es
 >   local-only.
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flag explícito (`--check`) → directo, sin menú;
+(2) intención clara por contexto ("conectá este host al tailnet") → proponer el comando
+en una línea y esperar confirmación; (3) sin args → UNA AskUserQuestion (Q1); (4) nunca
+en fleet/headless/cron — el OAuth exige al operador en el browser.
+
+**Q1 — Modo** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Conectar este host (Recommended) | idempotente: si ya está conectado sólo reporta, no re-autentica | `/tailscale-connect` |
+| --check | sólo verificar (diagnóstico read-only, Phase 0), no toca nada | `/tailscale-connect --check` |
+
+**Qué NO se pregunta:** nada queda fuera — no hay flags de tuning; el `--hostname` del
+`tailscale up` lo decide Phase 0 según el host, nunca el operador.
+
 ## Cuándo usarla
 
 - Workstation nueva o VPS recién provisionado que todavía no está en el tailnet.

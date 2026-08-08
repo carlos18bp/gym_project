@@ -77,7 +77,7 @@ describe("ForgetPassword.vue", () => {
     await wrapper.get('[data-testid="captcha-trigger"]').trigger("click");
     const sendCodeButton = findButtonByText(wrapper, "Enviar código");
 
-    expect(sendCodeButton).toBeTruthy();
+    expect(sendCodeButton.text()).toContain("Enviar código");
     await sendCodeButton.trigger("click");
 
     expect(axios.post).toHaveBeenCalledWith("/api/send_passcode/", {
@@ -97,7 +97,7 @@ describe("ForgetPassword.vue", () => {
     expect(wrapper.text()).not.toContain("Enviar nuevo código en");
 
     const resendButton = findButtonByText(wrapper, "Enviar código");
-    expect(resendButton).toBeTruthy();
+    expect(resendButton.text()).toContain("Enviar código");
     expect(resendButton.attributes("disabled")).toBeUndefined();
 
     jest.useRealTimers();

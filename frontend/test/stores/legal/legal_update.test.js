@@ -96,7 +96,7 @@ describe("Legal Update Store", () => {
 
     mock.onDelete("/api/legal-updates/2/").networkError();
 
-    await expect(store.deleteUpdate(2)).rejects.toBeTruthy();
+    await expect(store.deleteUpdate(2)).rejects.toThrow("Network Error");
     expect(store.error).toBe("Error al eliminar la actualización legal");
     expect(store.loading).toBe(false);
 
@@ -125,7 +125,7 @@ describe("Legal Update Store", () => {
 
     mock.onPost("/api/legal-updates/").networkError();
 
-    await expect(store.createUpdate({ title: "x", image: null })).rejects.toBeTruthy();
+    await expect(store.createUpdate({ title: "x", image: null })).rejects.toThrow("Network Error");
     expect(store.error).toBe("Error al crear la actualización legal");
     expect(store.loading).toBe(false);
 
@@ -139,7 +139,7 @@ describe("Legal Update Store", () => {
 
     mock.onPut("/api/legal-updates/4/").networkError();
 
-    await expect(store.updateUpdate(4, { title: "x" })).rejects.toBeTruthy();
+    await expect(store.updateUpdate(4, { title: "x" })).rejects.toThrow("Network Error");
     expect(store.error).toBe("Error al actualizar la actualización legal");
     expect(store.loading).toBe(false);
 
@@ -153,7 +153,7 @@ describe("Legal Update Store", () => {
 
     mock.onPut("/api/legal-updates/4/").reply(500, {});
 
-    await expect(store.updateUpdate(4, { title: "x" })).rejects.toBeTruthy();
+    await expect(store.updateUpdate(4, { title: "x" })).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("Error al actualizar la actualización legal");
     expect(store.loading).toBe(false);
 
@@ -167,7 +167,7 @@ describe("Legal Update Store", () => {
 
     mock.onPost("/api/legal-updates/").reply(500, {});
 
-    await expect(store.createUpdate({ title: "x", image: null })).rejects.toBeTruthy();
+    await expect(store.createUpdate({ title: "x", image: null })).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("Error al crear la actualización legal");
     expect(store.loading).toBe(false);
 
@@ -209,7 +209,7 @@ describe("Legal Update Store", () => {
 
     mock.onPost("/api/legal-updates/").reply(500, { message: "fail" });
 
-    await expect(store.createUpdate({ title: "x", image: null })).rejects.toBeTruthy();
+    await expect(store.createUpdate({ title: "x", image: null })).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("fail");
     expect(store.loading).toBe(false);
 
@@ -260,7 +260,7 @@ describe("Legal Update Store", () => {
 
     mock.onPut("/api/legal-updates/3/").reply(500, { message: "fail" });
 
-    await expect(store.updateUpdate(3, { title: "x" })).rejects.toBeTruthy();
+    await expect(store.updateUpdate(3, { title: "x" })).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("fail");
     expect(store.loading).toBe(false);
 
@@ -287,7 +287,7 @@ describe("Legal Update Store", () => {
 
     mock.onDelete("/api/legal-updates/1/").reply(500, { message: "no" });
 
-    await expect(store.deleteUpdate(1)).rejects.toBeTruthy();
+    await expect(store.deleteUpdate(1)).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("no");
 
     consoleSpy.mockRestore();
@@ -300,7 +300,7 @@ describe("Legal Update Store", () => {
 
     mock.onDelete("/api/legal-updates/2/").reply(500, {});
 
-    await expect(store.deleteUpdate(2)).rejects.toBeTruthy();
+    await expect(store.deleteUpdate(2)).rejects.toThrow("Request failed with status code 500");
     expect(store.error).toBe("Error al eliminar la actualización legal");
     expect(store.loading).toBe(false);
 

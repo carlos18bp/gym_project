@@ -65,12 +65,16 @@ async function setup(page, { existingPermissions = null, capturedManagePayload =
   });
 }
 
-async function openPermissionsModal(page) {
+async function openDocumentActions(page) {
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
-  // quality: allow-fragile-selector (positional access on filtered set)
-  await page.locator("table tbody tr").first().click();
+  const row = page.getByRole("table").getByText("Minuta Persistencia Permisos");
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.click();
   await expect(page.getByRole("heading", { name: "Acciones del Documento" })).toBeVisible({ timeout: 10_000 });
+}
+
+async function openPermissionsModal(page) {
+  await openDocumentActions(page);
   await page.getByRole("button", { name: "Permisos" }).click();
   await expect(page.getByRole("button", { name: "Guardar Permisos" })).toBeVisible({ timeout: 15_000 });
 }
@@ -87,14 +91,18 @@ test("existing visibility permission pre-populates the summary when modal opens"
   };
 
   await setup(page, { existingPermissions });
-  await openPermissionsModal(page);
+  await openDocumentActions(page);
+  await expect(page.getByText(/Pueden ver/)).toHaveCount(0);
 
+  await page.getByRole("button", { name: "Permisos" }).click();
+
+  await expect(page.getByRole("button", { name: "Guardar Permisos" })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/Pueden ver/).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(/Pueden ver/).first().locator("..")).toContainText("Carlos Pérez");
 });
 
 // quality: allow-fragile-test-data (mock client email in permissions test double)
-test("saving after granting visibility POSTs manage endpoint with that user_id", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {
+test("saving after granting visibility POSTs manage endpoint with that user_id", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
   const captured = { body: null };
   await setup(page, { capturedManagePayload: captured });
   await openPermissionsModal(page);

@@ -44,6 +44,7 @@ test(
       "@module:services",
       "@priority:P3",
       "@role:admin",
+      "@outcome:error",
     ],
   },
   async ({ page }) => {
@@ -68,6 +69,7 @@ test(
       "@module:services",
       "@priority:P3",
       "@role:admin",
+      "@outcome:error",
     ],
   },
   async ({ page }) => {

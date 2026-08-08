@@ -32,6 +32,25 @@ argument-hint: "[--all-repos (todos los repos de este host)] [--no-propagate (no
 > del cwd es un proyecto (no el toolkit), o los repos de proyecto del modo
 > `--all`, **NO se propagan** (viven en un solo VPS cada uno).
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → directo, sin menú;
+(2) intención clara en la sesión ("commiteá esto", "guardá lo que hicimos") →
+proponer el comando en una línea y esperar confirmación; (3) invocación
+ambigua (¿este repo o todos los del host?) → UNA sola AskUserQuestion; (4)
+nunca en fleet/headless/cron.
+
+**Q1 — Alcance** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Repo actual (Recommended) | commit + push del repo del cwd; si es el toolkit, propaga al fleet al final | `/git-commit` |
+| Todos los repos de este host | un commit por repo dirty (LOCAL_PROJECTS + toolkit), mensaje propio por repo | `/git-commit --all-repos` |
+| Repo actual sin propagar | commit + push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `/git-commit --no-propagate` |
+
+**Qué NO se pregunta:** `--all-vps` y `--all` (error-by-design: no se commitea
+a ciegas en clones de otros VPS — el eje fleet es `/git-sync --all-vps`).
+
 ## Phase 0 — Resolución de la lista de repos
 
 ```bash

@@ -5,20 +5,20 @@
 ```mermaid
 flowchart TB
     subgraph Client["Frontend (Vue 3 SPA + PWA)"]
-        Router["Vue Router\n67 routes"]
-        Views["44 View Pages"]
-        Components["111 Components"]
-        Stores["44 Pinia Stores"]
-        Composables["14 Composables"]
+        Router["Vue Router\n69 routes"]
+        Views["45 View Pages"]
+        Components["115 Components"]
+        Stores["46 Pinia Stores"]
+        Composables["15 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
     subgraph Server["Backend (Django 5.2.14)"]
-        DRF["Django REST Framework\n~194 API endpoints"]
-        Models["54 Models\n(14 model files)"]
-        Serializers["12 Serializer files"]
-        Views_BE["29 View files"]
-        Utils["3 Utility modules"]
+        DRF["Django REST Framework\n~205 API endpoints"]
+        Models["56 Models\n(15 model files)"]
+        Serializers["13 Serializer files"]
+        Views_BE["32 View files"]
+        Utils["4 Utility modules"]
         Tasks["Huey Tasks"]
         Admin["Django Admin"]
     end
@@ -67,9 +67,9 @@ flowchart LR
     end
 
     subgraph Test["Testing"]
-        Pytest["pytest\n94 test files"]
-        Jest["Jest\n181 test files"]
-        PW["Playwright\n195 E2E specs"]
+        Pytest["pytest\n101 test files"]
+        Jest["Jest\n207 test files"]
+        PW["Playwright\n204 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -197,7 +197,7 @@ erDiagram
 
 ## 5. Model Details
 
-### 5.1 Users Domain (3 models)
+### 5.1 Users Domain (4 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
@@ -215,7 +215,7 @@ erDiagram
 | `CaseFile` | file, created_at | No FK — linked via Process M2M; physical file deleted on model delete (signal) |
 | `RecentProcess` | last_viewed | FK → User, FK → Process; unique_together=[user, process] |
 
-### 5.3 Dynamic Documents Domain (9 models)
+### 5.3 Dynamic Documents Domain (10 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|

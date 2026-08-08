@@ -51,7 +51,7 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 ### 4.1 User Management
 - Role-based access: Client, Lawyer, Basic, Corporate Client
 - JWT authentication (SimpleJWT) with 1-day access token lifetime
-- Google OAuth integration for social login
+- Google OAuth and Microsoft Outlook OAuth integration for social login
 - reCAPTCHA protection on registration/login
 - User profiles with activity feeds and electronic signatures
 - Email verification codes and password reset flow
@@ -146,7 +146,7 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 | **Security** | JWT auth, CSRF protection, reCAPTCHA, Wompi signature verification, file upload validation (python-magic), CORS configuration |
 | **Reliability** | Automated daily backups (DB + media) via Huey with 20-backup retention; error logging to file |
 | **Scalability** | Redis-backed Huey task queue for async processing; SQLite (dev) / MySQL (prod) |
-| **Testing** | pytest (backend), Jest (frontend unit), Playwright (frontend E2E); test quality gate with CI enforcement |
+| **Testing** | pytest (backend), Jest (frontend unit), Playwright (frontend E2E); test quality gate with CI enforcement — junk-test detectors (`.testquality.yml`) block NEW low-value tests while a grandfathered `.junk-baseline.json` holds existing debt |
 | **Accessibility** | Responsive design via TailwindCSS; PWA for mobile/tablet |
 | **Monitoring** | Silk profiling dashboard (staff only); weekly slow-query reports; silk garbage collection |
 

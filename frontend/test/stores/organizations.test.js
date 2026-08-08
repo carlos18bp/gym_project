@@ -106,7 +106,7 @@ describe("Organizations Store", () => {
       organization: { id: 1, name: "Org" },
     });
 
-    await expect(store.createOrganization({ name: "Org" })).rejects.toBeTruthy();
+    await expect(store.createOrganization({ name: "Org" })).rejects.toThrow("Error creating organization");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -154,7 +154,7 @@ describe("Organizations Store", () => {
 
     await expect(
       store.createOrganization({ name: "Org2", profile_image: img, cover_image: null })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Error creating organization");
 
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe("Organizations Store", () => {
     expect(store.pagination.currentPage).toBe(2);
     expect(store.pagination.pageSize).toBe(10);
     expect(store.dataLoaded).toBe(true);
-    expect(store.lastFetchTime).toBeTruthy();
+    expect(store.lastFetchTime).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     expect(store.isLoading).toBe(false);
   });
 
@@ -205,7 +205,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/my-organizations/").reply(204, { results: [] });
 
-    await expect(store.getMyOrganizations()).rejects.toBeTruthy();
+    await expect(store.getMyOrganizations()).rejects.toThrow("Error fetching organizations");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -243,7 +243,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/5/").reply(204, {});
 
-    await expect(store.getOrganizationDetail(5)).rejects.toBeTruthy();
+    await expect(store.getOrganizationDetail(5)).rejects.toThrow("Organization not found");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -280,7 +280,7 @@ describe("Organizations Store", () => {
 
     await expect(
       store.updateOrganization(7, { name: "Updated", cover_image: cover })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Error updating organization");
 
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
@@ -339,7 +339,7 @@ describe("Organizations Store", () => {
       organization: { id: 7, name: "Updated" },
     });
 
-    await expect(store.updateOrganization(7, { name: "Updated" })).rejects.toBeTruthy();
+    await expect(store.updateOrganization(7, { name: "Updated" })).rejects.toThrow("Error updating organization");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -382,7 +382,7 @@ describe("Organizations Store", () => {
 
     mock.onDelete("/api/organizations/9/delete/").reply(204, { ok: true });
 
-    await expect(store.deleteOrganization(9)).rejects.toBeTruthy();
+    await expect(store.deleteOrganization(9)).rejects.toThrow("Error deleting organization");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -408,7 +408,7 @@ describe("Organizations Store", () => {
       invitation: { id: 1, status: "PENDING" },
     });
 
-    await expect(store.sendInvitation(1, { invited_user_email: "x@test.com" })).rejects.toBeTruthy();
+    await expect(store.sendInvitation(1, { invited_user_email: "x@test.com" })).rejects.toThrow("Error sending invitation");
     expect(store.isLoadingInvitations).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -443,7 +443,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/1/invitations/").reply(204, []);
 
-    await expect(store.getOrganizationInvitations(1)).rejects.toBeTruthy();
+    await expect(store.getOrganizationInvitations(1)).rejects.toThrow("Error fetching invitations");
     expect(store.isLoadingInvitations).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -467,7 +467,7 @@ describe("Organizations Store", () => {
 
     mock.onDelete("/api/organizations/1/invitations/2/cancel/").reply(204, { ok: true });
 
-    await expect(store.cancelInvitation(1, 2)).rejects.toBeTruthy();
+    await expect(store.cancelInvitation(1, 2)).rejects.toThrow("Error canceling invitation");
     expect(store.isLoadingInvitations).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -527,7 +527,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/invitations/my-invitations/").reply(204, { results: [] });
 
-    await expect(store.getMyInvitations()).rejects.toBeTruthy();
+    await expect(store.getMyInvitations()).rejects.toThrow("Error fetching my invitations");
     expect(store.isLoadingInvitations).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -595,7 +595,7 @@ describe("Organizations Store", () => {
       invitation: { id: 20, status: "ACCEPTED" },
     });
 
-    await expect(store.respondToInvitation(20, "accept")).rejects.toBeTruthy();
+    await expect(store.respondToInvitation(20, "accept")).rejects.toThrow("Error responding to invitation");
     expect(store.isLoadingInvitations).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -619,7 +619,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/my-memberships/").reply(204, { organizations: [] });
 
-    await expect(store.getMyMemberships()).rejects.toBeTruthy();
+    await expect(store.getMyMemberships()).rejects.toThrow("Error fetching memberships");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -642,7 +642,7 @@ describe("Organizations Store", () => {
 
     mock.onPost("/api/organizations/30/leave/").reply(204, { ok: true });
 
-    await expect(store.leaveOrganization(30)).rejects.toBeTruthy();
+    await expect(store.leaveOrganization(30)).rejects.toThrow("Error leaving organization");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -689,7 +689,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/1/members/").reply(204, {});
 
-    await expect(store.getOrganizationMembers(1)).rejects.toBeTruthy();
+    await expect(store.getOrganizationMembers(1)).rejects.toThrow("Error fetching members");
     expect(store.isLoadingMembers).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -712,7 +712,7 @@ describe("Organizations Store", () => {
 
     mock.onDelete("/api/organizations/1/members/2/remove/").reply(204, { ok: true });
 
-    await expect(store.removeMember(1, 2)).rejects.toBeTruthy();
+    await expect(store.removeMember(1, 2)).rejects.toThrow("Error removing member");
     expect(store.isLoadingMembers).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -733,7 +733,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/stats/").reply(204, {});
 
-    await expect(store.getOrganizationStats()).rejects.toBeTruthy();
+    await expect(store.getOrganizationStats()).rejects.toThrow("Error fetching statistics");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -753,7 +753,7 @@ describe("Organizations Store", () => {
 
     mock.onGet("/api/organizations/99/public/").reply(204, {});
 
-    await expect(store.getOrganizationPublicInfo(99)).rejects.toBeTruthy();
+    await expect(store.getOrganizationPublicInfo(99)).rejects.toThrow("Error fetching public organization info");
     expect(store.isLoading).toBe(false);
     expect(console.error).toHaveBeenCalled();
   });
@@ -832,10 +832,10 @@ describe("Organizations Store", () => {
     mock.onGet("/api/organizations/1/members/").networkError();
     mock.onDelete("/api/organizations/1/members/2/remove/").networkError();
 
-    await expect(store.getOrganizationMembers(1)).rejects.toBeTruthy();
+    await expect(store.getOrganizationMembers(1)).rejects.toThrow("Network Error");
     expect(store.isLoadingMembers).toBe(false);
 
-    await expect(store.removeMember(1, 2)).rejects.toBeTruthy();
+    await expect(store.removeMember(1, 2)).rejects.toThrow("Network Error");
     expect(store.isLoadingMembers).toBe(false);
   });
 

@@ -127,14 +127,14 @@ describe("views/legal_request/LegalRequest.vue", () => {
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     expect(wrapper.vm.$.setupState.legalRequestTypes).toHaveLength(1);
     expect(wrapper.vm.$.setupState.legalDisciplines).toHaveLength(1);
-    expect(wrapper.vm.$.setupState.isSaveButtonEnabled).toBeFalsy();
+    expect(wrapper.find('button[type="submit"]').attributes("disabled")).toBe("");
 
     wrapper.vm.$.setupState.formData.requestTypeId = { id: 1, name: "Consulta" };
     wrapper.vm.$.setupState.formData.disciplineId = { id: 2, name: "Civil" };
     wrapper.vm.$.setupState.formData.description = " descripcion ";
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.vm.$.setupState.isSaveButtonEnabled).toBeTruthy();
+    expect(wrapper.find('button[type="submit"]').attributes("disabled")).toBeUndefined();
   });
 
   test("processes file uploads, drop events, and removals", () => {

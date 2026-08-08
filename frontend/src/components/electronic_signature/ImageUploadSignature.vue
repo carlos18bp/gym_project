@@ -28,8 +28,12 @@
       
       <div v-else class="relative w-full">
         <img :src="previewUrl" alt="Firma" class="mx-auto max-h-64 bg-white p-2 border border-gray-200 rounded-lg">
-        <button 
-          @click="clearImage" 
+        <button
+          @click="clearImage"
+          type="button"
+          aria-label="Quitar imagen de firma"
+          title="Quitar imagen de firma"
+          data-testid="upload-signature-clear"
           class="absolute -top-2 -right-2 bg-red-100 rounded-full p-1 text-red-500 shadow-sm hover:bg-red-200"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">

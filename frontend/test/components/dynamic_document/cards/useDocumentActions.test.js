@@ -165,7 +165,7 @@ describe("useDocumentActions", () => {
 
     await expect(
       publishDocument({ id: 1, title: "Doc", state: "Draft" })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("fail");
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al publicar el documento",
@@ -183,7 +183,7 @@ describe("useDocumentActions", () => {
 
     await expect(
       moveToDraft({ id: 2, title: "Doc2", state: "Published" })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("fail");
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al mover el documento a borrador",
@@ -220,7 +220,7 @@ describe("useDocumentActions", () => {
 
     const { deleteDocument } = useDocumentActions(documentStore, userStore, emit);
 
-    await expect(deleteDocument({ id: 10, title: "Doc" })).rejects.toBeTruthy();
+    await expect(deleteDocument({ id: 10, title: "Doc" })).rejects.toThrow("fail");
 
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al eliminar el documento",
@@ -255,7 +255,7 @@ describe("useDocumentActions", () => {
     );
 
     documentStore.downloadPDF.mockRejectedValueOnce(new Error("fail"));
-    await expect(downloadPDFDocument({ id: 2, title: "B" })).rejects.toBeTruthy();
+    await expect(downloadPDFDocument({ id: 2, title: "B" })).rejects.toThrow("fail");
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al descargar el PDF",
       "error"
@@ -289,7 +289,7 @@ describe("useDocumentActions", () => {
     );
 
     documentStore.downloadWord.mockRejectedValueOnce(new Error("fail"));
-    await expect(downloadWordDocument({ id: 2, title: "B" })).rejects.toBeTruthy();
+    await expect(downloadWordDocument({ id: 2, title: "B" })).rejects.toThrow("fail");
     expect(mockShowNotification).toHaveBeenCalledWith(
       "Error al descargar el documento Word",
       "error"

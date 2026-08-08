@@ -136,6 +136,7 @@
                 v-if="!readonly"
                 @click="handleUnrelateDocument(doc)"
                 :disabled="isUnrelating"
+                :data-testid="'unrelate-document-' + doc.id"
                 class="inline-flex items-center justify-center px-3 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 transition-colors"
               >
                 <TrashIcon v-if="!isUnrelating" class="w-4 h-4 mr-2" />

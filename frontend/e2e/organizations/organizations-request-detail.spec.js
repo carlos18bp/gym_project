@@ -5,7 +5,7 @@ import { installOrganizationsDashboardApiMocks } from "../helpers/organizationsD
 
 // quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
 
-test("corporate client can open request detail, reply, and update status", { tag: ['@flow:org-request-detail', '@module:organizations', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("corporate client can open request detail, reply, and update status", { tag: ['@flow:org-request-detail', '@module:organizations', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 2100;
 
   await installOrganizationsDashboardApiMocks(page, { userId, role: "corporate_client" });

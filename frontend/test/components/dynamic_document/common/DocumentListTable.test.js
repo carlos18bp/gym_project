@@ -197,12 +197,12 @@ describe("DocumentListTable.vue", () => {
     await flushPromises();
     mockFetchDocuments.mockClear();
 
-    const mineBtn = wrapper
+    const mineBtns = wrapper
       .findAll("button")
-      .find((btn) => btn.text().trim() === "Mías");
-    expect(mineBtn).toBeTruthy();
+      .filter((btn) => btn.text().trim() === "Mías");
+    expect(mineBtns).toHaveLength(1);
 
-    await mineBtn.trigger("click");
+    await mineBtns[0].trigger("click");
     await flushPromises();
 
     const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
@@ -216,12 +216,12 @@ describe("DocumentListTable.vue", () => {
     await flushPromises();
     mockFetchDocuments.mockClear();
 
-    const sharedBtn = wrapper
+    const sharedBtns = wrapper
       .findAll("button")
-      .find((btn) => btn.text().trim() === "Compartidas");
-    expect(sharedBtn).toBeTruthy();
+      .filter((btn) => btn.text().trim() === "Compartidas");
+    expect(sharedBtns).toHaveLength(1);
 
-    await sharedBtn.trigger("click");
+    await sharedBtns[0].trigger("click");
     await flushPromises();
 
     const lastCall = mockFetchDocuments.mock.calls.at(-1)[0];
@@ -272,7 +272,7 @@ describe("DocumentListTable.vue", () => {
     expect(lastCall.lawyerId).toBe(7);
     expect(lastCall.states).toEqual(["Draft", "Published"]);
     // The parent is still notified so tab badges stay in sync.
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
   });
 
   test("shows 'Compartida' badge for minutas flagged for shared edit", async () => {

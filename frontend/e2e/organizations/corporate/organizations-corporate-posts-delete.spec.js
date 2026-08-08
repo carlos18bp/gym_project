@@ -88,18 +88,21 @@ async function createPost(page, postTitle) {
   await expect(getPostActionContainer(page, postTitle)).toBeVisible();
 }
 
-async function expectClientPostVisibility(page, postTitle, visible) {
+function getClientPostsSection(page) {
   // OrganizationPostsSection root: div > div.mb-6 > div.flex > div > h2
   const announcementsHeading = page.getByRole("heading", { name: "Anuncios de la Organización" });
-  const orgPostsSection = announcementsHeading.locator("xpath=ancestor::div[4]");
+  return announcementsHeading.locator("xpath=ancestor::div[4]");
+}
 
+async function expectClientSeesPost(page, postTitle) {
+  const orgPostsSection = getClientPostsSection(page);
   await expect(orgPostsSection).toBeVisible();
+  await expect(orgPostsSection.getByText(postTitle)).toBeVisible();
+}
 
-  if (visible) {
-    await expect(orgPostsSection.getByText(postTitle)).toBeVisible();
-    return;
-  }
-
+async function expectClientDoesNotSeePost(page, postTitle) {
+  const orgPostsSection = getClientPostsSection(page);
+  await expect(orgPostsSection).toBeVisible();
   await expect(orgPostsSection.getByText(postTitle)).toHaveCount(0);
 }
 
@@ -134,12 +137,12 @@ test("corporate_client deletes a post and client no longer sees it", { tag: ['@f
   await expect(getPostActionContainer(page, scenario.postTitle)).toBeVisible();
 
   await loginAsClient(page, scenario.clientAuth);
-  await expectClientPostVisibility(page, scenario.postTitle, true);
+  await expectClientSeesPost(page, scenario.postTitle);
 
   await loginAsCorporate(page, scenario.corporateAuth);
   await deletePost(page, scenario.postTitle);
   await expect(page.getByRole("heading", { name: scenario.postTitle })).toHaveCount(0);
 
   await loginAsClient(page, scenario.clientAuth);
-  await expectClientPostVisibility(page, scenario.postTitle, false);
+  await expectClientDoesNotSeePost(page, scenario.postTitle);
 });

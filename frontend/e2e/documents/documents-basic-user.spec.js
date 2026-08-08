@@ -13,10 +13,12 @@ async function installBasicUserDocsMocks(page, { userId, lawyerId }) {
   const lawyer = buildMockUser({ id: lawyerId, role: "lawyer", hasSignature: true });
   const nowIso = new Date().toISOString();
 
+  // "Progress" state + assigned_to makes the doc show up on the basic user's
+  // "Mis Documentos" tab (client view lists Progress/Completed assigned docs).
   const assignedDoc = buildMockDocument({
     id: 1201,
     title: "Documento Para Básico",
-    state: "Published",
+    state: "Progress",
     createdBy: lawyerId,
     assignedTo: userId,
   });
@@ -94,16 +96,19 @@ test("basic user can access documents dashboard", { tag: ['@flow:basic-restricti
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // The client-style dashboard renders its navigation tabs for the basic role
+  await expect(page.getByRole("button", { name: "Carpetas" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Mis Documentos" })).toBeVisible();
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("basic");
+  // The document assigned to the basic user is listed under "Mis Documentos"
+  await page.getByRole("button", { name: "Mis Documentos" }).click();
+  await expect(page.getByRole("table").getByText("Documento Para Básico")).toBeVisible({ timeout: 15_000 });
 });
 
 test("basic user session state reflects limited access role", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
+  // audit: load-only flow (role restriction — the subscription lock is a
+  // disabled control, so there is no interaction available to the basic user)
   const userId = 9602;
   const lawyerId = 9603;
 
@@ -115,12 +120,11 @@ test("basic user session state reflects limited access role", { tag: ['@flow:bas
   });
 
   await page.goto("/dynamic_document_dashboard");
-  await page.waitForLoadState("networkidle");
 
-  // quality: allow-fragile-selector (stable application ID)
-  await expect(page.locator("#app")).toBeVisible({ timeout: 15_000 });
+  // Dashboard action bar renders for the basic role
+  await expect(page.getByRole("button", { name: "Firma Electrónica" })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: "Firma Electrónica" })).toBeEnabled();
 
-  const userAuth = await page.evaluate(() => JSON.parse(localStorage.getItem("userAuth") || "{}"));
-  expect(userAuth.role).toBe("basic");
-  expect(userAuth.has_signature).toBe(false);
+  // The letterhead feature is locked for basic users (subscription restriction)
+  await expect(page.getByRole("button", { name: "Membrete Global" })).toBeDisabled();
 });

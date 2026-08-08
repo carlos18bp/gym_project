@@ -1,0 +1,41 @@
+# .testquality.yml - per-project configuration for the test quality gate.
+#
+# Generated from this project's own gate copy when the canonical core was
+# adopted, so behaviour is preserved exactly. Edit freely; the sync script
+# never overwrites this file.
+
+backend_app_name: gym_app
+py_test_file_glob: test_*.py
+frontend_unit_dir: test
+frontend_e2e_dir: e2e
+max_test_lines: 50
+min_test_lines: 3
+max_assertions_per_test: 7
+max_patches_per_test: 5
+min_lines_for_docstring: 15
+max_timeout_ms: 100
+
+py_allowed_folders:
+  - "commands"
+  - "models"
+  - "serializers"
+  - "services"
+  - "tasks"
+  - "utils"
+  - "views"
+
+js_unit_suffixes:
+  - ".test.js"
+  - ".spec.js"
+  - ".test.ts"
+  - ".spec.ts"
+
+js_e2e_suffixes:
+  - ".spec.js"
+  - ".spec.ts"
+
+banned_tokens:
+  - "batch"
+  - "coverage"
+  - "cov"
+  - "deep"

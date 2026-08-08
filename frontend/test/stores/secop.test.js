@@ -749,7 +749,7 @@ describe("SECOP Store", () => {
     mock.onGet(/secop\/export\//).reply(500);
 
     await expect(store.exportExcel()).rejects.toThrow();
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Request failed with status code 500");
   });
 
   test("exportExcel with empty params sends no query string", async () => {

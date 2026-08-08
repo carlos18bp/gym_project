@@ -104,12 +104,12 @@ describe("CreateOrganizationModal.vue", () => {
 
     const submitBtn = wrapper.find('button[type="submit"]');
     expect(submitBtn.exists()).toBe(true);
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
 
     await wrapper.find("input#title").setValue("  Org  ");
     await flushPromises();
 
-    expect(submitBtn.attributes("disabled")).toBeDefined();
+    expect(submitBtn.attributes("disabled")).toBe("");
 
     await wrapper.find("textarea#description").setValue("  Desc  ");
     await flushPromises();
@@ -218,7 +218,7 @@ describe("CreateOrganizationModal.vue", () => {
       "success"
     );
 
-    expect(wrapper.emitted("created")).toBeTruthy();
+    expect(wrapper.emitted("created")).toHaveLength(1);
     expect(wrapper.emitted("created")[0]).toEqual([{ id: 10, title: "Org Created" }]);
 
     expect(wrapper.text()).toContain("¡Organización Creada!");
@@ -264,7 +264,7 @@ describe("CreateOrganizationModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Crear Otra Organización"));
 
-    expect(createAnotherBtn).toBeTruthy();
+    expect(createAnotherBtn.text()).toContain("Crear Otra Organización");
 
     await createAnotherBtn.trigger("click");
     await flushPromises();
@@ -460,11 +460,11 @@ describe("CreateOrganizationModal.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Cancelar"));
 
-    expect(cancelBtn).toBeTruthy();
+    expect(cancelBtn.text()).toContain("Cancelar");
 
     await cancelBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 });

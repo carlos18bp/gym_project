@@ -61,6 +61,7 @@ async function installBasicMocks(page, { userId, role }) {
 }
 
 test("client accessing lawyer-only route is redirected to dashboard", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  // quality: allow-no-interaction (route guard fires on navigation itself - no interactive element exists; concrete URL/title asserted)
   const userId = 5000;
 
   await installBasicMocks(page, { userId, role: "client" });
@@ -78,6 +79,7 @@ test("client accessing lawyer-only route is redirected to dashboard", { tag: ['@
 });
 
 test("lawyer can access lawyer-only route (directory)", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  // quality: allow-no-interaction (route guard fires on navigation itself - no interactive element exists; concrete URL/title asserted)
   const userId = 5001;
 
   await installBasicMocks(page, { userId, role: "lawyer" });
@@ -94,6 +96,7 @@ test("lawyer can access lawyer-only route (directory)", { tag: ['@flow:auth-rout
 });
 
 test("root path redirects authenticated user to dashboard", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  // quality: allow-no-interaction (route guard fires on navigation itself - no interactive element exists; concrete URL/title asserted)
   const userId = 5002;
 
   await installBasicMocks(page, { userId, role: "lawyer" });
@@ -110,6 +113,7 @@ test("root path redirects authenticated user to dashboard", { tag: ['@flow:auth-
 });
 
 test("unknown route redirects to sign_in for unauthenticated user", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  // quality: allow-no-interaction (route guard fires on navigation itself - no interactive element exists; concrete URL/title asserted)
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const apiPath = url.pathname.replace(/^\/api\//, "");
@@ -131,6 +135,7 @@ test("unknown route redirects to sign_in for unauthenticated user", { tag: ['@fl
 });
 
 test("page title updates based on route", { tag: ['@flow:auth-router-guards', '@module:auth', '@priority:P2', '@role:shared'] }, async ({ page }) => {
+  // quality: allow-no-interaction (route guard fires on navigation itself - no interactive element exists; concrete URL/title asserted)
   const userId = 5003;
 
   await installBasicMocks(page, { userId, role: "lawyer" });

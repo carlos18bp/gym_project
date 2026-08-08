@@ -171,6 +171,23 @@
 - **Affected files**: `frontend/e2e/process/process-alert-recipients.spec.js`, `frontend/e2e/flow-definitions.json`, `docs/USER_FLOW_MAP.md`
 - **Prevention idea**: a mis-pointed tag is invisible without cross-checking spec intent vs flow id; consider a CI assertion that every flow with `expectedSpecs > 0` has ≥1 tagging spec, and review `knownGaps` flows periodically.
 
+### [RESOLVED-020] Admin dashboard rendered blank — RouterLink to dead route name `services_list`
+- **Context** (2026-07-22): surfaced while adding an E2E test that enters the reassignment module via the dashboard quick action — the first E2E to render the dashboard as admin.
+- **Root Cause**: `FeaturedServicesGrid.vue`'s "Ver todos" link targeted `{ name: 'services_list' }`, a route name removed when the services hub replaced the old list (commit `970ac1b` kept only the nameless `/services_list` path redirect). vue-router throws on resolving an unknown name inside `RouterLink`'s setup; the throw aborts the dashboard re-render triggered when the admin profile loads, wiping the whole body. Lawyer/client dashboards partially survived because their assertions target content rendered before the failing component.
+- **Resolution** (commit `984f07b`): link now targets `{ name: 'services_hub' }`. Regression: `data-reassignment-flow.spec.js` (5 tests), `dashboard-lawyer-view.spec.js`, `FeaturedServicesGrid.test.js` all green.
+- **Affected files**: `frontend/src/components/dashboard/FeaturedServicesGrid.vue`
+
+### [RESOLVED-021] SECOP manual-sync button was inert (no `defineEmits`, 180s fake spinner)
+- **Context** (surfaced 2026-07-23 in the real-interaction E2E audit): a lawyer clicking "Sincronizar" saw a 3-minute spinner but no sync happened. The store action, parent `@trigger-sync` listener, and the lawyer-gated `POST secop/sync/trigger/` endpoint (schedules a Huey task) all existed — only the wiring was missing.
+- **Root Cause**: `SyncStatus.vue` never declared `defineEmits`, so its `emit('trigger-sync')` was a no-op and the parent listener never fired. A unit test had frozen the bug in place by asserting the button "does not emit trigger-sync".
+- **Resolution** (commit `17491a6`): `SyncStatus.vue` now declares and emits `trigger-sync`; the disabled window is kept intentionally as a re-trigger cooldown. Unit + E2E specs updated to assert the emit and the scheduled sync.
+- **Affected files**: `frontend/src/components/secop/SyncStatus.vue`, `frontend/test/components/secop/SyncStatus.test.js`, `frontend/e2e/secop/secop-admin-sync-flow.spec.js`
+
+### [RESOLVED-022] Signature "clear" button had no accessible name (dead test locator)
+- **Context** (surfaced 2026-07-23 in the same audit): the signature "clear" control had no accessible name, so its E2E test locator never matched and the assertion was silently dead — a real a11y gap.
+- **Resolution** (commit `1092803`): added accessible names to the clear/upload controls in the electronic-signature components; the E2E spec now matches a real, named element.
+- **Affected files**: `frontend/src/components/electronic_signature/DrawSignature.vue`, `frontend/src/components/electronic_signature/ImageUploadSignature.vue`, `frontend/e2e/signatures/electronic-signature-modal.spec.js`
+
 ### [RESOLVED-019] Renaming a SECOP saved view to a duplicate name returned 500
 - **Context** (2026-07-16): surfaced while writing coverage tests for the saved-view PATCH endpoint.
 - **Root Cause**: `SavedViewSerializer` has no duplicate-name validation on **update** — creation intentionally upserts by `(user, name)` via `update_or_create`, but the PATCH path calls `instance.save()` straight into the MySQL unique constraint → `IntegrityError` 500. RESOLVED-006 had only addressed the creation flow.

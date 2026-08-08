@@ -537,24 +537,12 @@ def test_list_services_include_inactive_on_alias_for_manager(
 # ------------------------------------------------------------------
 
 
-@pytest.mark.django_db
-def test_admin_update_replaces_icon_image(api_client, admin_user, sample_service):
-    """Replace the service icon image when admin submits a new PNG via admin_update."""
-    api_client.force_authenticate(user=admin_user)
-    stage = sample_service.stages.first()
-    field = stage.fields.first()
-    # PIL-encoded PNG: Django's ImageField validator parses the bytes, so raw
-    # PNG signatures won't pass.
-    from io import BytesIO
-
-    from PIL import Image
-    buf = BytesIO()
-    Image.new("RGB", (1, 1), color=(255, 0, 0)).save(buf, format="PNG")
-    new_icon = SimpleUploadedFile("icon.png", buf.getvalue(), content_type="image/png")
-    payload = {
+def build_icon_update_payload(service, stage, field):
+    """Build a stage-preserving update payload used by the icon replacement test."""
+    return {
         "name": "Servicio Actualizado Gap",
         "short_title": "GapUpd",
-        "slug": sample_service.slug,
+        "slug": service.slug,
         "description": "Con icono",
         "is_active": True,
         "is_featured": True,
@@ -578,6 +566,23 @@ def test_admin_update_replaces_icon_image(api_client, admin_user, sample_service
             }
         ],
     }
+
+
+@pytest.mark.django_db
+def test_admin_update_replaces_icon_image(api_client, admin_user, sample_service):
+    """Replace the service icon image when admin submits a new PNG via admin_update."""
+    api_client.force_authenticate(user=admin_user)
+    stage = sample_service.stages.first()
+    field = stage.fields.first()
+    # PIL-encoded PNG: Django's ImageField validator parses the bytes, so raw
+    # PNG signatures won't pass.
+    from io import BytesIO
+
+    from PIL import Image
+    buf = BytesIO()
+    Image.new("RGB", (1, 1), color=(255, 0, 0)).save(buf, format="PNG")
+    new_icon = SimpleUploadedFile("icon.png", buf.getvalue(), content_type="image/png")
+    payload = build_icon_update_payload(sample_service, stage, field)
 
     response = api_client.put(
         reverse("services-admin-update", kwargs={"service_id": sample_service.id}),

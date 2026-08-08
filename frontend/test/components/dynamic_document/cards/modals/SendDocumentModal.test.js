@@ -76,7 +76,7 @@ describe("SendDocumentModal.vue", () => {
     await flushPromises();
 
     const sendBtn = wrapper.find('button[type="submit"]');
-    expect(sendBtn.attributes("disabled")).toBeDefined();
+    expect(sendBtn.attributes("disabled")).toBe("");
   });
 
   test("send button is disabled when email is invalid", async () => {
@@ -87,7 +87,7 @@ describe("SendDocumentModal.vue", () => {
     await flushPromises();
 
     const sendBtn = wrapper.find('button[type="submit"]');
-    expect(sendBtn.attributes("disabled")).toBeDefined();
+    expect(sendBtn.attributes("disabled")).toBe("");
   });
 
   test("send button is enabled when email is valid", async () => {
@@ -114,10 +114,13 @@ describe("SendDocumentModal.vue", () => {
     await closeBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
+    // resetForm() clears the email field on close
+    expect(wrapper.find("#email").element.value).toBe(""); // quality: allow-fragile-selector (stable DOM id)
   });
 
   test("clicking overlay emits close", async () => {
+    // quality: allow-duplicate (distinct SUT vs EditDocumentModal)
     const wrapper = mountModal(pinia);
     await flushPromises();
 
@@ -125,7 +128,7 @@ describe("SendDocumentModal.vue", () => {
     await wrapper.find(".fixed.inset-0").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("file upload via input adds file to list", async () => {
@@ -224,7 +227,7 @@ describe("SendDocumentModal.vue", () => {
       { documentId: 1 }
     );
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("file upload area shows drag-and-drop text when no files", async () => {

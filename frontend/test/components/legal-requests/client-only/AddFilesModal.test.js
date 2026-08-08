@@ -61,7 +61,7 @@ describe("AddFilesModal.vue", () => {
     await flushPromises();
 
     expect(mockAddFilesToRequest).toHaveBeenCalledWith(1, [file]);
-    expect(wrapper.emitted("files-added")).toBeTruthy();
+    expect(wrapper.emitted("files-added")).toHaveLength(1);
     expect(wrapper.text()).not.toContain("document.pdf");
   });
 
@@ -119,7 +119,7 @@ describe("AddFilesModal.vue", () => {
 
     await wrapper.trigger("click");
 
-    expect(wrapper.emitted("close")).toBeTruthy();
+    expect(wrapper.emitted("close")).toHaveLength(1);
   });
 
   test("shows alert on upload failure and keeps selected files", async () => {

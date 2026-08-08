@@ -57,7 +57,9 @@ describe("Dynamic Document Store - Permissions", () => {
 
     mock.onGet("/api/dynamic-documents/permissions/clients/").reply(500, { detail: "error" });
 
-    await expect(store.fetchAvailableClients()).rejects.toBeTruthy();
+    await expect(store.fetchAvailableClients()).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
@@ -82,7 +84,9 @@ describe("Dynamic Document Store - Permissions", () => {
 
     mock.onGet("/api/dynamic-documents/55/permissions/").reply(500, { detail: "error" });
 
-    await expect(store.fetchDocumentPermissions(55)).rejects.toBeTruthy();
+    await expect(store.fetchDocumentPermissions(55)).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
@@ -107,7 +111,9 @@ describe("Dynamic Document Store - Permissions", () => {
 
     mock.onGet("/api/dynamic-documents/permissions/roles/").reply(500, { detail: "error" });
 
-    await expect(store.fetchAvailableRoles()).rejects.toBeTruthy();
+    await expect(store.fetchAvailableRoles()).rejects.toThrow(
+      "Request failed with status code 500"
+    );
 
     consoleSpy.mockRestore();
   });
@@ -141,7 +147,7 @@ describe("Dynamic Document Store - Permissions", () => {
 
     await expect(
       store.manageDocumentPermissions(77, { is_public: true, visibility: {}, usability: {} })
-    ).rejects.toBeTruthy();
+    ).rejects.toThrow("Request failed with status code 500");
 
     consoleSpy.mockRestore();
   });

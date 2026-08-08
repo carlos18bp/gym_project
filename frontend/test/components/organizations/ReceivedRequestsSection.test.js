@@ -211,23 +211,23 @@ describe("ReceivedRequestsSection.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Actualizar"));
 
-    expect(refreshButton).toBeTruthy();
+    expect(refreshButton.text()).toContain("Actualizar");
 
     await refreshButton.trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("refresh")).toBeTruthy();
+    expect(wrapper.emitted("refresh")).toHaveLength(1);
 
     await wrapper.find("[data-test='view-detail']").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("view-detail")).toBeTruthy();
+    expect(wrapper.emitted("view-detail")).toHaveLength(1);
     expect(wrapper.emitted("view-detail")[0]).toEqual([2]);
 
     await wrapper.find("[data-test='status-updated']").trigger("click");
     await flushPromises();
 
-    expect(wrapper.emitted("status-updated")).toBeTruthy();
+    expect(wrapper.emitted("status-updated")).toHaveLength(1);
     expect(wrapper.emitted("status-updated")[0][0]).toMatchObject({
       requestId: 2,
       newStatus: "RESOLVED",
@@ -259,7 +259,7 @@ describe("ReceivedRequestsSection.vue", () => {
       .findAll("button")
       .find((b) => (b.text() || "").includes("Limpiar Filtros"));
 
-    expect(clearButton).toBeTruthy();
+    expect(clearButton.text()).toContain("Limpiar Filtros");
 
     await clearButton.trigger("click");
     await flushPromises();

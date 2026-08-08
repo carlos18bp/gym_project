@@ -12,10 +12,6 @@ import {
  *  - ProcessHistoryModal.vue badge tooltip reflects notify_clients
  */
 
-const TAGS = {
-  tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'],
-};
-
 function buildProcessWithAlert({ notifyClients, isActive = true }) {
   const lawyerId = 9100;
   const clientId = 9101;
@@ -63,7 +59,7 @@ function buildProcessWithAlert({ notifyClients, isActive = true }) {
 
 test(
   "alert indicator shows lawyer-and-clients copy when notify_clients=true",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer', '@outcome:display'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: true,
@@ -86,12 +82,20 @@ test(
       },
     });
 
-    await page.goto(`/process_detail/${process.id}`);
+    // Start where the user starts: the process list
+    await page.goto("/process_list");
+    const processRow = page.getByRole("row").filter({ hasText: "Ana Pérez" });
+    await expect(processRow).toBeVisible({ timeout: 15_000 });
 
+    await processRow.click();
+
+    // Transition: the detail view opens and exposes the alert recipient copy
+    await expect(page).toHaveURL(new RegExp(`/process_detail/${process.id}`), {
+      timeout: 10_000,
+    });
     await expect(page.getByRole("heading", { name: "Civil" })).toBeVisible({
       timeout: 15_000,
     });
-
     await expect(
       page.getByText(/Alerta activa.*Notifica al abogado y clientes/)
     ).toBeVisible({ timeout: 10_000 });
@@ -100,7 +104,7 @@ test(
 
 test(
   "alert indicator shows lawyer-only copy when notify_clients=false",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: false,
@@ -141,7 +145,7 @@ test(
 
 test(
   "history modal badge tooltip reflects notify_clients",
-  TAGS,
+  { tag: ['@flow:process-alerts', '@module:processes', '@priority:P2', '@role:lawyer'] },
   async ({ page }) => {
     const { process, lawyer, client, lawyerId } = buildProcessWithAlert({
       notifyClients: true,

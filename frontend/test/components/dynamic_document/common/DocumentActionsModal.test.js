@@ -120,7 +120,7 @@ describe("DocumentActionsModal.vue", () => {
       .findAll("button")
       .find((button) => (button.text() || "").includes("Relaciones"));
 
-    expect(actionButton.attributes("disabled")).toBeDefined();
+    expect(actionButton.attributes("disabled")).toBe("");
 
     // quality: allow-implementation-coupling (Vue component internals needed for this assertion)
     await wrapper.vm.$.setupState.handleAction("relationships");

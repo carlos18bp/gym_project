@@ -378,7 +378,7 @@ describe("ClientDashboard.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Mis Solicitudes"));
 
-    expect(requestsTabButton).toBeTruthy();
+    expect(requestsTabButton.text()).toContain("Mis Solicitudes");
     expect(requestsTabButton.attributes("disabled")).toBeUndefined();
 
     await requestsTabButton.trigger("click");
@@ -397,8 +397,8 @@ describe("ClientDashboard.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Mis Solicitudes"));
 
-    expect(requestsTabButtonAfter).toBeTruthy();
-    expect(requestsTabButtonAfter.attributes("disabled")).toBeDefined();
+    expect(requestsTabButtonAfter.text()).toContain("Mis Solicitudes");
+    expect(requestsTabButtonAfter.attributes("disabled")).toBe("");
   });
 
   test("emitting request-detail navigates to request detail route query", async () => {
@@ -510,7 +510,7 @@ describe("ClientDashboard.vue", () => {
       .findAll("button")
       .find((btn) => (btn.text() || "").includes("Nueva Solicitud"));
 
-    expect(createRequestButton).toBeTruthy();
+    expect(createRequestButton.text()).toContain("Nueva Solicitud");
     await createRequestButton.trigger("click");
     await flushPromises();
 

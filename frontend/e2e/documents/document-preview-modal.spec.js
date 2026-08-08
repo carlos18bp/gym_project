@@ -35,7 +35,7 @@ async function setupLawyerDashboard(page, { userId, documents }) {
 }
 
 test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, () => {
-  test("lawyer opens document preview and sees title and content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+  test("lawyer opens document preview and sees title and content", { tag: ['@flow:docs-preview', '@module:documents', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 3000;
     const docId = 201;
     const docTitle = "Contrato de Prueba";
@@ -55,6 +55,7 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
+    await expect(page.getByTestId("document-preview-modal")).toBeHidden();
 
     // Regression guard for fix 1.3: opening the preview must hit the document
     // detail endpoint so we receive the full `content` (the list serializer
@@ -66,8 +67,9 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
         req.method() === "GET",
       { timeout: 10_000 }
     );
-    await openDocumentPreviewFromActions(page);
+    await page.getByTestId("document-action-preview").click();
     await detailRequest;
+    await expect(page.getByTestId("document-preview-modal")).toBeVisible({ timeout: 10_000 });
 
     const previewHeading = page.getByTestId("document-preview-heading");
     await expect(previewHeading).toBeVisible({ timeout: 10_000 });
@@ -144,7 +146,10 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await openDocumentPreviewFromActions(page);
+    await expect(page.getByTestId("document-preview-content")).toBeHidden();
+
+    await page.getByTestId("document-action-preview").click();
+
     await expect(page.getByTestId("document-preview-heading")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByTestId("document-preview-content")).toContainText("Cláusula Primera");
     await expect(page.getByTestId("document-preview-content")).toContainText("Las partes acuerdan lo siguiente:");
@@ -170,7 +175,10 @@ test.describe("DocumentPreviewModal", { tag: ['@flow:docs-preview', '@module:doc
     });
 
     await openDocumentActionsModal(page, docTitle);
-    await openDocumentPreviewFromActions(page);
+    await expect(page.getByTestId("document-preview-heading")).toBeHidden();
+
+    await page.getByTestId("document-action-preview").click();
+
     const heading = page.getByTestId("document-preview-heading");
     await expect(heading).toBeVisible({ timeout: 10_000 });
     await expect(heading).toContainText(docTitle);

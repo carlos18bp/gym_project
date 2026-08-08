@@ -1,3 +1,4 @@
+import os
 import time
 
 from django.db import connection
@@ -12,7 +13,15 @@ def health_check(request):
     Lightweight health-check endpoint for uptime monitors.
     Returns HTTP 200 when the app, database and Redis are reachable.
     """
-    status = {"app": "ok"}
+    # 'project'/'environment' let external probes verify WHO answered: a shared
+    # codebase means the project name alone cannot tell prod from staging
+    # (measured: /qa pilot #3). Set before the health checks so they survive the
+    # 503 path too.
+    status = {
+        "app": "ok",
+        "environment": getattr(settings, "DJANGO_ENV", os.getenv("DJANGO_ENV", "development")),
+        "project": settings.BASE_DIR.parent.name,
+    }
     healthy = True
 
     # Database check

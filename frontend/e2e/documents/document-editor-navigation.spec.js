@@ -4,6 +4,7 @@ import {
   installDynamicDocumentApiMocks,
   buildMockDocument,
 } from "../helpers/dynamicDocumentMocks.js";
+import { installTinyMceCloudStub } from "../helpers/documentEditorMocks.js";
 
 /**
  * E2E — Document editor navigation flow.
@@ -114,17 +115,28 @@ test.describe("Client use template navigation", { tag: ['@flow:docs-editor', '@m
 test.describe("Dashboard route change handling", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, () => {
   test("returning to dashboard from editor triggers refresh", { tag: ['@flow:docs-editor', '@module:documents', '@priority:P1', '@role:shared'] }, async ({ page }) => {
     const userId = 16020;
+    await installTinyMceCloudStub(page);
     await setupLawyer(page, { userId });
 
-    // Navigate to a document editor route first
-    await page.goto("/dynamic_document_dashboard/lawyer/editor/create/TestDoc");
-    await page.waitForLoadState("networkidle");
-
-    // Navigate back to dashboard
+    // Reach the editor the way the lawyer does: "Nueva Minuta" → name → submit
     await page.goto("/dynamic_document_dashboard");
-    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: /Nueva Minuta/i }).first().click();
+    // quality: allow-fragile-selector (stable application ID)
+    await page.locator("#document-name").fill("Minuta Ida Y Vuelta");
+    // quality: allow-fragile-selector (the modal's submit button carries no accessible name of its own)
+    await page.locator("form button[type='submit']").click();
+    await page.waitForURL(/\/lawyer\/editor\/create\//, { timeout: 15_000 });
 
-    // Dashboard should render with documents
+    // Coming back must refetch the list, not serve a stale snapshot.
+    const listRefetch = page.waitForRequest(
+      (request) =>
+        request.url().includes("/api/dynamic-documents/") &&
+        request.method() === "GET"
+    );
+    await page.getByRole("button", { name: "Regresar" }).click();
+    await listRefetch;
+
+    await expect(page).toHaveURL(/\/dynamic_document_dashboard$/, { timeout: 10_000 });
     await expect(page.getByText("Minuta Para Editar")).toBeVisible({ timeout: 10000 });
   });
 });

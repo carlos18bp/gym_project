@@ -266,7 +266,7 @@ async function installDashboardComponentMocks(
   });
 }
 
-test("folders tab renders folder row and folder details with real document data", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+test("folders tab renders folder row and folder details with real document data", { tag: ['@flow:dashboard-folder-components', '@module:dashboard', '@priority:P3', '@role:shared', '@outcome:display'] }, async ({ page }) => {
   const userId = 10700;
   const documents = [
     buildMockDocument({ id: 1, title: "Contrato laboral base", state: "Draft", createdBy: userId }),

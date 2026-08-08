@@ -26,7 +26,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchProcesses()).rejects.toThrow("Failed to fetch SECOP processes");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch SECOP processes");
   });
 
   test("fetchProcessDetail throws when status is not 200", async () => {
@@ -34,7 +34,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchProcessDetail(1)).rejects.toThrow("Failed to fetch process detail");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch process detail");
   });
 
   test("fetchMyClassified throws when status is not 200", async () => {
@@ -42,7 +42,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchMyClassified()).rejects.toThrow("Failed to fetch classified processes");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch classified processes");
   });
 
   test("createClassification throws when status is not 201", async () => {
@@ -52,7 +52,7 @@ describe("SECOP Store — non-200 status branches", () => {
     await expect(
       store.createClassification({ process: 1, status: "APPLIED" }),
     ).rejects.toThrow("Failed to create classification");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to create classification");
   });
 
   test("fetchAlerts throws when status is not 200", async () => {
@@ -60,7 +60,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchAlerts()).rejects.toThrow("Failed to fetch alerts");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch alerts");
   });
 
   test("createAlert throws when status is not 201", async () => {
@@ -68,7 +68,7 @@ describe("SECOP Store — non-200 status branches", () => {
     create_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.createAlert({ name: "Test" })).rejects.toThrow("Failed to create alert");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to create alert");
   });
 
   test("updateAlert throws when status is not 200", async () => {
@@ -76,7 +76,7 @@ describe("SECOP Store — non-200 status branches", () => {
     update_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.updateAlert(1, { name: "Test" })).rejects.toThrow("Failed to update alert");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to update alert");
   });
 
   test("toggleAlert throws when status is not 200", async () => {
@@ -84,7 +84,7 @@ describe("SECOP Store — non-200 status branches", () => {
     create_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.toggleAlert(1)).rejects.toThrow("Failed to toggle alert");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to toggle alert");
   });
 
   test("fetchSavedViews throws when status is not 200", async () => {
@@ -92,7 +92,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchSavedViews()).rejects.toThrow("Failed to fetch saved views");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch saved views");
   });
 
   test("createSavedView throws when status is not 201", async () => {
@@ -102,7 +102,7 @@ describe("SECOP Store — non-200 status branches", () => {
     await expect(
       store.createSavedView({ name: "Test", filters: {} }),
     ).rejects.toThrow("Failed to create saved view");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to create saved view");
   });
 
   test("fetchAvailableFilters throws when status is not 200", async () => {
@@ -110,7 +110,7 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchAvailableFilters()).rejects.toThrow("Failed to fetch filters");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch filters");
   });
 
   test("deleteAlert sets error on failure", async () => {
@@ -127,6 +127,6 @@ describe("SECOP Store — non-200 status branches", () => {
     get_request.mockResolvedValue({ status: 403, data: {} });
 
     await expect(store.fetchSyncStatus()).rejects.toThrow("Failed to fetch sync status");
-    expect(store.error).toBeTruthy();
+    expect(store.error).toBe("Failed to fetch sync status");
   });
 });
