@@ -2,7 +2,7 @@
 name: dev-down
 description: "Detiene el entorno de desarrollo LOCAL levantado por /dev-up: mata los procesos de backend (runserver) y frontend (dev server) por PID file, con fallback por puerto, y verifica que queden libres. Solo dev machine — refusa en VPS/prod."
 disable-model-invocation: true
-allowed-tools: Bash, Read
+allowed-tools: Bash, Read, AskUserQuestion
 argument-hint: "[--backend-port=8000] [--frontend-port=3000] [--clean-logs]"
 ---
 
@@ -178,6 +178,10 @@ usar `systemctl stop` — **no es error**, es safety gate.
 
 Si un puerto queda ocupado tras el fallback, reemplazar ✅ por 🔴 y agregar
 `## Next steps` con el `ss -ltnp` del listener remanente.
+
+## Next steps
+- `/dev-up --restart` — volver a levantar limpio
+- (operador) revisar logs si algo quedó colgado
 
 ---
 

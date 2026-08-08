@@ -2,7 +2,7 @@
 name: migrate-project
 description: "Migra un proyecto Django entre VPS del fleet (20 pasos: git clone, creds, snapshot, systemd+nginx deploy, SSL emit, cutover). Per-project, no whole-VPS. v1.3 con deploy automático de systemd units (paso 16) + nginx site (paso 17) + SSL cert chicken-and-egg handler (paso 19) + auto-cleanup mysql-users.env post-cutover (paso 20.9). Reducción ~30 min de manual work por migración."
 argument-hint: "<project_name> <target_vps_alias> [--check|--apply|--cutover --confirm-downtime|--rollback]"
-allowed-tools: Bash, Read, Edit
+allowed-tools: Bash, Read, Edit, AskUserQuestion
 ---
 
 ## Qué hace esta skill
@@ -396,6 +396,29 @@ Caso más simple del set analizado: sin twin staging, sin `extra_paths`, sólo `
 
 ---
 
+## Acciones disponibles
+
+Menú **position-aware**: acá el operador siempre pasó argumentos (proyecto +
+target + modo), así que el gating de [[_output-protocol]] §4 aplica al PASO
+SIGUIENTE — tras el reporte, si la sesión es interactiva, ofrecer vía
+AskUserQuestion la continuación según el modo que acaba de correr.
+
+Tras un `--check` exitoso:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Ejecutar --apply (Recommended) | snapshot + transfer + warm spare en target; origin sigue vivo, idempotente, sin downtime | `bash scripts/maintenance/migrate-project.sh --apply <proj> <target>` |
+
+Tras un `--apply`:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| Mostrar el comando exacto de cutover | el cutover NO es clickeable — exige tipear `--confirm-downtime` con la ventana acordada; esta opción sólo MUESTRA el texto, NO lo ejecuta | `bash scripts/maintenance/migrate-project.sh --cutover --confirm-downtime <proj> <target>` |
+| --rollback | si algo salió mal: restart de services en origin, target queda en warm spare | `bash scripts/maintenance/migrate-project.sh --rollback <proj> <target>` |
+
+El `--cutover` está en la blocklist del protocolo: nunca se ejecuta desde un
+click — el operador lo tipea con su `--confirm-downtime`.
+
 ## Output final
 
 Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
@@ -434,3 +457,29 @@ Sustituciones por modo/estado:
 - (otro VPS, origin) `ssh <origin> 'sudo systemctl disable <gunicorn_svc> <huey_svc>'` — deshabilitar services en origin tras validar
 - (manual, ≥7d) `rm -rf /home/ryzepeck/backups/vps/<UTC>` — borrar el snapshot pesado en origin
 - `git add projects.yml config/credentials/servers/<target>/mysql-users.env && git commit && git push` — commitear el flip de `server:` + cleanup de mysql-users.env
+
+---
+
+## Suspensión de proyecto (checklist manual, meta-review 2026-07 P1)
+
+La migración limpia certs huérfanos en origen (paso 20.10), pero la **suspensión**
+(status → `suspended`, offline-total) era ad-hoc y dejó 2 renewals huérfanos que
+rompieron `certbot renew` global (korehealths + mimittos, detectados 2026-07-06).
+Al suspender un proyecto, en ESTE orden:
+
+1. `sudo systemctl stop --now <gunicorn> <huey> [<frontend>]` + `disable` de los 3
+   (+ `.socket` si existe). Verificar `systemctl is-enabled` = disabled.
+2. nginx: `sudo rm /etc/nginx/sites-enabled/<site>` + `nginx -t` + reload
+   (el archivo queda en sites-available para reactivación).
+3. **Cert SSL — decidir explícitamente** (el paso que siempre se olvida):
+   - Reactivación improbable/lejana → `sudo certbot delete --cert-name <dominio>`
+     (re-emitir al reactivar toma segundos; un renewal huérfano con webroot/site
+     removido rompe el `certbot renew` de TODO el host cuando entra en ventana).
+   - Reactivación inminente (<30 días) → conservar, PERO anotar en projects.yml
+     `notes:` la fecha de expiry y quién lo vigila.
+4. Datos: dump pre-suspensión a `/var/backups/<proj>/pre-suspension-<ts>/`
+   (patrón xpandia 2026-06-27); sqlite + media quedan en el dir del proyecto.
+5. `projects.yml`: `status: suspended` + `notes:` con fecha, razón y qué se
+   preservó dónde (los reportes y el traffic report leen esas notes).
+6. Verificar: `sudo certbot renew --dry-run` limpio + `vps-healthcheck` sin
+   críticos + el proyecto aparece como ⏸️ en el próximo reporte.

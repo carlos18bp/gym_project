@@ -38,6 +38,16 @@ Un solo emoji + frase corta. Umbrales **derivados de la tabla** (sección 2):
 | `🚫 <skill> — REFUSED (<razón>)` | Safety gate intencional rechazó la operación (prod detectada, intent peligroso) — **no es error**, es decisión segura |
 | `⏭️ <skill> — N/A o saltado` | No aplica al contexto (skip-flag pasado, ya en estado correcto) |
 
+Cuando TODAS las celdas son ✅ (veredicto 🟢) y no queda ningún pendiente,
+puede añadirse debajo del veredicto la línea opcional — convención ya en uso
+amplio en el catálogo:
+
+```markdown
+✨ Todo en orden — no hay acciones pendientes.
+```
+
+En ese caso la sección `## Next steps` se omite (§3).
+
 ### 2. Tabla de dimensiones
 
 ```markdown
@@ -70,6 +80,14 @@ ENTRE el veredicto y la tabla — listando los 3 items más críticos con su
 comando exacto. El operador lee el Top 3 primero; la tabla queda como detalle
 profundizable.
 
+### Excepción: skills cuyo output ES el producto
+
+Skills donde la respuesta misma es el entregable para un humano — a veces no
+técnico — (hoy: `human`, `user-walkthrough`): una tabla de dimensiones al
+final sólo mete ruido sobre el producto. Estas skills cierran SÓLO con la
+línea de veredicto (§1), sin tabla §2 ni Next steps técnicos, y deben
+declarar la excepción en su propio `## Output final`.
+
 ### 3. Pendientes / next steps (omitir si no aplica)
 
 ```markdown
@@ -81,6 +99,56 @@ profundizable.
 
 Cada bullet debe ser **accionable sin interpretación**: comando exacto + dónde
 correrlo + qué actor lo hace.
+
+### 4. Acciones disponibles (menú interactivo — opcional por skill)
+
+Dos posiciones, un mismo esquema:
+
+- **Pre-run (gating):** skills cuyo primer paso ES elegir modo
+  (`--check|--apply|--validate`…). Patrón ya canónico en `init-fleet`,
+  `bootstrap-ssh-fleet`, `bootstrap-tailscale-fleet`, `sync-ai-ecosystems` —
+  no cambiarlo.
+- **Post-run (escalaciones):** skills con default mínimo/read-only. DESPUÉS del
+  reporte (§1-§3), UNA sola `AskUserQuestion` que ofrezca las demás acciones de
+  la skill, para que el operador descubra capacidades sin memorizar flags.
+
+**Gating obligatorio (ambas posiciones):**
+
+1. El operador pasó flags/argumentos explícitos → ejecutar directo, **sin menú**.
+2. La intención es clara por el contexto de la sesión → proponer el comando en
+   texto y esperar confirmación, sin picker.
+3. Sin argumentos / intención difusa → disparar la pregunta.
+4. **Nunca** en modo fleet/headless/cron ni dentro de un barrido — sólo en
+   sesión interactiva single-target.
+5. Máx **4 opciones** ("Other" ya existe siempre); lo que no entra se nombra en
+   `## Next steps`.
+
+**Esquema de fila:** `label` corto (sufijo `(Recommended)` sólo si la acción es
+segura y reversible) · `description` de 1 línea que incluya costo/efecto real
+("envía email real, cooldown 1h") · `preview` = **el comando exacto** que se
+ejecutaría.
+
+**Blocklist — filas que NINGUNA skill puede ofrecer como opción clickeable:**
+
+- `/deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
+  como texto en Next steps).
+- Merge de una rama release (`--allow-release-merge` se tipea, no se clickea).
+- `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
+  es una confirmación de downtime).
+- Cualquier acción sobre un proyecto `production+active` protegido
+  (`is_protected_project`) — el override `--project=<X>` se tipea.
+- `--include-projects` de bootstrap/init-fleet como Recommended (es
+  deploy-equivalente).
+- Git destructivo: `reset --hard`, `push --force`, `stash drop` masivo
+  (per-stash sólo si la skill lo clasificó OBSOLETO/VIEJO, con evidencia).
+- Revocaciones que commitean (`--revoke=<id>`) sin su fila `--dry-run` previa.
+- Flags retirados o error-by-design (`git-sync --all`, `git-commit --all-vps`).
+- Restarts/acciones de servicio antes de leer el journal (regla de incident).
+- Deletes no evidenciados: siempre por lote, con lista y evidencia visibles.
+
+**Cómo lo declara una skill:** una sección `## Acciones disponibles` con su
+tabla de filas (label · description · preview) ANTES del `## Output final`. Los
+alias heredan el menú de su skill base (regla de `## Skills alias`).
 
 ## Reglas
 
@@ -96,6 +164,8 @@ correrlo + qué actor lo hace.
   "correr el script de foo en modo apply" no.
 - **No repetir info** que ya está en la tabla. Next steps son acciones, no
   resúmenes.
+- **Máx. 3 comandos de verificación por ciclo** — nunca una suite completa
+  como verificación de un cambio puntual.
 
 ## Ejemplo (skill /init-fleet, modo apply, dev)
 
@@ -140,6 +210,19 @@ fix-broken-tests) conservan su estructura — solo se aseguran de:
 1. Usar el set canónico de emojis (✅⚠️❌⏭️ℹ️🚫⏸️ + 🟢🟡🔴 solo para veredicto).
 2. Cerrar con veredicto en una línea.
 3. Listar next steps con comando exacto.
+
+Si la skill ofrece menú interactivo (§4), lo declara así (antes del Output final):
+
+```markdown
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| ... (Recommended) | ... | `bash …` |
+```
 
 ## Skills alias
 

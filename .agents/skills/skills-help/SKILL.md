@@ -1,7 +1,7 @@
 ---
 name: skills-help
-description: "Lista en una tabla las skills disponibles del proyecto con su alcance en una frase. Default: skills propias de .claude/skills. Con --all agrega plugins/globales. Respeta una lista de exclusión editable (ignore.txt). Acepta un término de filtro."
-allowed-tools: Bash, Read
+description: "Catálogo de skills en tablas por categoría con ámbito de ejecución (repo/host/fleet/VPS-only/dev/buzones), modo default (check vs mutante), argumentos y alcance en una frase. Default: skills propias de .claude/skills. Con --all agrega plugins/globales. Respeta una lista de exclusión editable (ignore.txt). Acepta un término de filtro."
+allowed-tools: Bash, Read, AskUserQuestion
 argument-hint: "[--all] [filtro]"
 ---
 
@@ -67,7 +67,29 @@ if [ -f "$IGNORE_FILE" ]; then
 fi
 is_ignored() { printf '%s' "$IGNORED" | grep -qxF "$1"; }
 
-# --- Extraer frontmatter de cada skill ---
+# --- Overrides estáticos (ámbito/modo NO derivables del frontmatter; EDITAR ACÁ) ---
+# Ámbito: 🏠 repo cwd · 🖥️ este host · 🌐 fleet · 🔧 VPS-only · 💻 dev-only · ✉️ buzones
+scope_override() {
+  case "$1" in
+    all-projects|incident)                                        echo "🌐" ;;
+    full-audit|server-diagnostic|git-status-report)               echo "🖥️🌐" ;;
+    tailscale-connect|init-fleet|bootstrap-ssh-fleet|bootstrap-tailscale-fleet|sync-ai-ecosystems) echo "🖥️" ;;
+    migrate-project)                                              echo "🔧🌐" ;;
+    mailbox-maintenance)                                          echo "✉️" ;;
+    dev-up|dev-down)                                              echo "💻" ;;
+    human)                                                        echo "—" ;;
+    *)                                                            echo "" ;;   # derivar
+  esac
+}
+# Modo default: ✎ = muta de entrada. Todo lo demás deriva a ✓ (check/read-only).
+mode_override() {
+  case "$1" in
+    git-commit|git-sync|merge-when-green|all-projects|integrate-new-project|deploy-and-check|dev-up|dev-down|tailscale-connect|client-report|migrate-project) echo "✎" ;;
+    *) echo "✓" ;;
+  esac
+}
+
+# --- Extraer frontmatter + derivar ámbito/args de cada skill ---
 RAW=""; n_listed=0; n_ignored=0
 for f in "$SKILLS_DIR"/*/SKILL.md; do
   [ -f "$f" ] || continue
@@ -75,18 +97,40 @@ for f in "$SKILLS_DIR"/*/SKILL.md; do
   name=$(printf '%s\n' "$fm" | sed -n 's/^name:[[:space:]]*//p' | head -1 | tr -d '"')
   [ -z "$name" ] && name=$(basename "$(dirname "$f")")
   desc=$(printf '%s\n' "$fm" | sed -n 's/^description:[[:space:]]*//p' | head -1 | sed 's/^"//; s/"[[:space:]]*$//')
+  hint=$(printf '%s\n' "$fm" | sed -n 's/^argument-hint:[[:space:]]*//p' | head -1 | sed 's/^"//; s/"[[:space:]]*$//')
+  tools=$(printf '%s\n' "$fm" | sed -n 's/^allowed-tools:[[:space:]]*//p' | head -1)
   slash=""; printf '%s\n' "$fm" | grep -qiE '^disable-model-invocation:[[:space:]]*true' && slash="⚡"
+
+  # Ámbito: override estático → si vacío, derivar del hint/cuerpo.
+  badges="$(scope_override "$name")"
+  if [ -z "$badges" ]; then
+    badges="🏠"
+    # skills-help: su --all = plugins/globales, NO fleet (falso positivo conocido).
+    if [ "$name" != "skills-help" ]; then
+      printf '%s' "$hint" | grep -q -- '--all-repos' && badges="${badges}🖥️"
+      printf '%s' "$hint" | grep -qE -- '--all-vps|--all \(todos los VPS' && badges="${badges}🌐"
+    fi
+  fi
+  # VPS-only: el guard canónico anti-dev-machine (patrón preciso). Saltar a
+  # skills-help misma: el patrón vive en ESTE código y se auto-matchearía.
+  if [ "$name" != "skills-help" ]; then
+    grep -q '/home/dev-env/webapps' "$f" 2>/dev/null && badges="${badges}🔧"
+  fi
+  # Buzones: tools MCP de mail.
+  printf '%s' "$tools" | grep -qE 'mcp__(imap|claude_ai_Gmail)' && badges="${badges}✉️"
+
+  mode="$(mode_override "$name")"
 
   if is_ignored "$name"; then n_ignored=$((n_ignored+1)); continue; fi
   # Filtro (case-insensitive sobre nombre+descripción)
   if [ -n "$FILTER" ]; then
     printf '%s %s' "$name" "$desc" | grep -qiF "$FILTER" || continue
   fi
-  RAW="$RAW$name"$'\t'"$slash"$'\t'"$desc"$'\n'
+  RAW="$RAW$name"$'\t'"$slash"$'\t'"$badges"$'\t'"$mode"$'\t'"$hint"$'\t'"$desc"$'\n'
   n_listed=$((n_listed+1))
 done
 
-echo "=== SKILLS_PROYECTO (name <TAB> slash <TAB> description) ==="
+echo "=== SKILLS_PROYECTO (name <TAB> slash <TAB> ambito <TAB> modo <TAB> args <TAB> description) ==="
 printf '%s' "$RAW" | sort -f
 echo "=== /SKILLS_PROYECTO  (listadas=$n_listed, ignoradas=$n_ignored) ==="
 
@@ -125,23 +169,31 @@ fi
 
 Con los datos crudos de Phase 1 (y Phase 2 si `--all`), Claude arma la salida:
 
-1. **Agrupar** las skills del proyecto en categorías legibles (no hay campo de
-   categoría en el frontmatter — agrupá por propósito). Buckets sugeridos:
-   - **Entorno & dev local** (dev-up, dev-down, fake-data-refresh, …)
-   - **Deploy · git · fleet** (deploy-and-check, git-sync, git-commit, full-audit, repo-cleanup, …)
-   - **Tests & cobertura** (backend/frontend/e2e coverage, fix-broken-tests, test-quality-gate, new-feature-checklist, …)
-   - **Planning & desarrollo** (plan, plan-task, implement, debug, debugme, …)
-   - **Auditoría & mapas** (view-map-audit, vuln-audit, playwright-validation, …)
-   - **Contenido & usuario** (proposal-create, blog-ai-weekly, user-walkthrough, human, methodology-setup, …)
+1. **Agrupar** las skills en categorías legibles (no hay campo de categoría —
+   agrupá por propósito). Buckets canónicos — **un bucket vacío NO se imprime**
+   (cubren tanto repos de proyecto como el toolkit):
+   - **QA & tests** (qa, test-audit, test-quality-gate, coverage ×3, e2e-user-flows-check, fix-broken-tests, new-feature-checklist, playwright-validation, fake-data-refresh)
+   - **Git & fleet** (git-sync, git-commit, git-status-report, merge-when-green, all-projects, full-audit, deploy-and-check)
+   - **Bootstrap & conectividad** (init-fleet, bootstrap-ssh-fleet, bootstrap-tailscale-fleet, tailscale-connect, sync-ai-ecosystems)
+   - **Servidores & incidentes** (server-diagnostic, incident, migrate-project, integrate-new-project)
+   - **Entorno & dev local** (dev-up, dev-down, methodology-setup)
+   - **Planning & desarrollo** (plan, plan-task, implement, debug, debugme)
+   - **Contenido & reportes** (client-report, user-walkthrough, human, repo-cleanup, vuln-audit, skills-help)
+   - **Buzones** (mailbox-maintenance)
    - **Otras** (cualquiera que no encaje — nunca dejes una skill afuera)
-2. Una **tabla por categoría** con columnas: `| Skill | | Alcance |`
+2. Una **tabla por categoría** con 4 columnas: `| Skill | Ámbito | Args | Alcance |`
    - `Skill`: ``/nombre`` (con backticks).
-   - 2ª columna: el badge `⚡` si es slash-only, vacío si no.
-   - `Alcance`: **una frase, ≤80 chars** resumida de la descripción (recortá; no
-     pegues la descripción entera).
-3. **Leyenda**: `⚡ = solo por slash command (no se auto-invoca por el modelo)`.
-4. Si `--all`: sección extra **"Plugins / globales"** con esas skills (de Phase 2 +
-   contexto de sesión), mismo formato de tabla.
+   - `Ámbito`: los badges derivados en Phase 1 (`🏠🖥️🌐🔧💻✉️` + modo `✓`/`✎` +
+     `⚡` si slash-only), concatenados sin espacios.
+   - `Args`: los flags del `argument-hint` **compactados** (sólo flags, sin las
+     aclaraciones entre paréntesis), ≤40 chars. Si el hint compactado excede 40:
+     poné `(ver ↓)` y agregá una **fila de continuación** debajo —
+     `| ↳ | | | <argument-hint completo> |`. Sin `argument-hint` → `—`.
+   - `Alcance`: **una frase, ≤48 chars** resumida de la descripción.
+3. Si `--all`: sección extra **"Plugins / globales"** con esas skills (de Phase 2 +
+   contexto de sesión), mismo formato.
+4. **Leyenda ÚNICA al final** (nunca por tabla):
+   `Ámbito: 🏠 repo · 🖥️ este host (--all-repos) · 🌐 fleet (--all-vps) · 🔧 VPS-only · 💻 dev-only · ✉️ buzones — Modo: ✓ check/dry-run default · ✎ muta de entrada · ⚡ solo slash`.
 5. **Pie**: `N skills listadas · M ignoradas` y, si aplica, cómo editar la lista de
    exclusión (`$IGNORE_FILE`). Si no existe el ignore.txt, repetí el hint para crearlo.
 
@@ -170,6 +222,17 @@ Tabla de dimensiones del scan (complementa las tablas-catálogo, no las reemplaz
 | Scan proyecto | ✅ | N skills listadas · M ignoradas |
 | Plugins / globales (`--all`) | ✅/⏭️ | listados si `--all`; ⏭️ si no se pasó |
 | Render tablas-catálogo | ✅ | K categorías |
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos (gating
+de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description | preview |
+|---|---|---|
+| Ver plugins/globales (Recommended) | agrega superpowers, built-ins y skills de plugins | `/skills-help --all` |
+| Filtrar por término | re-render sólo con las que matcheen | `/skills-help <término>` |
+| Ocultar skills del catálogo | crear/editar la lista de exclusión local | `edit .claude/skills/skills-help/ignore.txt` |
 
 ## Next steps
 - `/skills-help --all` — agregar plugins/globales y comandos built-in

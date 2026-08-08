@@ -1,58 +1,169 @@
 ---
 name: backend-test-coverage
-description: "Backend test coverage strategy — analyze pytest coverage reports and implement tests to reach 100% coverage, prioritizing lowest-coverage highest-impact files."
+description: "Backend test coverage — cover untested behavior in models, serializers, views, utils and tasks with tests that would fail if the behavior broke. Coverage is the readout, not the goal."
 ---
 
-# Backend Test Coverage Strategy
+# Backend Test Coverage
+
+> **Cadena:** el conductor [[qa]] corre esta skill como Fase 4 (subagente
+> `qa-engineer-backend`, que la precarga vía `skills:`). Invocable suelta para
+> trabajo puntual de una capa.
 
 ## Goal
 
-Analyze the backend codebase focusing on **Models, Serializers, Views, Utils, and Tasks**. Reach 100% coverage using Unit, Integration, and Contract tests.
+Cover untested **behavior** across Models, Serializers, Views, Utils and Tasks.
 
-## Quality Standards Reference
+**The goal is not a percentage.** This skill used to say "reach 100% coverage".
+A line-coverage target is satisfied by any test that executes the line — which is
+how a suite ends up with tests that call a function, assert the mock was called,
+and verify nothing. The target is that **every behavior has a test that would
+fail if that behavior broke.**
 
-Before writing any test, consult: `docs/TESTING_QUALITY_STANDARDS.md`
+## Definition of done — per test, all three required
 
-## Execution Rules
+1. **Ejecuta el comportamiento real** (la unidad con entrada real, mock sólo en
+   fronteras).
+2. **Asserta un resultado observable con VALOR CONCRETO** — nunca
+   visibilidad/existencia/truthiness.
+3. **Nombra el bug que atraparía** — en el docstring. Si no podés escribir esa
+   línea, el test no se escribe.
 
-1. **Activate virtual environment**: `source venv/bin/activate`
-2. **Run only modified test files**: `pytest path/to/test_file.py -v`
-3. **Maximum per execution**: 20 tests per batch, 3 commands per cycle
+Ejemplo que cumple los tres puntos:
 
-## Coverage Prioritization
+```python
+def test_payment_serializer_rejects_negative_amount(self):
+    """Falla si el serializer deja de rechazar montos negativos."""
+    user = UserFactory()
+    self.client.force_authenticate(user=user)
 
-| Priority | Criteria | Rationale |
-|----------|----------|-----------|
-| 1 | Lowest % coverage (0% first) | Maximum impact per test |
-| 2 | Highest "Miss" count | Biggest uncovered surface |
-| 3 | Views → Serializers → Models → Utils → Tasks | Business-critical first |
-| 4 | Files with partial coverage | Complete before polishing |
+    resp = self.client.post("/api/payments/", {"amount": -100}, format="json")
 
-## Per-Test Checklist
+    assert resp.status_code == 400
+    assert "amount" in resp.json()
+```
 
-- Test name describes ONE specific behavior
-- No conditionals or loops in test body
-- Assertions verify observable outcomes
-- Test is deterministic
-- Test is isolated
-- Mocks have explicit return_value/side_effect
-- Follows AAA pattern
+## Before writing: check for an existing test
+
+```bash
+grep -rn "def test_.*<behavior>" backend/<app>/tests/
+grep -rn "<the function or endpoint you plan to test>" backend/<app>/tests/
+```
+
+If the behavior is already covered, **extend that test** rather than adding a
+near-copy. Duplicate test NAMES in the same scope are reported by the backend
+analyzer; same shape with different values is **not** a duplicate — make it a
+`pytest.mark.parametrize` table.
+
+## Prioritization — by risk, not by percentage
+
+| Priority | Criteria | Why |
+|----------|----------|-----|
+| 1 | Behavior with no test at all | Real exposure |
+| 2 | Business rules: validation, permissions, money, state machines | Highest blast radius |
+| 3 | Error paths and edge cases of covered functions | Where users hit bugs |
+| 4 | Views → Serializers → Models → Utils → Tasks | Business-critical first |
+
+A file at 40% whose uncovered lines are error handling matters more than a file
+at 90% whose gap is a `__repr__`.
+
+### Matriz de permisos DRF (obligatoria por vista)
+
+| Caso | Esperado |
+|---|---|
+| anónimo | 401 |
+| autenticado sin permiso | 403 |
+| dueño | 200 |
+| otro tenant | 404 (si el queryset filtra por tenant) |
+
+Autenticar con `force_authenticate()` (o `APIClient` + login); un caso por fila,
+cada uno assertando el status code exacto.
+
+### Recetas de casos negativos (4xx)
+
+- Validación de serializer → `assert resp.status_code == 400` **y** el campo
+  exacto en el body (`assert "amount" in resp.json()`).
+- Permiso → autenticar el rol equivocado y `assert resp.status_code == 403`.
+- No-existe → pk inexistente y `assert resp.status_code == 404`.
+- Conflicto de estado → repetir la acción ya aplicada y assertar 409 (o 400,
+  según el contrato de la API).
+
+### Datos: factory vs fixture
+
+Factory para payloads variados por-test; fixture para setup compartido caro
+(tenant, catálogo). `@pytest.mark.django_db` es el default; `transaction=True`
+SÓLO si el test verifica commit/rollback real.
+
+### Tasks (Huey/Celery)
+
+Testear la **función** de la task directo, con entrada real y assert del efecto
+(la fila creada, el mail encolado). Mockear sólo `.delay`/`.schedule` en la
+vista que la encola — nunca la lógica interna de la task.
+
+## Abstention is a valid outcome
+
+Constants, plain data classes, `__str__`, re-exports and generated migrations
+have no behavior worth a test. Record them as *not testable, with the reason*,
+rather than fabricating a test to close the number. Coverage not reached by
+declared abstention **is not a failure**.
+
+## Per-test checklist
+
+- Name describes ONE specific behavior
+- No conditionals or loops in the body (use `pytest.mark.parametrize`)
+- Assertions verify observable outcomes, not internal calls
+- Deterministic: no real clock, no network, no ordering assumptions
+  (`freeze_time` at class level is supported by the gate):
+
+  ```python
+  @freeze_time("2026-01-15")
+  def test_report_uses_the_frozen_business_date(self): ...
+  ```
+- Isolated: no dependence on another test having run
+- Mocks have explicit `return_value` / `side_effect`
+- AAA: Arrange → Act → Assert
+
+## Execution rules
+
+1. Work from the backend: `cd backend && source venv/bin/activate`
+2. Run only the files you touched, from `backend/`, with the production selector
+   so the engine matches (rule 4): `DJANGO_ENV=production pytest path/to/test_file.py -v`
+3. **Quality ceiling beats volume:** if the gate reports a backend finding on
+   your batch — `nondeterministic`, `network_dependency`,
+   `mock_call_contract_only`, `inline_payload`, `global_state_mutation` — stop
+   and fix it before writing another test.
+4. **Engine check before any DB work.** `projects.yml` declares the engine in
+   `db:`. For a `db: mysql` project run `manage.py` and `pytest` with
+   `DJANGO_ENV=production` from the project's `backend/`, so Django connects to
+   MySQL and not the sqlite fallback.
+5. Bajo `/qa --apply`: dejar los tests **staged, sin commitear** (el conductor
+   commitea una vez). En dry-run: describir el diff sin escribir.
 
 ## Workflow
 
-1. Review the coverage report
-2. Identify lowest-coverage, highest-impact files
-3. Consult quality standards
-4. Implement tests
-5. Run only new/modified test files
-6. Verify tests pass and coverage improves
+1. **Enumerate untested behaviors from the code** — walk Models, Serializers,
+   Views, Utils and Tasks and list what each one *does* (validations, permissions,
+   money, state transitions, error paths). The code is the entry point.
+2. Pick by risk (table above), not by lowest percentage. Use the coverage report
+   only as a *secondary readout* — to confirm which enumerated behavior has no line
+   hit; a covered line with a weak assertion is still an untested behavior.
+3. Consult `docs/TESTING_QUALITY_STANDARDS.md` — especially §Behavior-First
+   Assertions and §Deterministic Tests.
+4. Search for an existing test to extend.
+5. Implement, satisfying the three-part definition of done.
+6. Run only the new or modified files.
+7. Validate:
+
+   ```bash
+   bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proyecto> --files=<archivo1,archivo2>
+   # equivalente crudo (fallback): python3 scripts/test_quality_gate.py --repo-root . \
+   #   --suite backend --semantic-rules strict --junk-severity=error --include-file <archivo>
+   ```
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/backend-test-coverage`:
+Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 
 ```markdown
 🟢 backend-test-coverage OK
@@ -60,13 +171,14 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Coverage report leído | ✅ | pytest --cov ejecutado, JSON parseado |
-| Files priorizados | ✅ | N archivos lowest-coverage × highest-impact |
-| Tests agregados | ✅ | N tests, batch ≤20, ciclos ≤3 |
-| Quality standards | ✅ | docs/TESTING_QUALITY_STANDARDS.md respetados |
-| Coverage delta | ✅ | X% → Y% en los archivos tocados |
+| Comportamientos enumerados desde el código | ✅ | N behaviors sin test identificados |
+| Priorizado por riesgo | ✅ | reglas de negocio y error paths primero |
+| Búsqueda anti-duplicado | ✅ | N ya cubiertos → se extendió el existente |
+| Tests agregados | ✅ | N tests con assert de valor concreto |
+| Definition of done | ✅ | unidad real + outcome observable + "qué bug atrapa" |
+| Abstenciones declaradas | ℹ️ | N archivos sin comportamiento testeable, con razón |
+| Quality gate | ✅ | cero nondeterministic / network_dependency / mock_call_contract_only / inline_payload / global_state_mutation |
 ```
 
-Si quedan archivos sin alcanzar 100% pero el batch consumió su límite (20
-tests / 3 ciclos), reemplazar el ✅ de "Coverage delta" por ⚠️ y agregar
-`## Next steps` con los archivos pendientes y el siguiente lote.
+Cobertura no alcanzada por **abstención declarada** se marca ⏭️ con la razón —
+no es un fallo.
