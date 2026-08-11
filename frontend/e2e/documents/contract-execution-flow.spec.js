@@ -119,7 +119,7 @@ test(
 
 test(
   "lawyer accepts an installment and the next slot becomes available",
-  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:lawyer"] },
+  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:lawyer", "@outcome:success"] },
   async ({ page }) => {
     const userId = 9402;
     const paymentPlan = {
@@ -236,7 +236,7 @@ test(
 
 test(
   "any party can download the cuenta de cobro file",
-  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:client"] },
+  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:client", "@outcome:success"] },
   async ({ page }) => {
     const userId = 9404;
     const paymentPlan = {
@@ -296,5 +296,83 @@ test(
     await expect(page.getByRole("button", { name: "Previsualizar" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Ver Cuentas de Cobro" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Subir Cuenta de Cobro" })).toHaveCount(0);
+  },
+);
+
+test(
+  "backend 500 on upload surfaces the error and leaves the installment uncharged",
+  { tag: [...DOCS_CONTRACT_EXECUTION, "@role:client", "@outcome:failure"] },
+  async ({ page }) => {
+    const userId = 9406;
+    const paymentPlan = { documentId: DOC_ID, totalInstallments: 3, records: [] };
+    await loginAndOpenSignedTab(page, {
+      userId,
+      role: "client",
+      documents: [
+        buildSignedDoc({
+          userId,
+          role: "client",
+          paymentsSummary: {
+            accepted_count: 0,
+            in_review: false,
+            next_uploadable: 1,
+            total_amount_accepted: null,
+          },
+        }),
+      ],
+      paymentPlan,
+    });
+
+    // Registered after installDynamicDocumentApiMocks so it wins the route:
+    // the stateful mock would otherwise accept the upload.
+    await page.route(`**/api/dynamic-documents/${DOC_ID}/payment-records/upload/`, async (route) => {
+      if (route.request().method() === "POST") {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "No se pudo guardar el archivo en el servidor." }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await openActionsModal(page);
+    await page.getByRole("button", { name: "Subir Cuenta de Cobro" }).click();
+
+    const uploadModal = page.locator('[data-testid="upload-payment-modal"]');
+    await expect(uploadModal).toBeVisible();
+    await page.locator('[data-testid="payment-file-input"]').setInputFiles(PDF_FILE);
+
+    const failedResponse = page.waitForResponse(
+      (res) => res.url().includes(`/payment-records/upload/`) && res.status() === 500,
+    );
+    await page.locator('[data-testid="payment-submit"]').click();
+    await failedResponse;
+
+    // The backend message reaches the user instead of a silent failure
+    const errorDialog = page.locator('[class~="swal2-popup"][class~="swal2-icon-error"]');
+    await expect(errorDialog).toBeVisible({ timeout: 15_000 });
+    await expect(errorDialog).toContainText("No se pudo guardar el archivo en el servidor.");
+    await errorDialog.getByRole("button", { name: /aceptar|ok/i }).click();
+
+    // The failed upload never switched modals: the client keeps the file they
+    // picked and can retry, instead of being bounced to a detail view that
+    // would suggest the upload went through.
+    await expect(page.locator('[data-testid="payment-records-modal"]')).not.toBeVisible();
+    await expect(uploadModal).toBeVisible();
+    await expect(page.locator('[data-testid="payment-submit"]')).toBeEnabled();
+
+    // And the installment really is uncharged — not merely un-navigated.
+    // Cancelling drops back to the dashboard, so reopen the actions modal.
+    await uploadModal.getByRole("button", { name: "Cancelar" }).click();
+    await openActionsModal(page);
+    await page.getByRole("button", { name: "Ver Cuentas de Cobro" }).click();
+    await expect(page.locator('[data-testid="payment-slot-1"]')).toContainText(
+      "Disponible para carga",
+    );
+    await expect(page.locator('[data-testid="payment-slot-1"]')).not.toContainText(
+      "Cargada · En revisión",
+    );
   },
 );

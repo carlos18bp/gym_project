@@ -5,7 +5,12 @@ from django.core.files import File
 from django.core.management.base import BaseCommand
 from faker import Faker
 from gym_app.models import User, UserSignature
-from ._seeder_constants import RESERVED_CLIENT_EMAILS, SPECIAL_USERS_SPEC, CLIENT_OWNED_EMAILS
+from ._seeder_constants import (
+    CLIENT_OWNED_EMAILS,
+    QA_ADMIN_SPEC,
+    RESERVED_CLIENT_EMAILS,
+    SPECIAL_USERS_SPEC,
+)
 
 # Existing example image reused for electronic-signature fake data.
 SIGNATURE_IMAGE_PATH = 'media/legal_request_files/img.png'
@@ -131,6 +136,40 @@ class Command(BaseCommand):
                     special_user.role = role
                     special_user.save(update_fields=['role'])
                 self.stdout.write(self.style.WARNING(f'Special user already exists: {special_user.email} ({special_user.role})'))
+
+        # ── Platform admin ───────────────────────────────────────────────────
+        # Without this account the Reassignment module cannot be tested at all:
+        # its gate is is_platform_admin (utils/auth_utils.py), mirrored by the
+        # frontend in SlideBar.vue, and no seeder created an admin before.
+        admin_email, admin_first, admin_last, admin_role = QA_ADMIN_SPEC
+        admin_user, admin_created = User.objects.get_or_create(
+            email=admin_email,
+            defaults={
+                'first_name': admin_first,
+                'last_name': admin_last,
+                'role': admin_role,
+            },
+        )
+        if admin_created or reset_passwords:
+            admin_user.set_password('password')
+            admin_user.save()
+        # Reconcile the invariants on every run, not only on creation.
+        # is_staff/is_superuser stay False on purpose: Django's /admin/ is
+        # exposed (gym_project/urls.py) and this account's password is
+        # 'password'. is_platform_admin is satisfied by role='admin' alone.
+        admin_user.role = admin_role
+        admin_user.is_staff = False
+        admin_user.is_superuser = False
+        admin_user.is_active = True
+        admin_user.is_archived = False
+        admin_user.is_profile_completed = True
+        admin_user.save(update_fields=[
+            'role', 'is_staff', 'is_superuser', 'is_active',
+            'is_archived', 'is_profile_completed',
+        ])
+        self.stdout.write(self.style.SUCCESS(
+            f'Platform admin {"created" if admin_created else "reconciled"}: {admin_user.email}'
+        ))
 
         # ── Electronic signatures ────────────────────────────────────────────
         # Seed a UserSignature (OneToOne) for the preferred demo users so the

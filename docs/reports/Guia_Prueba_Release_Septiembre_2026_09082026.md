@@ -14,9 +14,9 @@ Además, permite "archivar" al abogado que se va: su cuenta queda cerrada y deja
 
 ### Antes de empezar
 
-- **Necesitas una cuenta con rol de administrador.** Las cuentas de prueba que trae el sistema son de cliente y de abogado, pero ninguna es de administrador: pídele una al equipo técnico antes de comenzar.
-- Ten a mano al menos dos abogados en el sistema, y que uno de ellos tenga procesos o documentos asignados.
-- Cuentas de prueba disponibles: `lawyer1@example.com` en adelante (abogados) y `client1@example.com` en adelante (clientes). La contraseña de todas es `password`.
+- **Entra con la cuenta de administrador: `admin@example.com`.** Es la única que ve la opción "Reasignación de Datos" en el menú.
+- **El sistema ya trae armado el caso de prueba.** El abogado `abogado.reasignar@example.com` viene con 4 procesos y 8 documentos: 4 que se pueden transferir y 4 que el sistema protege, uno por cada motivo. Como destino usa `abogado.destino@example.com`, que empieza sin nada — así ves clarísimo lo que llegó.
+- Cuentas de prueba disponibles: `lawyer1@example.com` en adelante (abogados) y `client1@example.com` en adelante (clientes). **La contraseña de todas, incluida la de administrador, es `password`.**
 - Existe también `abogado.archivado@example.com`, una cuenta que ya viene archivada. Te sirve para comprobar el bloqueo de acceso y el botón de restaurar.
 - Usa un computador de escritorio; la pantalla de reasignación se aprovecha mejor en pantalla ancha.
 
@@ -49,7 +49,8 @@ Además, permite "archivar" al abogado que se va: su cuenta queda cerrada y deja
 
 ### Si algo no sale como esperabas
 
-- **No ves "Reasignación de Datos" en el menú lateral** → tu cuenta no tiene rol de administrador. Pídele al equipo técnico que te la habilite.
+- **No ves "Reasignación de Datos" en el menú lateral** → estás entrando con una cuenta que no es de administrador. Usa `admin@example.com`.
+- **Ya hiciste la prueba y quieres repetirla desde cero** → pídele al equipo técnico que vuelva a preparar el caso; el escenario se rearma solo, incluso si archivaste al abogado o ya transferiste sus documentos.
 - **El botón "Reasignar datos" está apagado y no se puede pulsar** → falta elegir el abogado destino, o no has marcado ningún proceso ni documento. Necesitas al menos un elemento seleccionado.
 - **Un documento que esperabas transferir no aparece en la lista** → búscalo en el bloque "No transferibles". Los documentos que están en proceso de firma, ya firmados, rechazados o vencidos están protegidos a propósito, para no dañar la validez de las firmas.
 - **El abogado destino no ve un documento que sí se transfirió** → los documentos que estaban asignados a un cliente conservan a ese cliente; sólo cambian de abogado responsable. Revisa el listado desde la vista del abogado, no desde la del cliente.
@@ -70,7 +71,16 @@ Es como una carpeta compartida ordenada por cuotas: ambas partes ven en qué van
 
 - Necesitas **dos cuentas distintas**: la del abogado que creó el documento y la del cliente al que está asignado. Si la misma persona sube y revisa, el sistema no envía correos — es a propósito, no es una falla.
 - El documento debe estar **completamente firmado** y tener configurada una forma de pago con al menos una cuota.
-- El sistema ya trae datos listos para probar: un documento firmado con **3 cuotas** (la primera aceptada y la segunda esperando revisión) y otro con **2 cuotas** sin ningún registro, donde la cuota 1 está lista para cargar.
+- **Ya hay cuatro contratos listos para probar**, todos creados por `lawyer1@example.com` (el que revisa) y asignados a `client1@example.com` (el que sube). Los encuentras en la pestaña **"Dcs. Formalizados"** y sus títulos empiezan con *"[QA Cuentas de Cobro]"*:
+
+  | Contrato | Qué te deja probar |
+  |---|---|
+  | *…Contrato con pago único* | Una sola cuota, sin nada cargado todavía. El resumen dice **"Pago único"**. |
+  | *…Contrato con dos cuotas aceptadas* | Las dos cuotas ya aprobadas: barra al **100%**, contador **2/2** y "Total aceptado" con la suma. |
+  | *…Contrato con cuota en revisión* | Cuota 1 aceptada y cuota 2 esperando decisión. Aquí "Subir Cuenta de Cobro" **está oculto** a propósito. |
+  | *…Contrato con cuota rechazada* | Cuota 2 rechazada con su motivo. Sirve para ver el recuadro rojo y volver a cargar esa misma cuota. |
+
+- Si quieres armar uno desde cero, el paso B1 te explica cómo configurar la forma de pago en una minuta.
 - Ten a mano un archivo para subir: **PDF, JPG, PNG o DOCX**, de máximo **20 MB**.
 
 ### Paso a paso para probarlo
@@ -143,7 +153,8 @@ Es como si alguien se sentara al lado tuyo a mostrarte dónde queda cada cosa. E
 - **Usa un computador de escritorio o una pantalla ancha.** En pantallas pequeñas el recorrido omite algunos pasos, porque varios botones quedan escondidos dentro de un menú plegable.
 - **Entra al módulo desde el menú lateral**, no desde un enlace guardado en favoritos. Si la dirección ya trae una pestaña seleccionada, el recorrido no arranca solo.
 - El recorrido automático aparece la **primera vez** que entras al módulo. Si ya lo viste, siempre puedes volver a lanzarlo con el botón de ayuda.
-- Si quieres contar exactamente los pasos, usa una cuenta **sin documentos pendientes de firma**: cuando los hay, el recorrido agrega un paso extra.
+- Si quieres contar exactamente los pasos, usa **`tour.vencido@example.com`**: es una cuenta de abogado preparada sin documentos pendientes de firma, así que el recorrido muestra exactamente los 10 pasos, sin el paso extra.
+- Esa misma cuenta ya tiene el recorrido marcado como visto **hace 45 días**, así que te sirve para probar el aviso de los 30 días (paso C5) sin esperar un mes.
 
 ### Paso a paso para probarlo
 
@@ -173,6 +184,12 @@ Es como si alguien se sentara al lado tuyo a mostrarte dónde queda cada cosa. E
 13. Sin lanzar el recorrido, pasa el cursor por encima de los pequeños iconos de información que están junto a los botones **"Firma Electrónica"**, **"Membrete Global"** y **"Nuevo Documento"**.
 14. Aparece una descripción corta de para qué sirve cada uno. Quedan siempre disponibles, sin necesidad de repetir la guía completa.
 
+#### C5. El aviso de los 30 días
+
+15. Cierra sesión y entra con **`tour.vencido@example.com`**. Esta cuenta ya vio el recorrido, pero hace 45 días.
+16. Ve a **"Archivos Juridicos"**. En vez del recorrido, aparece un aviso preguntando **"¿Quieres ver la guía del módulo de Archivos Jurídicos?"** con las opciones *"Ver la guía"* y *"Ahora no"*.
+17. Pulsa *"Ver la guía"* y el recorrido arranca. Si pulsas *"Ahora no"*, el sistema espera otros 30 días antes de volver a ofrecértelo.
+
 ### Cómo sabes que funcionó
 
 - La pantalla se oscurece y sólo queda iluminado el elemento del que se está hablando.
@@ -189,6 +206,6 @@ Es como si alguien se sentara al lado tuyo a mostrarte dónde queda cada cosa. E
 - **Ves menos pasos de los que dice esta guía** → estás en una pantalla angosta. Amplía la ventana o pásate a un computador de escritorio.
 - **Aparece un paso extra sobre firmas pendientes** → es normal y esperado: el recorrido lo agrega cuando la cuenta tiene documentos esperando tu firma.
 - **Contaste 12 pantallas pero el contador decía "de 10"** → la tarjeta de bienvenida y la de cierre no se cuentan como pasos, porque no explican una función del módulo sino el recorrido en sí.
-- **Quieres volver a ver el arranque automático** → pídele al equipo técnico que reinicie el registro de tu recorrido, o espera los 30 días en los que el sistema lo ofrece de nuevo por su cuenta.
+- **Quieres volver a ver el arranque automático** → usa `tour.vencido@example.com`, la cuenta preparada para eso (paso C5). Con cualquier otra cuenta, o esperas los 30 días, o le pides al equipo técnico que reinicie tu registro.
 - **Omitiste el recorrido y ya no aparece** → omitirlo también cuenta como haberlo visto. Usa el botón de ayuda para retomarlo.
 - Si el problema persiste, avísale al equipo técnico con una captura de pantalla.

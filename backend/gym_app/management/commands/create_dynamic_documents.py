@@ -22,7 +22,11 @@ from gym_app.models import (
     RecentDocument,
     DocumentPaymentRecord,
 )
-from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
+from ._seeder_constants import (
+    QA_EXCLUDED_LAWYER_EMAILS,
+    SPECIAL_LAWYER_EMAIL,
+    SPECIAL_NON_LAWYER_EMAILS,
+)
 
 _OBJETOS = [
     "Prestación de servicios de asesoría jurídica en materia contractual y litigios ante entidades del Estado.",
@@ -66,8 +70,12 @@ class Command(BaseCommand):
         num_documents = options.get('num_documents', 10)
         self.stdout.write(f'Creating {num_documents} dynamic documents...')
 
-        # Get all lawyers and potential client-side users (client, basic, corporate_client)
-        lawyers = list(User.objects.filter(role='lawyer'))
+        # Get all lawyers and potential client-side users (client, basic, corporate_client).
+        # The QA-scenario lawyers are excluded: create_release_qa_data owns their
+        # dataset exactly, and random minutas would bury the reassignment screen.
+        lawyers = list(
+            User.objects.filter(role='lawyer').exclude(email__in=QA_EXCLUDED_LAWYER_EMAILS)
+        )
         clients = list(User.objects.filter(role__in=['client', 'basic', 'corporate_client']))
 
         if not lawyers or not clients:
