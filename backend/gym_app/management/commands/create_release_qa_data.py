@@ -8,7 +8,10 @@ the `rejected` state. This command seeds three exact scenarios instead:
   A. A lean lawyer ready to be reassigned — one document per state, so the four
      red reasons fit on a single screen.
   B. Four fully signed contracts covering every payment-plan situation,
-     including the rejected installment that no seeder produced before.
+     including the rejected installment that no seeder produced before. This
+     is the ONLY place cuentas de cobro are seeded — create_dynamic_documents
+     used to attach a plan to whichever two documents sorted first, which made
+     the fixture non-deterministic and wrote PDFs that would not open.
   C. A user whose guided tour is 45 days old, so the 30-day re-offer can be
      seen without waiting a month.
 
