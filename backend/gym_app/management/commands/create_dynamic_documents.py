@@ -105,8 +105,6 @@ class Command(BaseCommand):
             if user not in client_candidates:
                 client_candidates.extend([user] * 4)
 
-        states = [choice[0] for choice in DynamicDocument.STATE_CHOICES]
-        
         # Document template titles and content patterns
         document_templates = [
             {
@@ -1106,7 +1104,7 @@ class Command(BaseCommand):
                     ).exists()
                     
                     if not existing:
-                        rel = DocumentRelationship.objects.create(
+                        DocumentRelationship.objects.create(
                             source_document=completed_doc,
                             target_document=other_doc,
                             created_by=created_by_for_rel
@@ -1154,7 +1152,7 @@ class Command(BaseCommand):
                     ).exists()
                     
                     if not existing:
-                        rel = DocumentRelationship.objects.create(
+                        DocumentRelationship.objects.create(
                             source_document=signed_doc,
                             target_document=ref_doc,
                             created_by=created_by_for_rel
