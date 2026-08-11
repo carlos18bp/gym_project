@@ -118,10 +118,25 @@ CMD_DIR="${PROJ_PATH}/backend"
 [ -f "${CMD_DIR}/manage.py" ] || CMD_DIR="${PROJ_PATH}"
 [ -f "${CMD_DIR}/manage.py" ] || { echo "FATAL: no manage.py en ${PROJ_PATH} ni en ${PROJ_PATH}/backend"; exit 2; }
 
-# Localizar venv
-VENV_PY="${PROJ_PATH}/.venv/bin/python"
-[ -x "$VENV_PY" ] || VENV_PY="${PROJ_PATH}/venv/bin/python"
-[ -x "$VENV_PY" ] || { echo "FATAL: no .venv/venv ejecutable en ${PROJ_PATH}"; exit 2; }
+# Localizar venv. Fuente primaria: venv_path de projects.yml — 16 de 17 proyectos
+# del fleet lo tienen en backend/venv/, no en la raiz, asi que probar solo .venv/ y
+# venv/ hacia FATAL en casi todos los targets reales de esta skill.
+# /deploy-and-check ya resuelve el venv asi; esta skill se alinea.
+VENV_PY=""
+if $IN_FLEET; then
+  VENV_REL=$(awk -v p="$PROJ_NAME" '
+      /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+      n==p && /^[[:space:]]+venv_path:/{
+        sub(/^[[:space:]]+venv_path:[[:space:]]*/,""); gsub(/"/,""); print; exit}
+  ' "${OPS_ROOT}/projects.yml")
+  [ -n "$VENV_REL" ] && [ -x "${PROJ_PATH}/${VENV_REL}" ] && VENV_PY="${PROJ_PATH}/${VENV_REL}"
+fi
+for candidate in "${PROJ_PATH}/.venv/bin/python" "${PROJ_PATH}/venv/bin/python" "${PROJ_PATH}/backend/venv/bin/python"; do
+  [ -n "$VENV_PY" ] && break
+  [ -x "$candidate" ] && VENV_PY="$candidate"
+done
+[ -n "$VENV_PY" ] || { echo "FATAL: no venv ejecutable en ${PROJ_PATH} (probe venv_path de projects.yml, .venv/, venv/, backend/venv/)"; exit 2; }
+echo "VENV detectado: $VENV_PY"
 
 # Inventariar management commands
 MGMT_OUT="$("$VENV_PY" "${CMD_DIR}/manage.py" help 2>/dev/null || true)"
