@@ -117,3 +117,42 @@ test("client rejects pending document and it moves to archived tab", { tag: ['@f
   await expect(archivedRow.getByText("Rechazado", { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(archivedRow.getByText("Poder General")).toBeVisible();
 });
+
+test("client reject submission failure shows an error and keeps the modal open", { tag: ['@flow:sign-reject', '@module:signatures', '@priority:P1', '@role:client', '@outcome:failure'] }, async ({ page }) => {
+  const userId = 8606;
+  await setupClientPendingTab(page, { userId, lawyerId: 8607 });
+
+  // Override the reject endpoint to fail server-side (registered after
+  // setupClientPendingTab's mocks, so this later handler wins for the click below).
+  await page.route(`**/api/dynamic-documents/901/reject/${userId}/`, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Internal error" }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByTestId("signatures-list-row-901").click();
+  await expect(page.getByTestId("document-actions-modal")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("document-action-reject").click();
+
+  await expect(page.getByRole("heading", { name: "Rechazar documento" })).toBeVisible({ timeout: 10_000 });
+  const reasonInput = page.getByPlaceholder(
+    "Describe brevemente por qué no estás de acuerdo con el documento..."
+  );
+  await reasonInput.fill("No estoy de acuerdo con la cláusula tercera");
+
+  await page.getByRole("button", { name: "Rechazar documento" }).click();
+
+  // Failure notification — the app must not silently swallow the error.
+  await expect(page.getByText("Error al rechazar el documento.")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  // Modal stays open for retry, with the typed reason preserved (not discarded).
+  await expect(page.getByRole("heading", { name: "Rechazar documento" })).toBeVisible();
+  await expect(reasonInput).toHaveValue("No estoy de acuerdo con la cláusula tercera");
+});

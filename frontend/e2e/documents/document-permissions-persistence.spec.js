@@ -125,3 +125,31 @@ test("saving after granting visibility POSTs manage endpoint with that user_id",
   });
   expect(Array.isArray(captured.body.usability?.user_ids)).toBe(true);
 });
+
+test("permissions save failure shows an error and keeps the modal open", { tag: ['@flow:docs-permissions', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:failure'] }, async ({ page }) => {
+  await setup(page);
+  await openPermissionsModal(page);
+
+  await expect(page.getByText("Carlos Pérez")).toBeVisible({ timeout: 10_000 });
+
+  // Grant visibility to Carlos, then override the manage endpoint to fail
+  // server-side (registered after setup()'s 200 route, so this later
+  // handler wins for the click below).
+  await page.locator("input#visibility_11").check();
+  await page.route("**/api/dynamic-documents/*/permissions/manage/", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Internal error" }),
+    });
+  });
+
+  await page.getByRole("button", { name: "Guardar Permisos" }).click();
+
+  await expect(page.getByText("Error al guardar los permisos")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  // Modal stays open for retry, with the grant choice preserved (not discarded).
+  await expect(page.getByRole("button", { name: "Guardar Permisos" })).toBeVisible();
+  await expect(page.locator("input#visibility_11")).toBeChecked();
+});
