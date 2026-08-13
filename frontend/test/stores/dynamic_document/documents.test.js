@@ -1110,6 +1110,52 @@ describe("Dynamic Document Store - documents module behaviors", () => {
     consoleSpy.mockRestore();
   });
 
+  // Ported from index.test.js (batch 2 merge) — behaviors not covered by the
+  // scenarios above.
+
+  test("fetchDocuments falls back to the store's default limit when none is provided", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, {
+      items: [{ id: 1 }, { id: 2 }],
+      totalItems: 2,
+      totalPages: 1,
+      currentPage: 1,
+    });
+
+    await store.fetchDocuments();
+
+    const url = mock.history.get[0].url;
+    expect(url).toContain("limit=10");
+    expect(store.pagination.itemsPerPage).toBe(10);
+  });
+
+  test("fetchDocuments derives pagination totals from items when the response omits them", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, {
+      items: [{ id: 1 }, { id: 2 }],
+    });
+
+    await store.fetchDocuments({ forceRefresh: true });
+
+    expect(store.pagination.totalItems).toBe(2);
+    expect(store.pagination.totalPages).toBe(1);
+  });
+
+  test("fetchDocuments defaults documents to an empty array when response items is null", async () => {
+    const store = useDynamicDocumentStore();
+
+    mock.onGet(/dynamic-documents\/\?/).reply(200, {
+      items: null,
+      totalItems: 1,
+    });
+
+    await store.fetchDocuments({ forceRefresh: true });
+
+    expect(store.documents).toEqual([]);
+  });
+
   test("fetchDocumentsForTab does not mutate store documents", async () => {
     const store = useDynamicDocumentStore();
 
