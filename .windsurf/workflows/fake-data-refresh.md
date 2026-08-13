@@ -138,6 +138,12 @@ done
 [ -n "$VENV_PY" ] || { echo "FATAL: no venv ejecutable en ${PROJ_PATH} (probe venv_path de projects.yml, .venv/, venv/, backend/venv/)"; exit 2; }
 echo "VENV detectado: $VENV_PY"
 
+# Los management commands corren DESDE CMD_DIR: los seeders usan paths
+# relativos al cwd (gym create_legal_requests -> os.listdir('media/example_files/'))
+# y con cwd=repo-root revientan a mitad del create, dejando la DB en estado
+# parcial (F76).
+cd "$CMD_DIR" || { echo "FATAL: no pude cd a ${CMD_DIR}"; exit 2; }
+
 # Inventariar management commands
 MGMT_OUT="$("$VENV_PY" "${CMD_DIR}/manage.py" help 2>/dev/null || true)"
 
