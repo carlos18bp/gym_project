@@ -1,7 +1,7 @@
 ---
 name: merge-when-green
 description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni en cron/headless. Las ramas release se mergean sólo si projects.yml las autoriza (release_merge: <rama>); sin autorización se integran y se espera el CI, sin merge. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion, TaskStop
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
 
@@ -75,8 +75,9 @@ Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, s
 menú; (2) intención clara en la sesión ("mergealo cuando esté verde" tras un
 commit reciente de esta conversación) → proponer el comando en una línea y
 esperar confirmación; (3) invocación ambigua (no está claro qué rama/repo se
-integra) → UNA sola AskUserQuestion; (4) nunca en cron/headless ni dentro del
-barrido Path C (los repos del barrido no re-preguntan).
+integra) → UNA sola AskUserQuestion; (4) nunca en cron/headless, ni dentro del
+barrido Path C, ni cuando el flujo viene ya decidido desde [[merge-queue]] o
+[[all-in-base]] (esos llamadores no re-preguntan: entran con defaults).
 
 **Q1 — Método de merge** (`multiSelect: false`; sólo Path A y sólo si el
 operador no lo indicó):
@@ -356,6 +357,14 @@ else
 fi
 ```
 
+**Sesgo del gate (a propósito, hacia el falso negativo):** un tree sucio, un
+`detached HEAD`, la falta de `origin/<base>`, un conflicto del merge de 3 vías o
+un git < 2.38 hacen que NO se cortocircuite y siga el flujo normal. Un falso
+positivo dejaría el trabajo del operador sin mergear para siempre; un falso
+negativo sólo cuesta una espera de CI (el comportamiento de antes). No hay flag
+para desactivarlo. La rama local obsoleta se **nombra pero no se borra**: tras un
+squash, `git branch -d` la rechaza; el `-D` lo decide el operador.
+
 **Si `LANDED=1`:** el trabajo está completo y en la base. Ya pasó el CI que gateó
 aquel merge, así que **saltá Phases 2-5** — ni PR, ni `--watch`, ni merge.
 
@@ -412,6 +421,7 @@ Reportá la URL del PR (`PR URL: <url>`).
 
 ```bash
 # Bloquea hasta que todos los checks resuelvan; no aborta al primer fallo.
+# Llamada foreground: pasarle timeout: 600000 al tool Bash (su default es 120000).
 gh pr checks "$PR_NUMBER" --watch --fail-fast=false; RC=$?
 # Estado por check (nombre + conclusión) para clasificar:
 gh pr checks "$PR_NUMBER" --json name,state,bucket 2>/dev/null \
@@ -421,7 +431,13 @@ gh pr checks "$PR_NUMBER" --json name,state,bucket 2>/dev/null \
 
 - `RC == 0` (todos los checks en verde/`bucket=pass`) → **Phase 5 (merge)**.
 - Algún check en `fail` → **Phase 4 (fix loop)**.
-- Checks `pending` que nunca resuelven (timeout del `--watch`) → reportá y frená.
+- El `--watch` foreground muere al tope de la tool Bash (600000 ms; exit 143 —
+  les pasa a suites E2E largas). Si expira: **NO re-bloquees con otro `--watch`**.
+  Montá el watcher variante PR-checks del «Cierre asíncrono de CI» (abajo) con
+  `NEXT:` verde = "retomar Phase 5 (merge) del PR #<n>" / rojo = "Phase 4 (fix
+  loop)", reportá `⏸️ CI en vuelo — CI-MONITOR [<repo>#<n>] montado` y cortá el
+  turno: el flujo se retoma al llegar la notificación (regla de reanudación de
+  esa sección, re-verificando el estado en vivo).
 - Si el PR **no tiene checks** (repo sin CI en esa rama) → avisá "sin checks; no
   hay verde que esperar" y frená (no mergees a ciegas salvo que el operador lo pida).
 
@@ -477,6 +493,10 @@ if [ "${MERGE_ALLOWED:-1}" = "0" ]; then
 fi
 ```
 
+Antes de terminar con `MERGE_ALLOWED=0`, aplicá el «Cierre asíncrono de CI»
+(caso release-hold): normalmente NO se monta nada — Phase 3 ya vio el veredicto
+del PR; sólo queda watcher si su `--watch` expiró.
+
 Con `MERGE_ALLOWED=1`, seguí normalmente:
 
 ```bash
@@ -520,6 +540,11 @@ git checkout "$DEFAULT_BRANCH" && git pull --ff-only origin "$DEFAULT_BRANCH"
 ```
 
 Reportá el PR mergeado + el SHA del merge en `$DEFAULT_BRANCH`.
+
+Cerrá con el «Cierre asíncrono de CI» (caso Path A mergeado): **sweep** de
+watchers propios obsoletos primero; después, si el squash disparó un run en
+`$DEFAULT_BRANCH` que sigue en vuelo (`gh pr view <n> --json mergeCommit` da el
+SHA), UN watcher sobre `<base>@<merge-sha>`.
 
 ---
 
@@ -666,6 +691,7 @@ else
         --workflow=validation-coverage.yml --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
     # El run puede tardar unos segundos en aparecer; reintentá 1-2 veces si viene vacío.
     if [ -n "$RUN_ID" ]; then
+        # gh run watch es foreground: pasarle timeout: 600000 al tool Bash.
         gh run watch "$RUN_ID" --exit-status; echo "CI_RC=$?"
     else
         echo "⚠️  aún no aparece el run para $SHA; revisá: gh run list --branch master --limit 3"
@@ -679,6 +705,12 @@ fi
   no se puede "des-pushear") → el operador arregla **hacia adelante** con un commit de
   fix. NO revierte el commit ya hecho.
 - Sin `gh` → saltar; el run corre igual en GitHub Actions (revisar a mano).
+- El `gh run watch` expiró (exit 143) o el run no apareció tras 1-2 reintentos →
+  **NO re-bloquees**: montá el watcher canónico del «Cierre asíncrono de CI»
+  sobre `master@<SHA>` (su loop tolera el run ausente), reportá la fila
+  `Monitor CI 👁️` y seguí al Output final — la notificación trae el veredicto
+  (rojo ⇒ fix hacia adelante; master no se des-pushea). Con `--no-ci-watch` NO
+  se monta nada: el opt-out es del operador.
 
 ---
 
@@ -753,6 +785,104 @@ final lista los N repos con su estado.
 
 ---
 
+## Cierre asíncrono de CI
+
+**Por qué:** un CI-wait bloqueante (`gh pr checks --watch`, `gh run watch`) corre
+foreground bajo el timeout de la tool Bash (default 120000 ms; máx 600000) — una
+suite E2E larga lo mata con exit 143 y el veredicto se pierde. La alternativa: el
+veredicto llega como **notificación de una task de fondo** (Bash con
+`run_in_background`), que corre detached, sobrevive turnos y no está sujeta al
+timeout foreground. Esta sección es el contrato canónico; [[merge-queue]] y
+[[all-in-base]] lo instancian por prosa.
+
+**Regla de no-redundancia:** se monta un watcher SÓLO si queda un run/checks EN
+VUELO cuyo veredicto esta sesión no vio. Antes de montar, UN chequeo
+`--json status`: si ya está `completed` → veredicto inline, sin watcher. Verde ya
+confirmado (T4 con `CI_RC=0`, `--watch` con RC=0, short-circuit ya-en-base) ⇒
+nada. Rojo ya visto ⇒ nada (ya se reportó con `--log-failed`). **Máximo un
+watcher por objeto** — jamás dos del mismo run/PR.
+
+**Qué monitorear por caso:**
+
+| Caso | Al cierre |
+|---|---|
+| Path A mergeado | el run de la BASE para el merge SHA (`gh pr view <n> --json mergeCommit`) si sigue en vuelo — el CI del PR validó la rama, no el squash sobre la base movida. Repo sin CI on-push a la base → nada, y se dice |
+| Path A release-hold | nada — Phase 3 ya vio el veredicto del PR; watcher sólo si su `--watch` expiró |
+| Path A ya-en-base (1.5) | nada — el CI que gateó aquel merge ya corrió |
+| Path B toolkit | nada si T4 vio `CI_RC`; watcher sobre `master@<SHA>` sólo si el watch expiró o el run no apareció; con `--no-ci-watch`, nada (opt-out del operador) |
+| Path C / [[merge-queue]] | el run MÁS NUEVO de la base post-drenaje si sigue en vuelo — máx 1 watcher de base por repo (los intermedios quedan supersedidos; jamás watchers de PRs ya mergeados); los deferred con `--watch` expirado ya montaron el suyo |
+| [[all-in-base]] | sweep de watchers propios obsoletos; mount nada propio (la delegación monta el suyo) |
+
+**Watcher canónico (run de una rama)** — montar con Bash `run_in_background:
+true`. El bloque es autocontenido: los literales se hornean AL MONTAR (las
+variables no persisten entre bloques y `-R` lo hace cwd-independiente). Se
+auto-capea a 2h y **emite igual al agotarse** — el silencio nunca es éxito:
+
+```bash
+R="<owner/repo>"; BR="<base>"; SHA="<sha>"; L="CI-MONITOR [<repo> base:<base>@<sha7>]"
+ID=""; ST="absent"; CONC=""
+for i in $(seq 1 240); do          # 240 × 30s = 2h de tope propio
+  read -r ID ST CONC <<<"$(gh run list -R "$R" --branch "$BR" --commit "$SHA" --limit 1 \
+    --json databaseId,status,conclusion -q '.[0] | "\(.databaseId) \(.status) \(.conclusion)"' 2>/dev/null)"
+  [ "$ST" = "completed" ] && break
+  sleep 30
+done
+case "$CONC" in
+  success) echo "$L ✅ success (run $ID). NEXT: nada pendiente — cerrar." ;;
+  failure|cancelled|timed_out)
+    echo "$L ❌ $CONC (run $ID). NEXT: gh run view $ID -R $R --log-failed → fix hacia adelante." ;;
+  *) if [ -z "$ID" ]; then echo "$L ⚠️ run ausente para $SHA tras 2h. NEXT: gh run list -R $R --branch $BR --limit 3"
+     else echo "$L ⚠️ watcher agotado (status=$ST, run $ID). NEXT: gh run view $ID -R $R"; fi ;;
+esac
+```
+
+**Variante PR-checks** (mismo esqueleto, para un PR cuyo `--watch` expiró):
+terminal cuando `gh pr checks <n> -R <slug> --json bucket -q
+'[.[]|select(.bucket=="pending")]|length'` llega a 0; rojo si algún bucket ∈
+{fail, cancel}. `NEXT:` verde = «retomar merge-when-green Phase 5 (merge) del PR
+#<n>» · rojo = «Phase 4 (fix loop): gh run view <id> --log-failed».
+
+**Labels:** `CI-MONITOR [<repo>#<pr> tren]` · `CI-MONITOR [<repo>#<pr> hold]` ·
+`CI-MONITOR [<repo> base:<default>@<sha7>]` — estables, horneados como literal al
+montar. El reporte final lista el **ledger**: `label → qué vigila → acción al
+resolver` (la referencia cruzada cuando llega cada notificación).
+
+**Reanudación por notificación:** (1) al montar un watcher, registralo en el
+reporte: «👁️ `CI-MONITOR [<label>]` montado (task de fondo) — al llegar su
+notificación: <acción>». (2) La línea final del watcher es autosuficiente (label
++ veredicto + `NEXT:`): al recibir una notificación cuyo output contenga
+`CI-MONITOR [`, tratala como continuación de esta skill **sin reconstruir
+contexto** — respondé con UNA línea de veredicto y ejecutá el `NEXT:` de la
+línea, sin importar cuántos mensajes hubo en el medio. (3) Si el `NEXT:` retoma
+una fase (p.ej. «retomar Phase 5 del PR #n»), **re-verificá el estado en vivo
+antes** (`gh pr view <n> --json state,mergeStateStatus` — otro proceso pudo
+mergearlo/cerrarlo mientras tanto) y recién entonces ejecutala. (4) Con varios
+watchers en vuelo jamás asumas cuál resolvió: **el label lo dice**; respondé
+sólo por el que notificó y dejá los demás listados como "en vuelo".
+
+**Higiene de shells (sweep → mount, siempre en ese orden):**
+- **Matable (las tres condiciones a la vez):** la task la montó ESTA sesión · su
+  comando/output lleva el prefijo `CI-MONITOR [` · quedó obsoleta — su run/PR ya
+  está `completed`/mergeado (confirmalo con UN `gh run view <id> --json status`
+  ANTES de matar) o duplica un watcher del mismo objeto. Matar con `TaskStop`.
+- **Intocable:** cualquier shell sin el prefijo o fuera del ledger de la sesión —
+  dev servers de `dev-up`, `tailscale up`, tasks del operador, otras sesiones.
+  Fuente: tu propio contexto/ledger, **jamás `ps`**. En duda: reportar, no matar.
+- **Orden fijo — sweep ANTES de mount:** el watcher nuevo aún no existe
+  (imposible matarlo por error) y el trabajo recién hecho es lo que invalidó los
+  viejos. Doble seguro: el label nuevo lleva el run-id/SHA nuevo, así que ni un
+  sweep torpe lo matchea.
+
+**Degradación (espejos Codex/Windsurf):** si el harness no soporta shells de
+fondo con notificación, saltá mount y sweep, y dejá en Next steps el comando
+manual `gh run watch <id> -R <repo>`.
+
+**Output final:** si esta sección montó o barrió algo, agregá la fila condicional
+`Monitor CI` (👁️ montado + label / 🧹 N barridos) a la tabla y el bullet de
+respaldo manual en Next steps. Sin actividad de monitores: sin fila (cero ruido).
+
+---
+
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
@@ -762,8 +892,8 @@ Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
 |---|---|---|
 | --merge-method=merge\|rebase | mergear el PR sin squash (conserva los commits de la rama) | `/merge-when-green --merge-method=merge` |
 | --fix-nontest | deja que el fix loop arregle también código no-test (lint/gates rojos) | `/merge-when-green --fix-nontest` |
-| --no-ci-watch | toolkit: push sin esperar acá el run de CI en master | `/merge-when-green --no-ci-watch` |
 | Ver el PR en el browser | abrir el PR para review manual | `gh pr view <n> --web` |
+| Drenar varias ramas/PRs pendientes | si el repo acumuló trabajo de varias sesiones (N ramas/PRs), la cola ordenada la arma [[merge-queue]] | `/merge-queue` |
 
 NUNCA ofrecer `--autonomous` ni `--no-verify` como opciones — se tipean
 deliberadamente (pausa del fix loop / green gate del toolkit). El merge de una
@@ -771,7 +901,10 @@ release tampoco se ofrece: lo decide `release_merge:` en projects.yml.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]].
+Reportar siguiendo [[_output-protocol]]. Si el «Cierre asíncrono de CI» montó o
+barrió monitores, agregá la fila condicional `Monitor CI` (👁️ montado + label /
+🧹 N barridos) y el bullet de respaldo manual en Next steps; sin actividad de
+monitores, sin fila.
 
 **Path A — proyecto (`/merge-when-green` en un repo con PR/CI):**
 

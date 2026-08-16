@@ -1,7 +1,7 @@
 ---
 name: merge-queue
 description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs abiertos + ramas con remoto sin PR + local-only + gone + ya-en-base), arma la estrategia (release autorizada → batch de verdes disjuntos → tren por solapamiento → holds) y ejecuta cada merge reutilizando el flujo de merge-when-green con TODOS sus guards. Es el mecanismo de drenaje de vuelta a la convención 'máx 1 PR feature activo'. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado en el fleet): actualiza con gh pr update-branch o mergeando la base en la rama."
-allowed-tools: Bash, AskUserQuestion, ListAgents, SendMessage
+allowed-tools: Bash, AskUserQuestion, ListAgents, SendMessage, TaskStop
 argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r2] [--autonomous] [--max-iterations=N]"
 ---
 
@@ -418,7 +418,14 @@ ciegas; si es demasiado complejo, frenar y preguntar), `git add <archivo>` +
 **Después del update:** reusá por prosa las **Phases 3→4→5→6 de
 [[merge-when-green]]** para esta unidad:
 
-1. `gh pr checks "$PR" --watch --fail-fast=false` (espera del CI).
+1. `gh pr checks "$PR" --watch --fail-fast=false` (espera del CI — foreground:
+   pasarle `timeout: 600000` al tool Bash, su default es 120000). Si expira
+   (exit 143): la unidad pasa a `deferred:ci-lento`, se monta el watcher
+   variante PR-checks de [[merge-when-green]] § «Cierre asíncrono de CI» con
+   label `CI-MONITOR [<repo>#<pr> tren]` y `NEXT: retomar el turno de esta
+   unidad en el tren`, **y el tren SIGUE con la próxima unidad** — al llegar la
+   notificación se retoma ese turno re-consultando el estado en vivo (regla de
+   reanudación de esa sección).
 2. Fix loop (máx `MAX_ITER`): tests rojos → `/fix-broken-tests` con la lista
    exacta; **pausa pidiendo aprobación si tocó código de producción** salvo
    `--autonomous`. Un gate no-test rojo ⇒ `failed:gate-<nombre>` para ESA unidad
@@ -449,6 +456,25 @@ gh run list --branch "$DEFAULT" --limit 3
 rm -rf "/tmp/merge-queue-${REPO_NAME}"
 ```
 
+**Cierre asíncrono** — regla completa en [[merge-when-green]] § «Cierre
+asíncrono de CI»; instancia de esta skill, en este orden:
+
+1. **Sweep primero** (TaskStop): sólo watchers `CI-MONITOR [...]` que ESTA
+   sesión montó y quedaron obsoletos — PRs que este drenaje mergeó, o runs que
+   UN `gh run view <id> --json status` confirme `completed` ANTES de matar.
+   Nada sin el prefijo ni fuera del ledger de la sesión (un dev server de
+   `dev-up` o una shell del operador NO se tocan; en duda, se reporta y no se
+   mata). Fuente: el contexto propio, jamás `ps`.
+2. **Mount después:** del snapshot `gh run list --branch <base> --limit 3`, si
+   el run MÁS NUEVO (el del SHA final del drenaje) sigue `queued`/`in_progress`
+   → UN watcher canónico con label `CI-MONITOR [<repo> base:<default>@<sha7>]`.
+   Los runs intermedios de la base quedan supersedidos: **máx 1 watcher de base
+   por repo** (también en `--all-repos`), y jamás watchers de PRs ya mergeados.
+   Si ya está `completed` → veredicto inline, sin watcher. Los
+   `deferred:ci-lento` ya montaron el suyo en Phase 5.
+3. El reporte final lista el **ledger**: `label → qué vigila → acción al
+   resolver` (referencia para cada notificación entrante).
+
 **Toolkit (recolector de `release_merge`):**
 - En `--all-repos`: si `projects.yml` quedó dirty por consumos de autorizaciones,
   UN solo commit al final reusando por prosa las Phases T1–T2 de
@@ -465,6 +491,7 @@ sea ésta, `SendMessage` con un aviso corto:
 > 🚂 merge-queue: se drenó la cola de `<repo>` — mergeadas: `<rama1>`, `<rama2>`
 > (…). La base `<default>` se movió: corré `/git-sync` antes de seguir
 > trabajando. Ramas en hold/pausadas: `<lista o "ninguna">`.
+> CI de la base: `<verde confirmado | en vigilancia (run <id>)>`.
 
 Un solo mensaje por sesión (no se puede mapear rama→sesión de forma confiable;
 el aviso es informativo, no una orden).
@@ -494,6 +521,9 @@ el aviso es informativo, no una orden).
   `/merge-when-green` suelto en otra sesión. La mitigación real es de uso: al
   drenar multi-rama se usa esta skill EN VEZ de merge-when-green por sesión —
   para eso existe.
+- **TaskStop sólo sobre watchers `CI-MONITOR` propios y obsoletos** — jamás una
+  shell de fondo desconocida (puede ser un dev server u otra sesión). Orden
+  fijo: sweep → mount. En duda: reportar, no matar.
 - **Nunca en cron/headless**; la tabla del plan siempre se muestra antes de
   ejecutar, con o sin flags.
 
@@ -553,3 +583,7 @@ En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
 - (manual) `git branch -D <ramas ya-en-base>` — borrado a decisión del operador.
 - Si no se pudo avisar a las sesiones (harness sin ListAgents/SendMessage) →
   «en cada sesión abierta de este repo: `/git-sync` antes de seguir».
+- Monitores en vuelo → una fila del ledger por watcher (`label → qué vigila →
+  acción al resolver`) + respaldo manual `gh run watch <id> -R <repo>` por si la
+  sesión se cierra antes de la notificación. (Con `--plan-only` no hay
+  monitores: no se ejecutó nada.)
