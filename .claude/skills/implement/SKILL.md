@@ -26,8 +26,10 @@ Si el repo actual es un proyecto del fleet (aparece en
 bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <proyecto>
 ```
 
-- Commitear **SÓLO** en `resolved_branch` (la coordenada validada contra los
-  PRs abiertos — nunca adivinar la rama).
+- `resolved_branch` es la **BASE** del trabajo, no la rama donde se commitea:
+  commitear SIEMPRE en TU rama de sesión (worktree propio, PR al primer push con
+  base=`resolved_branch`) — nunca directo sobre la release ni sobre main/master,
+  nunca en la rama de otra sesión (git-branch-protocol del CLAUDE.md del repo).
 - `host_status=wrong-host` → **STOP**: el trabajo de este proyecto vive en el
   clon de `vps_work`, no en este host.
 

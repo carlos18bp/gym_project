@@ -110,9 +110,29 @@ NO está en la base por definición ⇒ **tree sucio = NO rotundo**, no abstenci
 
 ```bash
 cd "$HOME/webapps/<repo>" || { echo "REPO=<repo> VERDICT=skip:no-existe"; exit 0; }
+# Si la sesión trabajó en un worktree, el censo corre AHÍ (cd al worktree, no al
+# clon principal): la rama de la sesión vive en el worktree.
+CUR="$(git rev-parse --abbrev-ref HEAD)"
 DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-git fetch origin "$DEFAULT" --quiet 2>/dev/null || true
-BASE="origin/$DEFAULT"; CUR="$(git rev-parse --abbrev-ref HEAD)"
+# BASE_INT — la base de integración de ESTA rama (stacked): la del PR abierto si
+# tiene; si no, la release en repo participante (resolver, pr_state=single); si
+# no, la default. "¿Ya está TODO en la base?" se responde contra ESA base — para
+# una rama de sesión stacked, aterrizar en la RELEASE es SÍ (release→default es
+# un evento del operador, no un pendiente de la sesión).
+BASE_INT="$DEFAULT"
+PR_BASE="$(gh pr view "$CUR" --json baseRefName,state -q 'select(.state=="OPEN") | .baseRefName' 2>/dev/null || true)"
+if [ -n "$PR_BASE" ]; then
+    BASE_INT="$PR_BASE"
+else
+    PROJ="$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")"
+    RESOLVER="$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh"
+    if [ -x "$RESOLVER" ]; then
+        RB="$(bash "$RESOLVER" --check "$PROJ" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')"
+        [ -n "$RB" ] && [ "$RB" != "$CUR" ] && BASE_INT="$RB"
+    fi
+fi
+git fetch origin "$BASE_INT" --quiet 2>/dev/null || true
+BASE="origin/$BASE_INT"
 DIRTY="$(git status --porcelain | wc -l)"
 UNPUSHED="$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo no-upstream)"
 AHEAD="$(git rev-list --count "$BASE..HEAD" 2>/dev/null || echo '?')"
@@ -126,7 +146,7 @@ if [ "$AHEAD" = "0" ]; then IN_BASE=yes
 elif [ "$MT_RC" -eq 0 ] && [ -n "$MT" ] && [ "$MT" = "$BT" ]; then IN_BASE=yes; fi
 PRS="$(gh pr list --state open --head "$CUR" --json number,mergeStateStatus \
       -q '.[] | "#\(.number):\(.mergeStateStatus)"' 2>/dev/null | paste -sd, -)"
-echo "REPO=<repo> CUR=$CUR DIRTY=$DIRTY UNPUSHED=$UNPUSHED AHEAD=$AHEAD IN_BASE=$IN_BASE PRS=${PRS:-none}"
+echo "REPO=<repo> CUR=$CUR BASE=$BASE_INT DIRTY=$DIRTY UNPUSHED=$UNPUSHED AHEAD=$AHEAD IN_BASE=$IN_BASE PRS=${PRS:-none}"
 ```
 
 **Variante toolkit** (trunk flow, sin PRs — mecánica T2 de merge-when-green):
@@ -158,11 +178,16 @@ echo "REPO=vps-ops-toolkit DIRTY=$DIRTY ancestor-de-origin/master=$ANC"
 
 La tabla se muestra SIEMPRE. El veredicto global es **SÍ ⇔ todos los repos en ✅**.
 
+La columna **vs base** nombra SIEMPRE la base evaluada — para una rama de sesión
+stacked es la RELEASE, y un ✅ ahí significa "en la release", no "en main"
+(release→default queda como fila propia del hold, evento del operador):
+
 | Repo | Rama | Tree | Sin push | vs base | PR sesión | Veredicto | Falta |
 |---|---|---|---|---|---|---|---|
-| projectapp | fix/x | ✅ | 0 | ya-en-base (no-op) | #186 merged | ✅ SÍ | — |
-| mimittos_project | chore/y | ❌ 3 arch. | 1 | ahead 2 | — | ❌ NO | commit→push→PR→CI→merge |
-| vastago_project_staging | release-v2 | ✅ | 0 | ahead 5 | #12 CI ✅ | ⏸️ NO (hold) | `release_merge:` |
+| projectapp | fix/x | ✅ | 0 | vs main: ya-en-base (no-op) | #186 merged | ✅ SÍ | — |
+| mimittos_project | chore/y | ❌ 3 arch. | 1 | vs main: ahead 2 | — | ❌ NO | commit→push→PR→CI→merge |
+| kore_project | feat/z | ✅ | 0 | vs july-release: ya-en-base | #61 merged | ✅ SÍ (en la release) | — |
+| vastago_project_staging | release-v2 | ✅ | 0 | vs master: ahead 5 | #12 CI ✅ | ⏸️ NO (hold) | `release_merge:` |
 
 Ramas del repo ajenas a la sesión con trabajo pendiente: fila ℹ️ con puntero a
 `/merge-queue` (no entran al veredicto de la sesión).
@@ -208,6 +233,17 @@ esta skill:
    (regla de no-redundancia — jamás dos watchers del mismo objeto). Veredicto SÍ
    ⇒ no hay CI en vuelo causado por esta sesión; el run en vuelo de la base, si
    existe, no es de esta sesión (comando manual en Next steps si interesa).
+3. **Retiro del worktree de sesión** (protocolo por sesión): con veredicto ✅ SÍ
+   en un repo donde la sesión trabajó en `~/webapps/.wt/<repo>/<slug>`, el
+   worktree ya cumplió — retiralo (con `--check-only`: sólo listarlo como
+   retirable):
+   ```bash
+   cd "$HOME/webapps/<repo>"
+   git worktree remove "$HOME/webapps/.wt/<repo>/<slug>"   # rechaza si está sucio — eso es un NO, no forzar
+   git worktree prune
+   ```
+   Nunca `--force`: un worktree sucio contradice el SÍ y se reporta. La rama
+   local obsoleta sigue siendo del operador (`-D` manual).
 
 ## Safety rules
 

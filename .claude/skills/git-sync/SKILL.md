@@ -1,6 +1,6 @@
 ---
 name: git-sync
-description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target de rebase PR-aware (política: máx 1 PR release, máx 2 con error), luego fetch + rebase + conflict resolution. Dos ejes ortogonales combinables: --all-repos (todos los repos de ESTE host) y --all-vps (el toolkit en TODOS los VPS). Sin flags: el repo del cwd. --all quedó retirado (error) por ambiguo."
+description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target PR-aware (protocolo por sesión: una rama pusheada con PR se sincroniza sólo contra su propio upstream — la base movida se absorbe con merge, nunca rebase; N PRs de sesión son estado normal), luego fetch + rebase + conflict resolution. Dos ejes ortogonales combinables: --all-repos (todos los repos de ESTE host) y --all-vps (el toolkit en TODOS los VPS). Sin flags: el repo del cwd. --all quedó retirado (error) por ambiguo."
 allowed-tools: Bash, AskUserQuestion
 argument-hint: "[--all-repos (todos los repos de este host)] [--all-vps (todos los VPS del fleet)]"
 ---
@@ -309,7 +309,10 @@ Esta fase resuelve **dos cosas**: el parent default (master/main) y el
 `TARGET` real contra el que se va a rebasear, que puede ser:
 
 - `origin/<parent>` (default, comportamiento clásico)
-- `origin/<rama-del-PR>` cuando el operador apila trabajo sobre un PR abierto
+- `origin/<base-de-integración>` para una rama local sin PR (la release en
+  repos que participan del flujo release)
+- **vacío** para una rama pusheada con PR: sin rebase de base — Phase 4 (su
+  upstream) + merge opcional de la base en Phase 5 Case C
 
 ### Sub-fase 2a — Parent default
 
@@ -345,79 +348,85 @@ if [[ "$PR_COUNT" -gt 0 ]]; then
 fi
 ```
 
-**Política del operador** (máx 1 PR release, máx 2 con error):
+**Política del operador (protocolo por sesión, 2026-08-17):** N PRs de sesión
+abiertos son **estado normal** (1 sesión = 1 rama = 1 PR); el conteo total ya no
+dispara warnings. Lo que sí se vigila: que haya a lo sumo **1 candidato a
+release** (PR con base=default) y que los PRs de sesión no envejezcan sin drenar.
 
 ```bash
-if [[ "$PR_COUNT" -gt 2 ]]; then
-    echo "⚠️  POLÍTICA: el repo tiene ${PR_COUNT} PRs abiertos. La regla del fleet"
-    echo "    es máx 1 PR normal (próximo release) o máx 2 con error operativo."
-    echo "    Revisar y mergear/cerrar antes de continuar."
+RELEASE_CANDIDATES=$(echo "$PR_JSON" | jq --arg d "$PARENT" '[.[] | select(.baseRefName==$d)] | length')
+SESSION_PRS=$(echo "$PR_JSON" | jq --arg d "$PARENT" '[.[] | select(.baseRefName!=$d)] | length')
+echo "Candidatos a release (base=${PARENT}): ${RELEASE_CANDIDATES}  |  PRs de sesión: ${SESSION_PRS}"
+
+if [[ "$RELEASE_CANDIDATES" -gt 1 ]]; then
+    echo "⚠️  ${RELEASE_CANDIDATES} PRs con base=${PARENT}: release ambigua. En repos con"
+    echo "    release activa los PRs de sesión van con base=<release> (stacked) —"
+    echo "    re-basar los mal abiertos: gh pr edit <n> --base <release>."
 fi
+# PRs de sesión >48h sin actividad = deuda de drenaje (sugerir /merge-queue)
+echo "$PR_JSON" | jq -r --arg d "$PARENT" \
+  '.[] | select(.baseRefName!=$d) | select((now - (.updatedAt|fromdateiso8601)) > 172800) | "⚠️  PR de sesión frío (>48h): #\(.number) \(.headRefName) — drenar con /merge-queue"'
 ```
 
 ### Sub-fase 2c — Resolver `TARGET` del rebase
+
+Regla del protocolo por sesión: **una rama pusheada con PR jamás se rebasea
+sobre su base** (el force push está denegado en el fleet — el rebase la dejaría
+imposible de pushear). Su sync es contra su **propio upstream** (Phase 4), y una
+base movida se absorbe con **merge** (Phase 5, Case C). El "rebase apilado sobre
+el PR abierto" del protocolo viejo (todas las sesiones sobre una rama) quedó
+retirado: parado en `main`/`master` ya no se adopta la rama de ningún PR.
 
 ```bash
 # Lista de heads de PRs abiertos (las ramas en review)
 PR_HEADS=$(echo "$PR_JSON" | jq -r '.[].headRefName' 2>/dev/null || true)
 
-# Default: rebase contra el parent
+# Base de integración del repo: default, o la RELEASE si el repo participa del
+# flujo release (resolver del toolkit; pr_state=single → resolved_branch).
+# OJO worktrees: el nombre del proyecto sale del git-common-dir (el clon
+# principal), no del toplevel — en un worktree el toplevel es ~/.../.wt/<slug>.
+BASE_INT="${PARENT}"
+OPS=~/webapps/vps-ops-toolkit
+RESOLVER="$OPS/scripts/maintenance/resolve-work-coordinate.sh"
+PROJ=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+if [[ -x "$RESOLVER" ]]; then
+    RB=$(bash "$RESOLVER" --check "$PROJ" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')
+    [[ -n "$RB" ]] && BASE_INT="$RB"
+fi
+
 TARGET="origin/${PARENT}"
 TARGET_REASON="default (parent branch)"
 
-# Caso especial: master/main no cambian target — siempre rebase contra origin/parent
 if [[ "$CURRENT_BRANCH" == "$PARENT" ]]; then
+    # Case A — parado en el parent: pull --rebase clásico.
     TARGET="origin/${PARENT}"
     TARGET_REASON="current branch ES el parent (Case A)"
 
-# Caso: current es la rama de UN PR abierto → rebase contra master normal
 elif echo "$PR_HEADS" | grep -qxF "$CURRENT_BRANCH"; then
-    TARGET="origin/${PARENT}"
-    TARGET_REASON="current branch ES la rama del PR — rebase contra parent normal"
+    # Case C — rama pusheada con PR (de sesión o release): SIN rebase de base.
+    TARGET=""
+    PR_BASE=$(echo "$PR_JSON" | jq -r --arg h "$CURRENT_BRANCH" '[.[] | select(.headRefName==$h)][0].baseRefName')
+    TARGET_REASON="rama pusheada con PR (base=${PR_BASE}) — sync sólo contra su upstream; base movida se absorbe con merge, nunca rebase"
 
-# Caso: current NO es de ningún PR
 else
-    case "$PR_COUNT" in
-        0)
-            TARGET="origin/${PARENT}"
-            TARGET_REASON="0 PRs abiertos — default"
-            ;;
-        1)
-            PR_HEAD=$(echo "$PR_JSON" | jq -r '.[0].headRefName')
-            PR_NUM=$(echo "$PR_JSON" | jq -r '.[0].number')
-            TARGET="origin/${PR_HEAD}"
-            TARGET_REASON="1 PR abierto (#${PR_NUM} ${PR_HEAD}) — rebase apilado sobre el PR"
-            echo "⚠️  Cambiando target a la rama del PR #${PR_NUM}: ${PR_HEAD}"
-            echo "    Si no querés esto (preferís rebase contra ${PARENT}), abortá ahora con Ctrl-C"
-            echo "    o checkout a otra rama y re-invocar."
-            ;;
-        2)
-            echo "🛑 2 PRs abiertos y current branch no coincide con ninguno."
-            echo "    No infiero contra cuál rebasear — el operador debe decidir."
-            echo "    PRs abiertos:"
-            echo "$PR_JSON" | jq -r '.[] | "      #\(.number) \(.headRefName)"'
-            echo "    Acción del operador: checkout a la rama del PR objetivo y re-invocar."
-            exit 2
-            ;;
-        *)
-            # >2 PRs → fallback conservador a parent
-            TARGET="origin/${PARENT}"
-            TARGET_REASON=">2 PRs abiertos — fallback conservador al parent"
-            ;;
-    esac
+    # Rama local sin PR (aún no pusheada): rebase contra su base de integración
+    # (la release en repos participantes, el parent en prod-directos).
+    TARGET="origin/${BASE_INT}"
+    TARGET_REASON="rama local sin PR — rebase contra su base de integración (${BASE_INT})"
 fi
 
-echo "🎯 Rebase target: ${TARGET}"
+echo "🎯 Rebase target: ${TARGET:-<ninguno — Case C>}"
 echo "   Razón: ${TARGET_REASON}"
 
-# Asegurar que TARGET existe localmente como ref. Si es una rama del PR,
-# necesitamos git fetch específico de esa rama.
-TARGET_BRANCH="${TARGET#origin/}"
-if ! git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
-    git fetch origin "${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" || {
-        echo "❌ No se pudo fetch ${TARGET_BRANCH}"
-        exit 2
-    }
+# Asegurar que TARGET existe localmente como ref (si hay TARGET).
+if [[ -n "$TARGET" ]]; then
+    TARGET_BRANCH="${TARGET#origin/}"
+    if ! git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+        git fetch origin "${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" || {
+            echo "❌ No se pudo fetch ${TARGET_BRANCH}"
+            exit 2
+        }
+    fi
 fi
 ```
 
@@ -457,10 +466,10 @@ If this rebase stops with conflicts → Phase 6. When it finishes cleanly, conti
 
 ---
 
-## Phase 5 — Rebase against the resolved `TARGET`
+## Phase 5 — Rebase (o merge) against the resolved `TARGET`
 
-Usa la variable `TARGET` resuelta en Phase 2 (default `origin/<parent>`, o
-`origin/<rama-del-PR>` si hay 1 PR abierto y current branch difiere).
+Usa las variables de Phase 2: `TARGET` (default `origin/<parent>`, o la base de
+integración para ramas locales sin PR, o **vacío** para ramas pusheadas con PR).
 
 **Case A — current branch IS the parent (`main`/`master`):**
 
@@ -470,7 +479,7 @@ git pull --rebase origin "${PARENT}"
 
 Then skip to Phase 7. (En este caso `TARGET == origin/${PARENT}` siempre.)
 
-**Case B — current branch is a feature branch:**
+**Case B — rama local SIN PR (aún no pusheada):**
 
 Preview qué tiene `TARGET` que current no tiene:
 
@@ -484,17 +493,30 @@ git log --oneline "HEAD..${TARGET}" --
   git rebase "${TARGET}"
   ```
 
-Si la skill cambió `TARGET` a una rama de PR (caso 1 PR abierto, current
-distinta), **comunicar visualmente** al operador antes de ejecutar:
+If the rebase stops with conflicts → Phase 6.
+
+**Case C — rama pusheada con PR (`TARGET` vacío):**
+
+El sync real ya ocurrió en Phase 4 (su propio upstream). Acá sólo se decide si
+hace falta **absorber la base** (la base del PR — `${PR_BASE}` de Phase 2c — se
+movió por merges de otras sesiones):
 
 ```bash
-echo ""
-echo "🎯 Rebase: ${CURRENT_BRANCH} → onto ${TARGET}"
-echo "   (${TARGET_REASON})"
-echo ""
+git fetch origin "${PR_BASE}" --quiet
+BEHIND_BASE=$(git rev-list --count "HEAD..origin/${PR_BASE}" -- 2>/dev/null || echo 0)
+echo "Commits de la base (${PR_BASE}) que esta rama no tiene: ${BEHIND_BASE}"
 ```
 
-If the rebase stops with conflicts → Phase 6.
+- `BEHIND_BASE == 0` → nada que absorber — skip to Phase 7.
+- `BEHIND_BASE > 0` → **merge, nunca rebase** (la rama ya está pusheada y el
+  force push está denegado en el fleet):
+  ```bash
+  git merge --no-edit "origin/${PR_BASE}"
+  ```
+  Conflictos → Phase 6 (resolverlos acá es exactamente "ir resolviendo a medida
+  que las otras ramas avanzan"; el squash final del PR se come el merge commit).
+  Absorber la base es **opcional** si no hay solapamiento con lo mergeado — ante
+  la duda, absorbela: mejor conflicto chico hoy que grande en el drenaje.
 
 ---
 
@@ -581,8 +603,11 @@ resolver con una sesión en ese host) · `UNREACHABLE`. Por repo de proyecto:
 - **Never** ejecutar `git stash drop` automáticamente. Solo sugerir en Next steps.
 - If the parent branch cannot be detected, stop and ask the user.
 - If in doubt about a conflict, stop and ask the user.
-- **Política de PRs:** máx 1 PR abierto (próximo release), máx 2 con error
-  operativo. Si hay >2, emitir warning destacado pero NO bloquear el sync.
+- **Política de PRs (protocolo por sesión):** N PRs de sesión abiertos son
+  estado normal. Warnings sólo por: >1 candidato a release (base=default) o
+  PRs de sesión fríos (>48h) sin drenar. Nunca bloquear el sync por conteo.
+- **Nunca** rebasear una rama pusheada con PR sobre su base — la base se
+  absorbe con `git merge origin/<base>` (Case C).
 
 ---
 
@@ -632,16 +657,17 @@ Casos con acción pendiente (omitir línea ✨, agregar `## Next steps`):
   - `git stash drop stash@{1}` — VIEJO (>30 días, mensaje: <msg>)
   ```
 
-- **>2 PRs abiertos** (⚠️ en Phase 2 PR target):
+- **>1 candidato a release** (⚠️ en Phase 2 PR target):
   ```markdown
   ## Next steps
-  - (operador) revisar PRs abiertos: #X, #Y, #Z. Política del fleet: máx 2.
+  - (operador) release ambigua: PRs con base=<default>: #X, #Y. Re-basar los de
+    sesión mal abiertos: `gh pr edit <n> --base <release>`.
   ```
 
-- **2 PRs abiertos y current branch no coincide** (❌ Phase 2 — exit):
+- **PRs de sesión fríos (>48h)** (⚠️ en Phase 2 PR target):
   ```markdown
   ## Next steps
-  - `git checkout <rama-PR-objetivo>` — decidir contra cuál PR rebasear y re-invocar.
+  - `/merge-queue` — drenar los PRs de sesión pendientes: #X (<rama>), #Y (<rama>).
   ```
 
 - **Conflictos durante rebase** (❌ Phase 6):

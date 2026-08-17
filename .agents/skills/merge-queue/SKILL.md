@@ -1,6 +1,6 @@
 ---
 name: merge-queue
-description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs abiertos + ramas con remoto sin PR + local-only + gone + ya-en-base), arma la estrategia (release autorizada → batch de verdes disjuntos → tren por solapamiento → holds) y ejecuta cada merge reutilizando el flujo de merge-when-green con TODOS sus guards. Es el mecanismo de drenaje de vuelta a la convención 'máx 1 PR feature activo'. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado en el fleet): actualiza con gh pr update-branch o mergeando la base en la rama."
+description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs de sesión con dueño en el body + ramas sin PR + local-only + gone + ya-en-base), arma la estrategia en dos niveles (tier 1: sesiones→release o →default; tier 2: release→default sólo con release_merge y tier 1 drenado) y ejecuta: batch de verdes disjuntos server-side + TREN DE INTEGRACIÓN (rama temporal queue/integration-* que valida la COMBINACIÓN con UN solo run de CI — verde ⇒ merges de corrido sin re-CI por unidad; rojo ⇒ bisect) + stop-the-line con triage del rojo de la base (test rojo ⇒ frenar; infra post-test ⇒ seguir; flaky ⇒ re-run). Conflictos semánticos y fix loop se DELEGAN a la sesión dueña vía SendMessage (señal de resuelto = push al head; timeout ⇒ inline). En cada pausa y al final emite el Tablero de estado. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado); nunca toca el checkout del clon principal: toda mutación de tree ocurre en el worktree propio de la queue (~/webapps/.wt/<repo>/queue-*)."
 allowed-tools: Bash, AskUserQuestion, ListAgents, SendMessage, TaskStop
 argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r2] [--autonomous] [--max-iterations=N]"
 ---
@@ -24,12 +24,19 @@ argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r
 > - `--include-no-pr=r1,r2`: incluye esas ramas sin PR en la cola sin preguntar
 >   (útil para re-invocar tras un primer censo).
 >
-> **Qué ejecuta cada merge:** el flujo de [[merge-when-green]] (espera de CI, fix
-> loop con pausa por código de producción salvo `--autonomous`, guard de
-> mergeable, `gh pr merge --squash --delete-branch`, consumo de `release_merge`).
-> Esta skill NO re-implementa el merge: ordena, prepara (push/PR/update
-> just-in-time) y secuencia. Defaults heredados: squash, fix loop máx 5
-> iteraciones (`--max-iterations=N`).
+> **Qué ejecuta cada merge:** los guards de [[merge-when-green]] (mergeable,
+> `gh pr merge --squash --delete-branch`, consumo de `release_merge`), pero la
+> **validación de CI es por GRUPO, no por unidad**: los verdes disjuntos van en
+> batch sin re-CI, y el resto se valida COMBINADO en el tren de integración (un
+> solo run). Defaults heredados: squash, fix loop máx 5 iteraciones
+> (`--max-iterations=N`).
+>
+> **Dos niveles (two-tier, protocolo por sesión):** tier 1 = PRs de sesión hacia
+> su base de integración (la release en repos participantes, la default en
+> prod-directos). Tier 2 = la release hacia la default, SÓLO si `release_merge:`
+> la autoriza **y** el tier 1 de esa release quedó drenado (0 PRs de sesión
+> colgando de ella — mergear la release con hijos vivos los dejaría apuntando a
+> una base muerta). La release va al FINAL de la cola de su repo.
 >
 > **Guards siempre ON (heredados):** coordenada (`resolve-work-coordinate.sh`) —
 > `wrong-host` ⇒ el repo entero se salta; una rama release se mergea SÓLO si
@@ -43,8 +50,16 @@ argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r
 > fleet (cubre `--force-with-lease`), así que esta skill **no rebasea ramas
 > pusheadas jamás**. Una rama BEHIND se actualiza server-side
 > (`gh pr update-branch`); una CONFLICTING se pone al día mergeando
-> `origin/<base>` DENTRO de la rama (push fast-forward normal). Con squash como
-> merge method, esos merge commits intermedios desaparecen del historial final.
+> `origin/<base>` DENTRO de la rama — desde el **worktree de la queue, en
+> detached HEAD** (`git checkout --detach origin/<rama>` + merge + `git push
+> origin HEAD:refs/heads/<rama>`, fast-forward normal), porque la rama puede
+> estar checkouteada en el worktree de su sesión dueña y el checkout normal
+> fallaría. Con squash como merge method, esos merge commits intermedios
+> desaparecen del historial final.
+>
+> **El clon principal es intocable:** esta skill jamás hace checkout en
+> `~/webapps/<repo>` (en VPS es el tree del servicio corriendo). Toda mutación
+> de working tree ocurre en su worktree propio `~/webapps/.wt/<repo>/queue-<ts>`.
 
 ## Cómo invocar este skill
 
@@ -200,8 +215,16 @@ bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.
      --check "$REPO_NAME" 2>/dev/null || true
 
 echo "--- PRs abiertos (enumeración propia: el resolver NO lista PRs feature en prod-directos) ---"
+# body: de ahí sale la sesión dueña (línea 'Sesión:') y la intención — el
+# contrato de ownership del protocolo por sesión. isDraft: los drafts (p.ej. el
+# PR de integración de una corrida anterior) se EXCLUYEN de la cola.
 gh pr list --state open \
-   --json number,headRefName,baseRefName,createdAt,mergeable,mergeStateStatus,statusCheckRollup
+   --json number,headRefName,baseRefName,createdAt,isDraft,mergeable,mergeStateStatus,statusCheckRollup,body \
+   -q '.[] | {number,headRefName,baseRefName,createdAt,isDraft,mergeable,mergeStateStatus, checks: ([.statusCheckRollup[]?.conclusion] | join(",")), sesion: ((.body // "" | capture("Sesi[oó]n:\\s*(?<s>[^\\n]+)") .s) // "—")}'
+# La RELEASE del repo (si participa): base de integración del tier 1.
+RELEASE="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh" \
+   --check "$REPO_NAME" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')"
+echo "RELEASE (tier-1 base si participa): ${RELEASE:-n/a — prod-directo o sin release}"
 echo "--- merges recientes (señal doble-orquestador: <10 min ⇒ ⚠️) ---"
 gh pr list --state merged --limit 3 --json number,mergedAt,title
 
@@ -209,46 +232,62 @@ echo "--- ramas locales (upstream · track · edad) ---"
 git for-each-ref refs/heads \
    --format='%(refname:short)|%(upstream:short)|%(upstream:track)|%(committerdate:iso8601)'
 
-echo "--- por rama local: ahead/behind vs base + ya-en-base (merge-tree in-memory) ---"
-BASE_TREE="$(git rev-parse "origin/${DEFAULT}^{tree}" 2>/dev/null || echo none)"
-for BR in $(git for-each-ref refs/heads --format='%(refname:short)'); do
-    [ "$BR" = "$DEFAULT" ] && continue
-    AHEAD="$(git rev-list --count "origin/${DEFAULT}..${BR}" 2>/dev/null || echo '?')"
-    BEHIND="$(git rev-list --count "${BR}..origin/${DEFAULT}" 2>/dev/null || echo '?')"
-    # merge-tree es in-memory: evaluable aun con tree sucio (la restricción "tree
-    # sucio ⇒ no evaluar" de merge-when-green aplica sólo a la rama ACTUAL, cuyo
-    # trabajo sin commitear es de ella).
-    MT="$(git merge-tree --write-tree "origin/${DEFAULT}" "$BR" 2>/dev/null | head -1)"
-    if [ -n "$MT" ] && [ "$MT" = "$BASE_TREE" ]; then
-        echo "$BR: YA-EN-BASE (mergearla sería no-op)"
-    else
-        echo "$BR: ahead=$AHEAD behind=$BEHIND"
-    fi
+echo "--- por rama local: ahead/behind + ya-en-base vs SU base de tier (merge-tree in-memory) ---"
+# La base de comparación de cada rama es la de SU tier: la del PR si tiene
+# (baseRefName del listado de arriba), la RELEASE si estamos en repo
+# participante, la default si no. El loop evalúa contra ambas cuando hay
+# RELEASE — la clasificación (abajo, en contexto) usa la que corresponda.
+for TB in "$DEFAULT" ${RELEASE:+"$RELEASE"}; do
+    git fetch origin "$TB" --quiet 2>/dev/null || true
+    BASE_TREE="$(git rev-parse "origin/${TB}^{tree}" 2>/dev/null || echo none)"
+    echo "· vs origin/${TB}:"
+    for BR in $(git for-each-ref refs/heads --format='%(refname:short)'); do
+        [ "$BR" = "$TB" ] && continue
+        case "$BR" in queue/*) continue ;; esac   # ramas de integración: jamás unidades
+        AHEAD="$(git rev-list --count "origin/${TB}..${BR}" 2>/dev/null || echo '?')"
+        BEHIND="$(git rev-list --count "${BR}..origin/${TB}" 2>/dev/null || echo '?')"
+        # merge-tree es in-memory: evaluable aun con tree sucio (la restricción
+        # "tree sucio ⇒ no evaluar" de merge-when-green aplica sólo a la rama
+        # ACTUAL, cuyo trabajo sin commitear es de ella).
+        MT="$(git merge-tree --write-tree "origin/${TB}" "$BR" 2>/dev/null | head -1)"
+        if [ -n "$MT" ] && [ "$MT" = "$BASE_TREE" ]; then
+            echo "  $BR: YA-EN-BASE de $TB (mergearla sería no-op)"
+        else
+            echo "  $BR: ahead=$AHEAD behind=$BEHIND"
+        fi
+    done
 done
 
 echo "--- ramas remotas sin rama local (trabajo pusheado desde otra máquina) ---"
 for RB in $(git for-each-ref refs/remotes/origin --format='%(refname:short)'); do
     B="${RB#origin/}"
-    case "$B" in "$DEFAULT"|HEAD) continue ;; esac
+    case "$B" in "$DEFAULT"|HEAD|queue/*) continue ;; esac
+    [ -n "${RELEASE:-}" ] && [ "$B" = "$RELEASE" ] && continue
     git show-ref --verify --quiet "refs/heads/$B" && continue
     AHEAD="$(git rev-list --count "origin/${DEFAULT}..${RB}" 2>/dev/null || echo 0)"
     [ "$AHEAD" != "0" ] && echo "remote-only $B: ahead=$AHEAD"
 done
+
+echo "--- worktrees del repo (sesiones activas + huérfanos) ---"
+git worktree list --porcelain | sed -n 's/^worktree //p'
+git worktree prune 2>/dev/null || true
 ```
 
 **Clasificación (una clase por unidad de trabajo — rama o PR):**
 
 | Clase | Criterio | Destino |
 |---|---|---|
-| `con-PR` | head de un PR abierto (× CI verde/rojo/pendiente × MERGEABLE/CONFLICTING/UNKNOWN) | batch o tren |
-| `remoto-sin-PR` | rama (local o remote-only) con remoto vivo, ahead>0, sin PR | operator-gated (Q2) |
+| `session-pr` | PR abierto no-draft con base = SU base de tier (la release en repo participante, la default en prod-directo). El body declara `Sesión:`/`Intención:` — sin esas líneas: fila advisory `sin-dueño` (se drena igual; la delegación degrada a heurística) | tier 1: batch o tren |
+| `remoto-sin-PR` | rama (local o remote-only) con remoto vivo, ahead>0, sin PR — violación del protocolo por sesión (PR al primer push); se censa igual | operator-gated (Q2) |
 | `local-only` | rama sin upstream, ahead>0 | operator-gated (Q2) |
 | `gone-limpia` | upstream `[gone]` **y** ya-en-base | cleanup (sólo reporte) |
 | `gone-con-trabajo` | upstream `[gone]` pero NO ya-en-base | operator-gated (Q2) |
-| `ya-en-base` | merge-tree == árbol de la base | cleanup (sólo reporte) |
+| `ya-en-base` | merge-tree == árbol de SU base de tier | cleanup (sólo reporte) |
+| `fría >48h` | unidad con último commit >48h — deuda de drenaje del protocolo | se drena igual + ⚠️ en la tabla |
 | `diverged` | local y su remoto ahead entre sí | excluida — irresoluble sin force push; nota en Next steps |
-| `base-no-default` | PR con `baseRefName != base` (stacked) | excluida — drenar la pila a mano o `gh pr edit <n> --base <base>` |
-| `release` | head ∈ `open_pr` del resolver | autorizada (`release_merge=` la nombra) → va PRIMERA · sin autorizar → hold |
+| `base-rara` | PR cuya base no es NI la default NI la release del repo | excluida — `gh pr edit <n> --base <base-correcta>` |
+| `queue/*` / PR draft de integración | restos de una corrida (ésta u otra) | jamás unidades — cleanup si quedaron huérfanos |
+| `release` | head = candidato del resolver (`open_pr`, base=default) | tier 2: autorizada (`release_merge=`) → al FINAL, sólo con su tier 1 drenado · sin autorizar → hold |
 | `rama-actual-sucia` | `CURRENT` con tree sucio | advisory "posible sesión activa" — excluida de auto-ejecución, jamás se ofrece |
 
 `host_status=wrong-host` ⇒ el **repo entero** se salta (⏭️ con el
@@ -263,38 +302,45 @@ re-verifican en vivo):
 ```bash
 cd "$(git rev-parse --show-toplevel)"; REPO_NAME="$(basename "$PWD")"
 QDIR="/tmp/merge-queue-${REPO_NAME}"; touch "$QDIR/lock"; mkdir -p "$QDIR/files"
-DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
 # <unidades>: las ramas ejecutables del censo. REF por unidad: origin/<rama> si el
-# remoto vive; la local si es local-only.
+# remoto vive; la local si es local-only. BASE_U por unidad = su base de tier
+# (baseRefName del PR; la release para tier-1 en repos participantes; la default
+# si no). El diff va contra BASE_U — no siempre la default.
+# El filename del set de archivos usa base64 url-safe: el aplanado ingenuo
+# `${U//\//_}` colisionaba (`a/b` y `a_b` → mismo archivo).
+key() { printf '%s' "$1" | base64 | tr -d '=\n' | tr '/+' '_-'; }
 for U in <unidades>; do
-    git diff --name-only "origin/${DEFAULT}...${U}" 2>/dev/null | sort > "$QDIR/files/${U//\//_}"
+    git diff --name-only "origin/<BASE_U>...${U}" 2>/dev/null | sort > "$QDIR/files/$(key "$U")"
 done
-for A in <unidades>; do for B in <unidades posteriores a A>; do
-    N="$(comm -12 "$QDIR/files/${A//\//_}" "$QDIR/files/${B//\//_}" | wc -l)"
+for A in <unidades>; do for B in <unidades posteriores a A, mismo tier/base>; do
+    N="$(comm -12 "$QDIR/files/$(key "$A")" "$QDIR/files/$(key "$B")" | wc -l)"
     (( N > 0 )) && echo "SOLAPA: $A ⇆ $B ($N archivo(s) en común)"
 done; done
 ```
 
-**Armado de la cola (el orden ES la estrategia):**
+**Armado de la cola (el orden ES la estrategia; two-tier):**
 
-1. `[0] RELEASE AUTORIZADA` — absoluta primera: es la prioridad que el operador
-   declaró en projects.yml, y mergearla primero convierte "release vs N features"
-   en N updates chicos que el tren resuelve igual.
-2. `[BATCH]` — PRs con CI verde + `MERGEABLE` + **disjuntos entre sí y con la
-   release**; orden: más viejo primero (`createdAt`). Merges consecutivos
-   server-side, sin esperas entre sí.
-3. `[TREN]` — el resto ejecutable (sin-PR incluidas por el operador, CI
-   pendiente/rojo, CONFLICTING, solapadas); orden: **grado de solapamiento
-   ascendente**, desempate más-viejo-primero. Así cada unidad se actualiza UNA
-   sola vez en su turno y los "hubs" (mucho solape) absorben todos sus conflictos
-   en UNA sesión al final — con FIFO un hub temprano fuerza updates en cadena de
-   todo lo que le sigue.
+1. `[BATCH]` (tier 1) — PRs de sesión con CI verde + `MERGEABLE` + **disjuntos
+   entre sí** (misma base de tier); orden: más viejo primero (`createdAt`).
+   Merges consecutivos server-side, sin esperas entre sí.
+2. `[TREN DE INTEGRACIÓN]` (tier 1) — el resto ejecutable (sin-PR incluidas por
+   el operador, CI pendiente/rojo, CONFLICTING, solapadas): se valida la
+   **combinación completa** con UN solo run de CI sobre una rama temporal
+   `queue/integration-<ts>` y, en verde, se drenan los PRs de corrido (Phase 5).
+   El orden de armado del tren sigue siendo **solapamiento ascendente**
+   (desempate más-viejo-primero): minimiza conflictos al construir la
+   integración y deja los "hubs" al final.
+3. `[TIER 2 — RELEASE AUTORIZADA]` — la release con `release_merge:` va **al
+   FINAL de la cola de su repo**, y SÓLO si su tier 1 quedó drenado (0 PRs de
+   sesión abiertos con base=esa release). Mergearla con hijos vivos los dejaría
+   apuntando a una base muerta; si quedan, la release pasa a
+   `hold:tier1-pendiente` con la lista. La release espera su CI completo como
+   siempre (el atajo sin-re-CI del tren NO aplica al tier 2).
 4. `[HOLDS]` — releases sin autorizar: se integran y esperan su CI, sin merge
-   (⏸️ es el caso normal, no un error). Van al final para que su veredicto sea el
-   más fresco. Un hold CONFLICTING sólo se REPORTA — no se muta una release no
-   autorizada.
-5. `[CLEANUP]` — `ya-en-base` / `gone-limpia`: sólo reporte (el `-D` es del
-   operador, menú post-run).
+   (⏸️ es el caso normal, no un error). Un hold CONFLICTING sólo se REPORTA —
+   no se muta una release no autorizada.
+5. `[CLEANUP]` — `ya-en-base` / `gone-limpia` / restos `queue/*`: sólo reporte
+   (el `-D` es del operador, menú post-run).
 
 **Tabla del plan** (SIEMPRE se muestra, con o sin flags — el operador puede
 cortar acá):
@@ -321,15 +367,16 @@ barrido: `failed:push` saca ESA unidad de la cola y se sigue.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"; touch "/tmp/merge-queue-$(basename "$PWD")/lock"
-DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-RAMA="<unidad>"
+RAMA="<unidad>"; BASE_U="<base de tier de la unidad>"   # release en participantes, default si no
 # Push sólo si hace falta (local-only o local por delante de su remoto):
 git push -u origin "$RAMA" || echo "failed:push — $RAMA sale de la cola, se sigue"
 # Asegurar PR (state=MERGED/CLOSED no cuenta como abierto — regla de Phase 2 de
-# merge-when-green):
+# merge-when-green). El body lleva el contrato de ownership; para ramas censadas
+# sin sesión conocida, 'Sesión: — (censada por merge-queue)'.
 ST="$(gh pr view "$RAMA" --json state -q .state 2>/dev/null || echo none)"
 if [ "$ST" != "OPEN" ]; then
-    gh pr create --head "$RAMA" --base "$DEFAULT" --fill
+    gh pr create --head "$RAMA" --base "$BASE_U" --fill \
+      --body "$(printf 'Sesión: %s\nIntención: %s\n' '<sesión dueña o "— (censada por merge-queue)">' '<intención inferida de los commits>')"
 fi
 gh pr view "$RAMA" --json number,url -q '"PR #\(.number) — \(.url)"'
 ```
@@ -339,6 +386,9 @@ gh pr view "$RAMA" --json number,url -q '"PR #\(.number) — \(.url)"'
   [[git-commit]] sobre esa rama (add selectivo + commit + push), como la Phase 1
   de merge-when-green.
 - Una release (autorizada o hold) ya tiene su PR: no se crea uno nuevo.
+
+Al cerrar esta fase, emití la primera foto del **Tablero de estado** (sección
+más abajo): todo integrado, CIs corriendo en paralelo.
 
 ## Phase 4 — Batch (verdes disjuntos, server-side, cero checkouts)
 
@@ -371,90 +421,220 @@ esac
 
 **Riesgo aceptado y documentado:** el CI no se re-corre entre merges del batch —
 válido sólo porque sus unidades son file-disjoint (la matriz de Phase 2); un
-conflicto semántico cross-archivo lo atraparía el CI de la base, que Phase 6
-mira. Todo lo degradado pasa **al frente del tren** conservando su orden
-relativo.
+conflicto semántico cross-archivo lo atrapa el CI de la base (5.5, con triage).
+Todo lo degradado pasa **al tren de integración** (Phase 5) conservando su
+orden relativo — ahí la combinación sí se valida.
 
-## Phase 5 — Tren (una unidad por vez)
+## Phase 5 — Tren de integración (la combinación se valida UNA vez)
 
-Por cada unidad del tren, en orden. Después de cada merge la base se movió: el
-estado se consulta **en vivo** al inicio de cada turno, nunca del censo.
+El tren viejo (una unidad por vez: update → CI completo → merge → la base se
+movió → la siguiente paga otro ciclo) costaba N × ~27 min de CI serial y aun
+así no validaba la combinación — un bug entre dos PRs sin conflicto textual
+(mismo watch, hunks distintos; caso real 2026-08-16) aterrizaba en la base. El
+tren v2 valida la **combinación completa con UN run** y recién después drena
+los PRs de corrido.
+
+### 5.1 — Construir la rama de integración (worktree propio + rerere)
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"; touch "/tmp/merge-queue-$(basename "$PWD")/lock"
-PR=<n>; RAMA="<head>"
-DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-git fetch origin "$DEFAULT" --quiet
-ST="$(gh pr view "$PR" --json mergeable,mergeStateStatus -q '"\(.mergeable) \(.mergeStateStatus)"')"
-echo "PR #$PR ($RAMA) → $ST"
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+REPO_NAME="$(basename "$PWD")"; touch "/tmp/merge-queue-${REPO_NAME}/lock"
+BASE_T="<base del tier>"          # release (tier 1 participante) o default
+TS="$(date +%d%m%Y-%H%M)"
+WT="$HOME/webapps/.wt/${REPO_NAME}/queue-${TS}"
+git fetch origin "$BASE_T" --quiet
+git worktree add --detach "$WT" "origin/$BASE_T"
+cd "$WT"
+git config rerere.enabled true      # graba cada resolución — se replaya en 5.3
+git switch -c "queue/integration-$TS"
+```
+
+Después, **una unidad por vez, en el orden del tren** (solapamiento ascendente):
+
+```bash
+cd "$WT"; RAMA="<unidad>"
+git fetch origin "$RAMA" --quiet 2>/dev/null || true
+git merge --no-edit "origin/$RAMA" || echo "CONFLICTO en la integración — ver reglas abajo"
+```
+
+- Conflicto **mecánico** (registros, lockfiles, archivos generados): resolvelo
+  acá mismo (reglas de git-sync Phase 6: mostrar ambos lados, nunca a ciegas;
+  un archivo GENERADO se regenera con su generador, no se mergea a mano).
+  rerere graba la resolución para el replay de 5.3.
+- Conflicto **semántico** (lógica real de dos sesiones): **delegá a la sesión
+  dueña** (sección «Delegación» abajo). Mientras llega su push, seguí
+  integrando las unidades NO afectadas; la delegada se re-integra al volver o
+  sale del tren por timeout (`deferred:delegada`).
+- Merge irrecuperable ⇒ `git merge --abort`, la unidad sale
+  (`failed:integracion`) y el tren sigue.
+
+### 5.2 — UN run de CI sobre la combinación
+
+```bash
+cd "$WT"
+git push -u origin "queue/integration-$TS"
+```
+
+El CI se dispara abriendo un **PR draft** `queue/integration-<ts>` → `<BASE_T>`
+(`gh pr create --draft`): los repos del fleet ya traen `pull_request` cubriendo
+sus bases (main/master y las release vía `release-*` o nombre explícito —
+verificado 2026-08-17), así que el draft corre la matriz completa sin tocar
+ningún workflow. Ese draft **jamás se mergea** y se cierra en 5.6. (Optimización
+opcional por repo: trigger `push: queue/**` — evita el PR draft; si existe, el
+push de arriba alcanza.)
+
+La espera sigue el «Cierre asíncrono de CI» de [[merge-when-green]]: consultá
+el run una vez (`gh run list --branch "queue/integration-$TS" --limit 1`); si
+sigue en vuelo, montá el watcher `CI-MONITOR [<repo> integración@<sha7>]` con
+`NEXT: verde ⇒ drenar (5.3) · rojo ⇒ bisect (5.4)` y pausa de tablero (en
+`--all-repos`: mientras tanto, el tren de OTRO repo). Nunca un `--watch`
+foreground de más de 600000 ms.
+
+### 5.3 — Verde ⇒ drenar los PRs de corrido (sin re-CI por unidad)
+
+La validez del atajo: el árbol final de la base tras drenar el grupo **es** el
+árbol de la integración (mismas resoluciones — rerere las replaya — y mismo
+orden), y ese árbol es exactamente lo que el CI validó. Los estados intermedios
+(tras la unidad 1..k<N) no se testean; la red es el CI de la base (5.5).
+Precondición por repo (verificada en F2 del rollout): la base del tier sin
+`required_status_checks` que exijan re-CI del head tras cada push.
+
+Por cada PR del tren, en orden:
+
+```bash
+cd "$WT"; PR=<n>; RAMA="<head>"; BASE_T="<base del tier>"
+git fetch origin "$BASE_T" "$RAMA" --quiet
+# GitHub recomputa mergeable tras cada squash: poll UNKNOWN → veredicto (c/5s máx 60s)
+for i in $(seq 1 12); do
+    ST="$(gh pr view "$PR" --json mergeable,mergeStateStatus -q '"\(.mergeable) \(.mergeStateStatus)"')"
+    case "$ST" in "UNKNOWN"*) sleep 5 ;; *) break ;; esac
+done
 case "$ST" in
-  *CONFLICTING*|*DIRTY*)
-    # Única ruta que toca el working tree. Guard duro: tree limpio o la unidad
-    # se pausa (nunca stash automático — otra sesión puede ser la dueña).
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "⏸️ tree sucio — paused:tree-sucio; el tren sigue con la próxima unidad"
-    else
-        git checkout "$RAMA" && { git pull --ff-only origin "$RAMA" 2>/dev/null || true; }
-        # JAMÁS git rebase acá: la rama está pusheada y el push posterior sería
-        # force (denegado). El merge de la base es descendiente del head remoto
-        # ⇒ push fast-forward normal; el squash final se lo come.
-        git merge --no-edit "origin/$DEFAULT" \
-            || echo "CONFLICTOS → resolución guiada (abajo), UNA sola vez acá"
-    fi ;;
-  *BEHIND*)
-    # Server-side, sin checkout (semántica del botón "Update branch"):
-    gh pr update-branch "$PR" || echo "update-branch falló → usar la ruta local de merge de arriba" ;;
-  *)
-    echo "✓ al día — directo a CI/merge" ;;
+  MERGEABLE*)
+    gh pr merge "$PR" --squash --delete-branch || echo "❌ #$PR rechazado — ver BLOCKED" ;;
+  *DIRTY*|*CONFLICTING*)
+    # El squash anterior lo dejó DIRTY (solapaba con lo ya drenado). Update en
+    # DETACHED HEAD: la rama puede estar checkouteada en el worktree de su
+    # dueña y un checkout normal fallaría. El merge desciende del head remoto
+    # ⇒ push fast-forward normal, jamás force.
+    git checkout --detach "origin/$RAMA"
+    git merge --no-edit "origin/$BASE_T"    # rerere re-aplica la resolución de 5.1; si algo queda, replay manual con lo aprendido ahí
+    git push origin "HEAD:refs/heads/$RAMA"
+    for i in $(seq 1 12); do
+        M="$(gh pr view "$PR" --json mergeable -q .mergeable)"
+        [ "$M" = "MERGEABLE" ] && break; sleep 5
+    done
+    # SIN espera de re-CI: la combinación ya está validada (el CI de la base es la red)
+    gh pr merge "$PR" --squash --delete-branch || echo "❌ #$PR sigue rechazado — failed:merge" ;;
+  *BLOCKED*)
+    echo "⏸️ #$PR BLOCKED (review/ruleset del repo) — failed:blocked; no se fuerza" ;;
 esac
 ```
 
-**Conflictos del merge (ruta CONFLICTING):** reglas de la Phase 6 de
-[[git-sync]] adaptadas — `git status` para ver los archivos, mostrar los markers,
-explicar qué trae cada lado, resolver editando (nunca quedarse con un lado a
-ciegas; si es demasiado complejo, frenar y preguntar), `git add <archivo>` +
-`git commit --no-edit` + `git push origin "$RAMA"` (fast-forward normal).
+### 5.4 — Rojo ⇒ triage y bisect por mitades
 
-**Después del update:** reusá por prosa las **Phases 3→4→5→6 de
-[[merge-when-green]]** para esta unidad:
+Un rojo de la integración no dice qué unidad lo causó. Triage barato primero:
+si los tests rojos mapean a archivos de UNA unidad (matriz de Phase 2) ⇒ es la
+culpable — fix **delegado a su dueña** (o `/fix-broken-tests` inline tras
+timeout, con la pausa por código de producción salvo `--autonomous`), y al
+llegar el push se re-mergea esa unidad en la integración y se re-pushea (un
+run nuevo). Si no es atribuible: **bisect por mitades** — rebuild de
+`queue/integration-<ts>-b<k>` con la mitad de las unidades (1 run por paso,
+~log2(N) pasos; con 7 unidades son 2-3 runs — igual más barato que 7 ciclos).
+La(s) culpable(s) salen del tren (`failed:integracion-roja`, fix delegado) y el
+resto se drena con 5.3.
 
-1. `gh pr checks "$PR" --watch --fail-fast=false` (espera del CI — foreground:
-   pasarle `timeout: 600000` al tool Bash, su default es 120000). Si expira
-   (exit 143): la unidad pasa a `deferred:ci-lento`, se monta el watcher
-   variante PR-checks de [[merge-when-green]] § «Cierre asíncrono de CI» con
-   label `CI-MONITOR [<repo>#<pr> tren]` y `NEXT: retomar el turno de esta
-   unidad en el tren`, **y el tren SIGUE con la próxima unidad** — al llegar la
-   notificación se retoma ese turno re-consultando el estado en vivo (regla de
-   reanudación de esa sección).
-2. Fix loop (máx `MAX_ITER`): tests rojos → `/fix-broken-tests` con la lista
-   exacta; **pausa pidiendo aprobación si tocó código de producción** salvo
-   `--autonomous`. Un gate no-test rojo ⇒ `failed:gate-<nombre>` para ESA unidad
-   y **el tren sigue** (a diferencia del single-repo, acá no se frena todo).
-3. Guard de merge: `mergeable=MERGEABLE` y no `BLOCKED` (review/ruleset ⇒
-   `failed:blocked`, no se fuerza) → `gh pr merge "$PR" --squash --delete-branch`.
-4. Si la unidad era la **release autorizada**: consumir `release_merge` con el
-   awk de la Phase 5 de merge-when-green (el `projects.yml` del toolkit queda
-   dirty y se ACUMULA para el cierre — no se commitea acá).
+### 5.5 — Cerrar el grupo: CI de la base con triage del rojo (stop-the-line)
 
-Al terminar la unidad (mergeada o failed/paused con su razón): la siguiente.
+Tras el último merge del grupo (batch incluido), UN watcher sobre el run de la
+base en el SHA final (`CI-MONITOR [<repo> base:<base>@<sha7>]`). **Rojo NO es
+frenar a ciegas — triage primero** (calibrado con los 2 rojos reales del run
+2026-08-16: un timeout de `CreateArtifact` con 6047 tests verdes y un shard
+flaky — un gate ingenuo habría parado el tren dos veces sin razón):
+
+| Clase | Señal | Acción |
+|---|---|---|
+| Test rojo real | tests fallidos en el reporte del job | **stop-the-line**: nada más se mergea en este repo; fix hacia adelante delegado a la dueña del cambio culpable (nunca revert) |
+| Infra post-test | reporte de tests todo verde pero run `failure` (upload de artifact, paso post-test) | seguir; registrar en el tablero |
+| Flaky | shard `N failed, M flaky` que pasa en re-run | `gh run rerun <id> --failed` — re-run del job, no del tren |
+
+### 5.6 — Cleanup del tren
+
+```bash
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+git push origin --delete "queue/integration-<ts>" 2>/dev/null || true
+gh pr close <nº del draft de integración, si se usó> 2>/dev/null || true
+git worktree remove --force "$HOME/webapps/.wt/$(basename "$PWD")/queue-<ts>" 2>/dev/null || true
+git worktree prune
+```
+
+La rama de integración **jamás se mergea** — es el banco de pruebas de la
+combinación; lo que aterriza en la base son los squashes por unidad
+(atribución intacta).
+
 **Holds al final:** integrar + esperar CI + reportar veredicto, sin merge (⏸️).
+**Tier 2 (release autorizada):** recién acá, con su tier 1 drenado (si quedan
+PRs de sesión colgando de la release ⇒ `hold:tier1-pendiente` con la lista) —
+flujo completo de [[merge-when-green]] con espera de CI real (el atajo
+sin-re-CI NO aplica al tier 2) y consumo de `release_merge` (el `projects.yml`
+del toolkit queda dirty y se ACUMULA para el cierre — no se commitea acá).
+
+**Tablero de estado**: al inicio de cada sub-fase y en CADA pausa (conflicto en
+resolución, delegación en vuelo, watcher montado, pausa de aprobación del fix
+loop) — refrescá el tablero completo para que el operador vea dónde está cada
+pieza sin preguntar.
+
+## Delegación a la sesión dueña (contrato)
+
+La dueña sale de la línea `Sesión:` del body del PR (fallback: matcheo por
+tokens nombre-de-sesión ↔ nombre-de-rama vía ListAgents). Se delega: el
+conflicto **semántico** de 5.1, el fix de un rojo atribuible (5.4) y el
+fix-forward del stop-the-line (5.5). Los conflictos mecánicos de
+registros/generados los resuelve la queue inline — no requieren contexto ajeno.
+
+1. `SendMessage` a la dueña con: rama y PR, el problema exacto (archivos y
+   markers, o tests rojos con su output), qué se le pide, y el compromiso:
+   *«la queue no toca tu head hasta las <T> o tu push — lo que llegue primero»*.
+2. **La señal de resuelto es el push al head del PR** — no una respuesta:
+   pollear `gh pr view <n> --json headRefOid` (c/60s, comparando contra el OID
+   del momento de delegar).
+3. Timeout **~15 min** sin push ⇒ la queue resuelve inline (comportamiento
+   clásico) y lo anota (`resuelto-inline:timeout`). Si la dueña pushea DESPUÉS
+   del timeout, su push se re-censa como unidad nueva — no se pisa.
+4. Una delegación en vuelo NO frena el tren: se sigue con las unidades no
+   afectadas y la delegada se re-toma al llegar su push.
 
 ## Phase 6 — Cierre
 
 ```bash
-cd "$(git rev-parse --show-toplevel)"; REPO_NAME="$(basename "$PWD")"
-DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-if [ -z "$(git status --porcelain)" ]; then
-    git checkout "$DEFAULT" && git pull --ff-only origin "$DEFAULT"
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+REPO_NAME="$(basename "$PWD")"
+# El clon principal se deja en su rama de DEPLOY (branch: de projects.yml, vía
+# el resolver) — NUNCA un checkout de la default a ciegas: en clones staging
+# que deployan desde la release, eso cambiaría el código del servicio corriendo.
+DEPLOY="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh" \
+   --check "$REPO_NAME" 2>/dev/null | sed -n 's/^deploy_branch=//p')"
+CUR="$(git rev-parse --abbrev-ref HEAD)"
+if [ -n "$DEPLOY" ] && [ "$CUR" = "$DEPLOY" ]; then
+    git pull --ff-only origin "$DEPLOY" 2>/dev/null || true
+elif [ -n "$DEPLOY" ] && [ -z "$(git status --porcelain)" ]; then
+    git checkout "$DEPLOY" && { git pull --ff-only origin "$DEPLOY" 2>/dev/null || true; }
 else
-    echo "⚠️ tree sucio — el clon se queda donde está (posible otra sesión)"
+    echo "⚠️ el clon se queda en '$CUR' (tree sucio o deploy_branch irresoluble) — se reporta"
 fi
 echo "--- ramas obsoletas (se REPORTAN, jamás se borran: -D es del operador) ---"
 git for-each-ref refs/heads --format='%(refname:short) %(upstream:track)'
-echo "--- CI de la base post-drenaje (red de seguridad del batch, best-effort) ---"
+echo "--- worktrees restantes (los queue-* de esta corrida ya se retiraron en 5.6) ---"
+git worktree prune; git worktree list
+echo "--- CI de la base post-drenaje (red de seguridad, best-effort) ---"
+DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
 gh run list --branch "$DEFAULT" --limit 3
 rm -rf "/tmp/merge-queue-${REPO_NAME}"
 ```
+
+Los **worktrees de sesión** cuyo PR quedó mergeado se reportan como retirables
+(`git worktree remove <path>` — lo corre la sesión dueña o el operador; la
+queue sólo retira los `queue-*` propios).
 
 **Cierre asíncrono** — regla completa en [[merge-when-green]] § «Cierre
 asíncrono de CI»; instancia de esta skill, en este orden:
@@ -470,8 +650,8 @@ asíncrono de CI»; instancia de esta skill, en este orden:
    → UN watcher canónico con label `CI-MONITOR [<repo> base:<default>@<sha7>]`.
    Los runs intermedios de la base quedan supersedidos: **máx 1 watcher de base
    por repo** (también en `--all-repos`), y jamás watchers de PRs ya mergeados.
-   Si ya está `completed` → veredicto inline, sin watcher. Los
-   `deferred:ci-lento` ya montaron el suyo en Phase 5.
+   Si ya está `completed` → veredicto inline, sin watcher. El watcher de la
+   integración (`[<repo> integración@…]`) ya quedó montado/consumido en Phase 5.
 3. El reporte final lista el **ledger**: `label → qué vigila → acción al
    resolver` (referencia para cada notificación entrante).
 
@@ -493,18 +673,65 @@ sea ésta, `SendMessage` con un aviso corto:
 > trabajando. Ramas en hold/pausadas: `<lista o "ninguna">`.
 > CI de la base: `<verde confirmado | en vigilancia (run <id>)>`.
 
-Un solo mensaje por sesión (no se puede mapear rama→sesión de forma confiable;
-el aviso es informativo, no una orden).
+Un solo mensaje por sesión. Con el protocolo por sesión el mapeo rama→sesión
+SÍ existe (línea `Sesión:` del body del PR): a la dueña de una rama mergeada
+avisale además que su worktree quedó retirable (`git worktree remove <path>`).
+Para ramas sin dueño declarado el aviso sigue siendo informativo, no una orden.
+
+## Tablero de estado (en cada pausa y al final)
+
+El operador tiene N sesiones paralelas y necesita ver de un vistazo dónde está
+cada pieza de trabajo. **En CADA pausa del proceso** — espera de CI que supere
+~1 min, montaje de un watcher, resolución de conflictos, pausa de aprobación,
+unidad `deferred`/`paused` — y **SIEMPRE al final**, emití este tablero:
+
+| Sesión | Unidad (rama) | PR | CI | Mergeable | Estado | Próximo paso |
+|---|---|---|---|---|---|---|
+
+(+columna `Repo` primero en `--all-repos`.)
+
+- **Sesión**: la línea `Sesión:` del body del PR (contrato del protocolo por
+  sesión — fuente primaria). Fallback best-effort: `ListAgents` una vez y
+  matcheo por solapamiento de tokens nombre-de-sesión ↔ nombre-de-rama. Sin
+  dato → `— (sin dueño)` con ⚠️ advisory; unidades creadas por esta corrida →
+  `esta`; releases → `operador (release)`.
+- **Estado** (vocabulario fijo — incluye el "¿ya está en su base?" explícito):
+  `en cola (#N)` · `integrando` · `en integración (CI combinado)` ·
+  `👁️ watcher (<label>)` · `delegada a <sesión> (hasta <T>)` ·
+  `resolviendo conflictos` · `deferred:delegada` · **`✅ en <base> (squash
+  <sha7>)`** · `⏸️ hold release` · `⏸️ hold:tier1-pendiente` ·
+  `⏸️ paused:tree-sucio` · `🧹 cleanup` · `⏭️ excluida:<razón>` ·
+  `❌ failed:<razón>`.
+- **Próximo paso**: la acción concreta que destraba esa fila (o `—` si terminó).
+- El tablero es ACUMULATIVO: cada emisión muestra TODAS las unidades del censo
+  (las ya mergeadas quedan ✅ — el operador ve el progreso total, no un delta).
+- **Al final**, el tablero completo ES la tabla del Output final (con la columna
+  `Resultado` consolidada) — no se emite dos veces.
+
+Puntos de emisión cableados: al cerrar Phase 3 (primera foto post-integración) ·
+en Phase 4 antes del primer merge del batch y al degradar una unidad · en
+Phase 5 al inicio de cada sub-fase y en cada pausa (conflicto, delegación en
+vuelo, watcher del CI combinado, bisect) · en Phase 6 como reporte final.
 
 ## Safety rules
 
 - **Nunca force push**, en ninguna variante — ni `--force`, ni `--force-with-lease`
   (los cubre el deny del fleet), ni el refspec `+` (sería evadir una policy que
   guarda contra accidentes). La alternativa SIEMPRE es `gh pr update-branch` o
-  `git merge origin/<base>` dentro de la rama.
+  `git merge origin/<base>` en detached HEAD desde el worktree de la queue
+  (push `HEAD:refs/heads/<rama>` fast-forward).
 - **Nunca `git rebase` sobre una rama pusheada** (su push sería force). Rebase
   sólo sería aceptable en una rama local-only jamás pusheada — y aun ahí el
   merge es más simple y igual de válido con squash.
+- **El clon principal jamás se toca**: ni checkout, ni merge, ni stash en
+  `~/webapps/<repo>` — toda mutación de tree ocurre en el worktree
+  `~/webapps/.wt/<repo>/queue-<ts>` de la corrida. Única excepción: el cierre
+  (Phase 6) puede devolver el clon a su `branch:` de DEPLOY con tree limpio.
+- **La rama `queue/integration-*` jamás se mergea** — banco de pruebas de la
+  combinación; se borra en 5.6 (remota + worktree). Sus restos huérfanos de
+  corridas anteriores son cleanup, nunca unidades.
+- **El atajo sin-re-CI es sólo del tier 1 validado por integración** — el tier
+  2 (release→default) espera SIEMPRE su CI completo.
 - **Nunca borrar ramas locales** (`-D` lo decide el operador; menú post-run con
   evidencia). Excepción documentada: el auto-delete REMOTO de
   `gh pr merge --delete-branch`, default heredado de merge-when-green.
@@ -554,15 +781,19 @@ hold de release · ⏭️ si la cola estaba vacía — nada que drenar)
 ### Resumen ejecutivo
 mergeadas: N (batch B + tren T) · holds: N · paused: N · cleanup: N · excluidas: N · failed: N
 
-| # | Unidad | PR | CI | Resultado |
-|---|---|---|---|---|
-| 1 | release-x (release autorizada) | #12 | ✅ | ✅ mergeada — release_merge consumida |
-| 2 | fix/15082026-… | #186 | ✅ | ✅ mergeada (batch) |
-| 3 | feat/16082026-… | #187 | ✅ | ✅ mergeada (tren, update-branch) |
-| 4 | feat/16082026-… | #188 | 🔄 | ⏸️ paused:tree-sucio |
-| 5 | release-y (sin autorizar) | #9 | ✅ | ⏸️ hold — release sin release_merge |
-| 6 | feat/vieja | — | — | 🧹 ya-en-base (cleanup) |
-| 7 | feat/stacked | #190 | — | ⏭️ excluida:base-no-default |
+La tabla final es el **Tablero de estado** completo (todas las unidades del
+censo, con `Resultado` consolidado — el "¿ya está en main?" de cada una):
+
+| # | Sesión | Unidad | PR | CI | Resultado |
+|---|---|---|---|---|---|
+| 1 | folder-counters | fix/15082026-… | #186 | ✅ | ✅ en main (batch, squash a1b2c3d) |
+| 2 | emails-module | feat/16082026-… | #187 | ✅ integración | ✅ en main (tren, squash e4f5a6b) |
+| 3 | docs-module | feat/16082026-… | #188 | ✅ integración | ✅ en july-release (tier 1, squash 9c8d7e6) |
+| 4 | group-header | feat/16082026-… | #189 | 🔴 integración | ❌ failed:integracion-roja — fix delegado a group-header |
+| 5 | operador (release) | july-release (autorizada) | #52 | ✅ | ✅ en master — tier 1 drenado, release_merge consumida |
+| 6 | operador (release) | release-y (sin autorizar) | #9 | ✅ | ⏸️ hold — release sin release_merge |
+| 7 | — (sin dueño) | feat/vieja | — | — | 🧹 ya-en-base (cleanup) |
+| 8 | — | fix/rara | #190 | — | ⏭️ excluida:base-rara |
 ```
 
 En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
@@ -576,8 +807,14 @@ En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
   `/merge-queue`».
 - Toolkit pendiente (consumo de `release_merge` en modo default) → `/git-commit`
   en vps-ops-toolkit.
-- `excluida:base-no-default` → `gh pr edit <n> --base <default>` o drenar la pila
-  a mano desde la hoja con `/merge-when-green`.
+- `excluida:base-rara` → `gh pr edit <n> --base <base-correcta>` (la release en
+  repos participantes, la default en prod-directos) y re-censar.
+- `failed:integracion-roja` / `deferred:delegada` → el estado de la delegación
+  (dueña, deadline) + el comando de re-entrada: `/merge-queue` re-censa y
+  re-integra al llegar el push.
+- PRs sin `Sesión:` en el body → pedirle a cada sesión que lo agregue
+  (`gh pr edit <n> --body ...`) — sin dueño declarado la delegación degrada a
+  heurística.
 - `excluida:diverged` → reconciliar a mano (el force push está denegado; mirá
   `git log --oneline <rama>...origin/<rama>`).
 - (manual) `git branch -D <ramas ya-en-base>` — borrado a decisión del operador.

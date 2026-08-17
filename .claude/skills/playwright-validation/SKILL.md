@@ -90,7 +90,7 @@ for m in apps.get_models():
   "${PROJ_PATH}/backend/venv/bin/python" "${PROJ_PATH}/backend/manage.py" check --deploy
   ```
 
-> **Nota DB:** la mayoría del fleet usa **MySQL `localhost:3306`** (con credenciales en `config/credentials/mysql-users.env` por proyecto). Excepciones detectables vía `DB_TYPE[$PROJ]`: `azurita` y `candle_staging_project` usan **SQLite**; `vastago_project_staging` usa **PostgreSQL 16**. Para validación vía Django ORM esto es transparente.
+> **Nota DB:** la mayoría del fleet usa **MySQL `localhost:3306`** (con credenciales en `config/credentials/mysql-users.env` por proyecto). Excepciones detectables vía `DB_TYPE[$PROJ]`: `azurita` y `candle_staging_project` usan **SQLite**. Para validación vía Django ORM esto es transparente.
 
 ### Paso C — Autenticación y storage state (split staging/prod)
 

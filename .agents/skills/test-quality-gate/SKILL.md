@@ -52,9 +52,11 @@ Their severity is decided against `.junk-baseline.json` (the ratchet): with
 shrinks — after cleaning a batch, regenerate it with
 `--semantic-rules strict --write-junk-baseline`.
 
-A false positive is excused with a `quality: allow-*` marker. Six exist —
-`allow-no-interaction`, `allow-deep-link`, `allow-render-only`,
-`allow-duplicate`, `allow-mock-only`, `allow-reimpl` — the reason in
+A false positive is excused with a `quality: allow-*` marker. The registry
+lives in the canonical table (`TESTING_QUALITY_STANDARDS.md` §Junk-rule allow
+markers) plus the gate-local set in `test_quality_gate.py`
+`ALLOW_MARKER_RULE_IDS` — consult those, never a list copied here (F104: a
+hardcoded "six exist" survived two registry expansions). The reason in
 parentheses is **mandatory**, and the marker goes **inside the test block**:
 `// quality: allow-mock-only (fire-and-forget; the effect lives in the collaborator)`.
 
