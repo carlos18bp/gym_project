@@ -71,7 +71,7 @@ Per-test: `@flow:` + `@outcome:<success|error|failure|display>` tags (un spec si
 
 ## 3. Update User Flow Map
 
-Update `docs/USER_FLOW_MAP.md` **and** `frontend/e2e/flow-definitions.json` if new user flows are created — o invocar [[e2e-user-flows-check]], que mantiene ambos.
+Update the flow registry if new user flows are created — o invocar [[e2e-user-flows-check]], que lo mantiene en el layout del repo (sharded: un JSON por flow + doc por flow, agregados regenerados con `generate_flow_registry.py`; monolito: `docs/USER_FLOW_MAP.md` + `frontend/e2e/flow-definitions.json`).
 
 ## Execution Order
 

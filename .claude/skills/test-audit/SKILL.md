@@ -76,8 +76,11 @@ tuning de alcance y formato — se tipean cuando hacen falta, no van en el picke
    Refuse to apply on a dirty tree — the cleanup must be revertible on its own.
 3. Resolve the work coordinate before touching anything:
    `bash scripts/maintenance/resolve-work-coordinate.sh --check <project>`
-   Staging projects and those with `vps_work` work on the open release PR branch;
-   production repos without a redirect take a feature branch off `main`/`master`.
+   `resolved_branch` is the BASE of the work: staging projects and those with
+   `vps_work` use the release branch as base, prod-direct repos use
+   `main`/`master`. Either way the cleanup lands on its OWN session branch
+   (PR at first push targeting that base) — never as direct commits on the
+   release or another session's branch.
 
 ## Phase 1 — Inventory
 
@@ -137,11 +140,12 @@ For each junk test decide, and record the reason in one line:
   interaction and the assertion it needs.
 - **MERGE** — a duplicate. Name the survivor.
 - **KEEP** — the finding is a false positive. **Record why**, and add the
-  matching `quality: allow-*` marker so the gate stops reporting it. Six exist:
-  `allow-no-interaction`, `allow-deep-link`, `allow-render-only`,
-  `allow-duplicate`, `allow-mock-only`, `allow-reimpl`. The reason in
-  parentheses is **mandatory**, and the marker goes **inside the test block**
-  it excuses — e.g. `// quality: allow-no-interaction (asserts the API contract; no UI exists)`.
+  matching `quality: allow-*` marker so the gate stops reporting it. The
+  marker registry lives in the canonical table (`TESTING_QUALITY_STANDARDS.md`
+  §Junk-rule allow markers) plus the gate-local set in `test_quality_gate.py`
+  `ALLOW_MARKER_RULE_IDS` — consult those, never a list copied here (F104).
+  The reason in parentheses is **mandatory**, and the marker goes **inside
+  the test block** it excuses — e.g. `// quality: allow-no-interaction (asserts the API contract; no UI exists)`.
 
 Prioritize `junk-only` flows above everything else: they report green today, so
 they are actively misleading, unlike an honestly missing flow.

@@ -127,7 +127,20 @@ Report, in this order: `junk-only` flows, missing P1/P2, missing `error` and
 `failure` classes by module, then everything else.
 
 ### Phase 6 — Register
-Write the map to **both**:
+
+**The repo's layout decides WHERE the registry is written** (`.testquality.yml`
+→ `flow_definitions_dir`; F46 2026-08-17):
+
+- **Sharded layout** (`flow_definitions_dir` set, e.g. `flows`): write **one
+  JSON per flow** at `frontend/e2e/<dir>/<flow-id>.json` (`{"id": ..., <def>}`;
+  `_meta.json` holds the registry version) and one narrative doc per flow at
+  `docs/user-flows/<flow-id>.md`. The aggregates — `flow-tags.js` and
+  `docs/USER_FLOW_MAP.md` — are **DERIVED**: regenerate them with
+  `python3 scripts/generate_flow_registry.py --repo-root .` and NEVER edit or
+  hand-merge them (on merge conflict: regenerate — the generated side always
+  wins). This is what lets N parallel sessions add flows without colliding on
+  a single registry file.
+- **Monolith layout** (default): write the map to **both**:
 
 1. `docs/USER_FLOW_MAP.md` — the narrative map. Mandatory sections: a Roles
    header, Conventions, one section **per role** (not per view), and the E2E

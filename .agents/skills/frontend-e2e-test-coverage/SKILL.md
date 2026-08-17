@@ -215,8 +215,13 @@ abstention **is not a failure**. Fabricating a test to close the number is.
 
 ## Workflow
 
-1. Read `e2e/flow-definitions.json` (desde `frontend/`) and run the audit desde
-   la raíz del repo: `python3 scripts/flow_coverage_audit.py --repo-root .`
+1. Read the flow registry (monolith `e2e/flow-definitions.json`, or the
+   per-flow shards under `e2e/<flow_definitions_dir>/` if `.testquality.yml`
+   declares it) and run the audit desde la raíz del repo:
+   `python3 scripts/flow_coverage_audit.py --repo-root .` (the audit reads both
+   layouts itself). En repos sharded, `flow-tags.js` es GENERADO — tras agregar
+   flows corré `python3 scripts/generate_flow_registry.py --repo-root .`, nunca
+   lo edites a mano.
 2. Work `junk-only` flows **before** `missing` ones — a flow whose only tests are
    junk is worse than an uncovered one, because it reports green.
 3. Look the flow up in `docs/USER_FLOW_MAP.md`; consult
