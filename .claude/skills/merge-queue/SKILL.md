@@ -1,6 +1,6 @@
 ---
 name: merge-queue
-description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs de sesión con dueño en el body + ramas sin PR + local-only + gone + ya-en-base), arma la estrategia en dos niveles (tier 1: sesiones→release o →default; tier 2: release→default sólo con release_merge y tier 1 drenado) y ejecuta: batch de verdes disjuntos server-side + TREN DE INTEGRACIÓN (rama temporal queue/integration-* que valida la COMBINACIÓN con UN solo run de CI — verde ⇒ merges de corrido sin re-CI por unidad; rojo ⇒ bisect) + stop-the-line con triage del rojo de la base (test rojo ⇒ frenar; infra post-test ⇒ seguir; flaky ⇒ re-run). Conflictos semánticos y fix loop se DELEGAN a la sesión dueña vía SendMessage (señal de resuelto = push al head; timeout ⇒ inline). En cada pausa y al final emite el Tablero de estado. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado); nunca toca el checkout del clon principal: toda mutación de tree ocurre en el worktree propio de la queue (~/webapps/.wt/<repo>/queue-*)."
+description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs de sesión con dueño en el body + ramas sin PR + local-only + gone + ya-en-base), arma la estrategia en dos niveles (tier 1: sesiones→release o →default; tier 2: release→default sólo con release_merge y tier 1 drenado) y ejecuta: batch de verdes disjuntos server-side + TREN DE INTEGRACIÓN (rama temporal queue/integration-* que valida la COMBINACIÓN con UN solo run de CI — verde ⇒ merges de corrido sin re-CI por unidad; rojo ⇒ bisect). NO espera ni vigila el CI de la base: la confianza está en el verde de cada sesión + el run del tren. Al cerrar avisa a cada sesión dueña que su trabajo ya aterrizó y le pide su propio visto bueno con `/all-in-base --check-only` (fire-and-forget, no espera respuesta). Conflictos semánticos y fix loop se DELEGAN a la sesión dueña vía SendMessage (señal de resuelto = push al head; timeout ⇒ inline). En cada pausa y al final emite el Tablero de estado. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado); nunca toca el checkout del clon principal: toda mutación de tree ocurre en el worktree propio de la queue (~/webapps/.wt/<repo>/queue-*)."
 allowed-tools: Bash, AskUserQuestion, ListAgents, SendMessage, TaskStop
 argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r2] [--autonomous] [--max-iterations=N]"
 ---
@@ -420,10 +420,13 @@ esac
 ```
 
 **Riesgo aceptado y documentado:** el CI no se re-corre entre merges del batch —
-válido sólo porque sus unidades son file-disjoint (la matriz de Phase 2); un
-conflicto semántico cross-archivo lo atrapa el CI de la base (5.5, con triage).
-Todo lo degradado pasa **al tren de integración** (Phase 5) conservando su
-orden relativo — ahí la combinación sí se valida.
+válido sólo porque sus unidades son file-disjoint (la matriz de Phase 2) y cada
+PR ya llegó verde por su cuenta. **Nada valida la combinación del batch y no hay
+red posterior** (la queue no vigila el CI de la base): un conflicto semántico
+cross-archivo entre dos unidades disjuntas aterrizaría sin detección. Es el
+riesgo que el batch compra a cambio de su velocidad; ante la duda, degradá la
+unidad al tren. Todo lo degradado pasa **al tren de integración** (Phase 5)
+conservando su orden relativo — ahí la combinación sí se valida.
 
 ## Phase 5 — Tren de integración (la combinación se valida UNA vez)
 
@@ -479,7 +482,7 @@ El CI se dispara abriendo un **PR draft** `queue/integration-<ts>` → `<BASE_T>
 (`gh pr create --draft`): los repos del fleet ya traen `pull_request` cubriendo
 sus bases (main/master y las release vía `release-*` o nombre explícito —
 verificado 2026-08-17), así que el draft corre la matriz completa sin tocar
-ningún workflow. Ese draft **jamás se mergea** y se cierra en 5.6. (Optimización
+ningún workflow. Ese draft **jamás se mergea** y se cierra en 5.5. (Optimización
 opcional por repo: trigger `push: queue/**` — evita el PR draft; si existe, el
 push de arriba alcanza.)
 
@@ -494,9 +497,10 @@ foreground de más de 600000 ms.
 
 La validez del atajo: el árbol final de la base tras drenar el grupo **es** el
 árbol de la integración (mismas resoluciones — rerere las replaya — y mismo
-orden), y ese árbol es exactamente lo que el CI validó. Los estados intermedios
-(tras la unidad 1..k<N) no se testean; la red es el CI de la base (5.5).
-Precondición por repo (verificada en F2 del rollout): la base del tier sin
+orden), y ese árbol es exactamente lo que el CI validó. Ese run **es** la
+validación del grupo: no hay una segunda verificación después. Los estados
+intermedios (tras la unidad 1..k<N) no se testean y nadie los consume — el único
+estado que importa es el final, ya cubierto. Precondición por repo (verificada en F2 del rollout): la base del tier sin
 `required_status_checks` que exijan re-CI del head tras cada push.
 
 Por cada PR del tren, en orden:
@@ -524,7 +528,7 @@ case "$ST" in
         M="$(gh pr view "$PR" --json mergeable -q .mergeable)"
         [ "$M" = "MERGEABLE" ] && break; sleep 5
     done
-    # SIN espera de re-CI: la combinación ya está validada (el CI de la base es la red)
+    # SIN espera de re-CI: la combinación ya está validada por el run del tren
     gh pr merge "$PR" --squash --delete-branch || echo "❌ #$PR sigue rechazado — failed:merge" ;;
   *BLOCKED*)
     echo "⏸️ #$PR BLOCKED (review/ruleset del repo) — failed:blocked; no se fuerza" ;;
@@ -544,21 +548,7 @@ run nuevo). Si no es atribuible: **bisect por mitades** — rebuild de
 La(s) culpable(s) salen del tren (`failed:integracion-roja`, fix delegado) y el
 resto se drena con 5.3.
 
-### 5.5 — Cerrar el grupo: CI de la base con triage del rojo (stop-the-line)
-
-Tras el último merge del grupo (batch incluido), UN watcher sobre el run de la
-base en el SHA final (`CI-MONITOR [<repo> base:<base>@<sha7>]`). **Rojo NO es
-frenar a ciegas — triage primero** (calibrado con los 2 rojos reales del run
-2026-08-16: un timeout de `CreateArtifact` con 6047 tests verdes y un shard
-flaky — un gate ingenuo habría parado el tren dos veces sin razón):
-
-| Clase | Señal | Acción |
-|---|---|---|
-| Test rojo real | tests fallidos en el reporte del job | **stop-the-line**: nada más se mergea en este repo; fix hacia adelante delegado a la dueña del cambio culpable (nunca revert) |
-| Infra post-test | reporte de tests todo verde pero run `failure` (upload de artifact, paso post-test) | seguir; registrar en el tablero |
-| Flaky | shard `N failed, M flaky` que pasa en re-run | `gh run rerun <id> --failed` — re-run del job, no del tren |
-
-### 5.6 — Cleanup del tren
+### 5.5 — Cleanup del tren
 
 ```bash
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
@@ -588,9 +578,11 @@ pieza sin preguntar.
 
 La dueña sale de la línea `Sesión:` del body del PR (fallback: matcheo por
 tokens nombre-de-sesión ↔ nombre-de-rama vía ListAgents). Se delega: el
-conflicto **semántico** de 5.1, el fix de un rojo atribuible (5.4) y el
-fix-forward del stop-the-line (5.5). Los conflictos mecánicos de
-registros/generados los resuelve la queue inline — no requieren contexto ajeno.
+conflicto **semántico** de 5.1 y el fix de un rojo atribuible (5.4). Los
+conflictos mecánicos de registros/generados los resuelve la queue inline — no
+requieren contexto ajeno. (El aviso post-merge de Phase 6 usa esta misma
+resolución de dueña pero **no** es una delegación: no pide trabajo ni espera
+señal.)
 
 1. `SendMessage` a la dueña con: rama y PR, el problema exacto (archivos y
    markers, o tests rojos con su output), qué se le pide, y el compromiso:
@@ -624,9 +616,9 @@ else
 fi
 echo "--- ramas obsoletas (se REPORTAN, jamás se borran: -D es del operador) ---"
 git for-each-ref refs/heads --format='%(refname:short) %(upstream:track)'
-echo "--- worktrees restantes (los queue-* de esta corrida ya se retiraron en 5.6) ---"
+echo "--- worktrees restantes (los queue-* de esta corrida ya se retiraron en 5.5) ---"
 git worktree prune; git worktree list
-echo "--- CI de la base post-drenaje (red de seguridad, best-effort) ---"
+echo "--- CI de la base (INFORMATIVO: no se espera, no se vigila, no frena nada) ---"
 DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
 gh run list --branch "$DEFAULT" --limit 3
 rm -rf "/tmp/merge-queue-${REPO_NAME}"
@@ -645,15 +637,17 @@ asíncrono de CI»; instancia de esta skill, en este orden:
    Nada sin el prefijo ni fuera del ledger de la sesión (un dev server de
    `dev-up` o una shell del operador NO se tocan; en duda, se reporta y no se
    mata). Fuente: el contexto propio, jamás `ps`.
-2. **Mount después:** del snapshot `gh run list --branch <base> --limit 3`, si
-   el run MÁS NUEVO (el del SHA final del drenaje) sigue `queued`/`in_progress`
-   → UN watcher canónico con label `CI-MONITOR [<repo> base:<default>@<sha7>]`.
-   Los runs intermedios de la base quedan supersedidos: **máx 1 watcher de base
-   por repo** (también en `--all-repos`), y jamás watchers de PRs ya mergeados.
-   Si ya está `completed` → veredicto inline, sin watcher. El watcher de la
-   integración (`[<repo> integración@…]`) ya quedó montado/consumido en Phase 5.
+2. **NO se monta watcher de base.** La base no se vigila: el `gh run list` de
+   arriba es un eco informativo del bash, nada más — se imprime en el reporte y
+   no gatea, no espera y no puede frenar el drenaje. La validación del grupo ya
+   la pagó el run del tren (5.2) sobre exactamente el árbol que aterrizó, y cada
+   PR llegó verde por su cuenta; un tercer veredicto sobre el mismo árbol no
+   agrega información. Si ese eco muestra rojo, es material para el operador
+   (Next steps), no una acción de la queue. El único watcher de esta skill es el
+   de la integración (`[<repo> integración@…]`), montado y consumido en Phase 5.
 3. El reporte final lista el **ledger**: `label → qué vigila → acción al
-   resolver` (referencia para cada notificación entrante).
+   resolver` (referencia para cada notificación entrante). Tras un drenaje
+   normal el ledger queda vacío — el watcher de integración ya se consumió.
 
 **Toolkit (recolector de `release_merge`):**
 - En `--all-repos`: si `projects.yml` quedó dirty por consumos de autorizaciones,
@@ -665,18 +659,42 @@ asíncrono de CI»; instancia de esta skill, en este orden:
   comportamiento de merge-when-green Path A).
 
 **Aviso a las sesiones activas** (si el harness expone las tools; si no, se
-omite y va a Next steps): llamá `ListAgents`; por cada sesión local activa que no
-sea ésta, `SendMessage` con un aviso corto:
+omite entero y va a Next steps): llamá `ListAgents` **una vez** y mandá
+`SendMessage`. **Un solo mensaje por sesión** — hay DOS formas y son excluyentes:
+si una sesión es dueña de algo mergeado recibe la forma (a) y nunca las dos.
+
+**(a) Sesión dueña de una rama mergeada** — la dueña sale de la línea `Sesión:`
+del body del PR (misma resolución que la sección «Delegación»: `Sesión:` primero,
+fallback `ListAgents` + solapamiento de tokens nombre-de-sesión ↔ nombre-de-rama):
+
+> 🚂 merge-queue: tu trabajo ya está en `<base>`. Mergeadas: `<rama>` (PR #N,
+> squash `<sha7>`)… Tu worktree quedó retirable: `git worktree remove <path>`.
+> **Verificalo vos y dame tu veredicto: corré `/all-in-base --check-only`.**
+> Si seguís trabajando en este repo, `/git-sync` primero (la base se movió).
+
+**(b) Sesión activa que no es dueña de nada mergeado** — informativo:
 
 > 🚂 merge-queue: se drenó la cola de `<repo>` — mergeadas: `<rama1>`, `<rama2>`
 > (…). La base `<default>` se movió: corré `/git-sync` antes de seguir
 > trabajando. Ramas en hold/pausadas: `<lista o "ninguna">`.
-> CI de la base: `<verde confirmado | en vigilancia (run <id>)>`.
 
-Un solo mensaje por sesión. Con el protocolo por sesión el mapeo rama→sesión
-SÍ existe (línea `Sesión:` del body del PR): a la dueña de una rama mergeada
-avisale además que su worktree quedó retirable (`git worktree remove <path>`).
-Para ramas sin dueño declarado el aviso sigue siendo informativo, no una orden.
+**Reglas del aviso (a):**
+
+- **Fire-and-forget: la queue NO espera el veredicto ni lo pollea.** El merge ya
+  ocurrió — el aviso es cortesía y cierre de lazo, jamás un gate. Es la
+  diferencia con la sección «Delegación», donde la señal SÍ se espera (push al
+  head, timeout 15 min): ahí se pide trabajo, acá sólo se informa y se sugiere
+  una verificación. No confundir los dos mecanismos.
+- **El `--check-only` es obligatorio en el pedido.** Sin el flag, un veredicto NO
+  hace que [[all-in-base]] delegue en [[merge-when-green]] y se ponga a mergear
+  en paralelo con esta queue, que puede seguir drenando otros repos/unidades. Con
+  el flag responde SÍ/NO y no toca git.
+- **Dueña declarada pero sin sesión viva** (no aparece en `ListAgents`) → no se
+  manda nada, se anota `⚠️ sesión no alcanzable` en el Tablero y se sigue.
+- **PR sin línea `Sesión:`** → `— (sin dueño)`, sin mensaje (el advisory para
+  arreglarlo ya está en Next steps).
+- **Harness sin `ListAgents`/`SendMessage`** → todo este bloque se omite, las
+  filas quedan `n/a (harness sin SendMessage)` y el pedido baja a Next steps.
 
 ## Tablero de estado (en cada pausa y al final)
 
@@ -685,8 +703,8 @@ cada pieza de trabajo. **En CADA pausa del proceso** — espera de CI que supere
 ~1 min, montaje de un watcher, resolución de conflictos, pausa de aprobación,
 unidad `deferred`/`paused` — y **SIEMPRE al final**, emití este tablero:
 
-| Sesión | Unidad (rama) | PR | CI | Mergeable | Estado | Próximo paso |
-|---|---|---|---|---|---|---|
+| Sesión | Unidad (rama) | PR | CI | Mergeable | Estado | Aviso | Próximo paso |
+|---|---|---|---|---|---|---|---|
 
 (+columna `Repo` primero en `--all-repos`.)
 
@@ -702,6 +720,12 @@ unidad `deferred`/`paused` — y **SIEMPRE al final**, emití este tablero:
   <sha7>)`** · `⏸️ hold release` · `⏸️ hold:tier1-pendiente` ·
   `⏸️ paused:tree-sucio` · `🧹 cleanup` · `⏭️ excluida:<razón>` ·
   `❌ failed:<razón>`.
+- **Aviso** (vocabulario fijo — el aviso post-merge de Phase 6): `📨 notificada`
+  (se le mandó el mensaje con el pedido de `/all-in-base --check-only`) ·
+  `⚠️ sesión no alcanzable` (dueña declarada, sin sesión viva en `ListAgents`) ·
+  `— (sin dueño)` (el PR no trae línea `Sesión:`) · `n/a (harness sin
+  SendMessage)`. Hasta Phase 6 la columna va `—`: sólo se puebla al cerrar, y
+  **nunca** condiciona el resultado de la fila (el merge ya ocurrió).
 - **Próximo paso**: la acción concreta que destraba esa fila (o `—` si terminó).
 - El tablero es ACUMULATIVO: cada emisión muestra TODAS las unidades del censo
   (las ya mergeadas quedan ✅ — el operador ve el progreso total, no un delta).
@@ -728,7 +752,7 @@ vuelo, watcher del CI combinado, bisect) · en Phase 6 como reporte final.
   `~/webapps/.wt/<repo>/queue-<ts>` de la corrida. Única excepción: el cierre
   (Phase 6) puede devolver el clon a su `branch:` de DEPLOY con tree limpio.
 - **La rama `queue/integration-*` jamás se mergea** — banco de pruebas de la
-  combinación; se borra en 5.6 (remota + worktree). Sus restos huérfanos de
+  combinación; se borra en 5.5 (remota + worktree). Sus restos huérfanos de
   corridas anteriores son cleanup, nunca unidades.
 - **El atajo sin-re-CI es sólo del tier 1 validado por integración** — el tier
   2 (release→default) espera SIEMPRE su CI completo.
@@ -749,8 +773,12 @@ vuelo, watcher del CI combinado, bisect) · en Phase 6 como reporte final.
   drenar multi-rama se usa esta skill EN VEZ de merge-when-green por sesión —
   para eso existe.
 - **TaskStop sólo sobre watchers `CI-MONITOR` propios y obsoletos** — jamás una
-  shell de fondo desconocida (puede ser un dev server u otra sesión). Orden
-  fijo: sweep → mount. En duda: reportar, no matar.
+  shell de fondo desconocida (puede ser un dev server u otra sesión). En duda:
+  reportar, no matar. El único watcher que esta skill monta es el de la
+  integración (5.2); **no monta watcher de la base** ni espera su CI.
+- **El aviso post-merge nunca frena nada** — es fire-and-forget: si la sesión
+  dueña no está, no responde o el harness no expone `SendMessage`, se anota en
+  la columna `Aviso` y se sigue. El merge ya está hecho; el aviso no es un gate.
 - **Nunca en cron/headless**; la tabla del plan siempre se muestra antes de
   ejecutar, con o sin flags.
 
@@ -784,16 +812,18 @@ mergeadas: N (batch B + tren T) · holds: N · paused: N · cleanup: N · exclui
 La tabla final es el **Tablero de estado** completo (todas las unidades del
 censo, con `Resultado` consolidado — el "¿ya está en main?" de cada una):
 
-| # | Sesión | Unidad | PR | CI | Resultado |
-|---|---|---|---|---|---|
-| 1 | folder-counters | fix/15082026-… | #186 | ✅ | ✅ en main (batch, squash a1b2c3d) |
-| 2 | emails-module | feat/16082026-… | #187 | ✅ integración | ✅ en main (tren, squash e4f5a6b) |
-| 3 | docs-module | feat/16082026-… | #188 | ✅ integración | ✅ en july-release (tier 1, squash 9c8d7e6) |
-| 4 | group-header | feat/16082026-… | #189 | 🔴 integración | ❌ failed:integracion-roja — fix delegado a group-header |
-| 5 | operador (release) | july-release (autorizada) | #52 | ✅ | ✅ en master — tier 1 drenado, release_merge consumida |
-| 6 | operador (release) | release-y (sin autorizar) | #9 | ✅ | ⏸️ hold — release sin release_merge |
-| 7 | — (sin dueño) | feat/vieja | — | — | 🧹 ya-en-base (cleanup) |
-| 8 | — | fix/rara | #190 | — | ⏭️ excluida:base-rara |
+| # | Sesión | Unidad | PR | CI | Resultado | Aviso |
+|---|---|---|---|---|---|---|
+| 1 | folder-counters | fix/15082026-… | #186 | ✅ | ✅ en main (batch, squash a1b2c3d) | 📨 notificada |
+| 2 | emails-module | feat/16082026-… | #187 | ✅ integración | ✅ en main (tren, squash e4f5a6b) | 📨 notificada |
+| 3 | docs-module | feat/16082026-… | #188 | ✅ integración | ✅ en july-release (tier 1, squash 9c8d7e6) | ⚠️ sesión no alcanzable |
+| 4 | group-header | feat/16082026-… | #189 | 🔴 integración | ❌ failed:integracion-roja — fix delegado a group-header | — |
+| 5 | operador (release) | july-release (autorizada) | #52 | ✅ | ✅ en master — tier 1 drenado, release_merge consumida | — |
+| 6 | operador (release) | release-y (sin autorizar) | #9 | ✅ | ⏸️ hold — release sin release_merge | — |
+| 7 | — (sin dueño) | feat/vieja | — | — | 🧹 ya-en-base (cleanup) | — (sin dueño) |
+| 8 | — | fix/rara | #190 | — | ⏭️ excluida:base-rara | — |
+
+CI de la base (informativo, no gatea): `<último run de <default>>`
 ```
 
 En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
@@ -818,9 +848,15 @@ En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
 - `excluida:diverged` → reconciliar a mano (el force push está denegado; mirá
   `git log --oneline <rama>...origin/<rama>`).
 - (manual) `git branch -D <ramas ya-en-base>` — borrado a decisión del operador.
-- Si no se pudo avisar a las sesiones (harness sin ListAgents/SendMessage) →
-  «en cada sesión abierta de este repo: `/git-sync` antes de seguir».
+- Si no se pudo avisar a las sesiones (harness sin ListAgents/SendMessage, o
+  filas `⚠️ sesión no alcanzable`) → «en cada sesión dueña de este repo:
+  `/all-in-base --check-only` para su visto bueno, y `/git-sync` antes de seguir
+  trabajando».
 - Monitores en vuelo → una fila del ledger por watcher (`label → qué vigila →
   acción al resolver`) + respaldo manual `gh run watch <id> -R <repo>` por si la
-  sesión se cierra antes de la notificación. (Con `--plan-only` no hay
-  monitores: no se ejecutó nada.)
+  sesión se cierra antes de la notificación. Tras un drenaje normal no queda
+  ninguno: el watcher de integración se consumió en Phase 5 y la base no se
+  vigila. (Con `--plan-only` tampoco: no se ejecutó nada.)
+- Si el eco informativo del CI de la base salió rojo → es material del operador,
+  no de la queue: `gh run view <id> --log-failed` y fix hacia adelante. El
+  drenaje no se revierte.
