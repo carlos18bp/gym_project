@@ -857,7 +857,7 @@ watcher por objeto** — jamás dos del mismo run/PR.
 | Path A release-hold | nada — Phase 3 ya vio el veredicto del PR; watcher sólo si su `--watch` expiró |
 | Path A ya-en-base (1.5) | nada — el CI que gateó aquel merge ya corrió |
 | Path B toolkit | nada si T4 vio `CI_RC`; watcher sobre `master@<SHA>` sólo si el watch expiró o el run no apareció; con `--no-ci-watch`, nada (opt-out del operador) |
-| Path C / [[merge-queue]] | el run MÁS NUEVO de la base post-drenaje si sigue en vuelo — máx 1 watcher de base por repo (los intermedios quedan supersedidos; jamás watchers de PRs ya mergeados); los deferred con `--watch` expirado ya montaron el suyo |
+| Path C / [[merge-queue]] | **nada sobre la base** — merge-queue no la vigila: su validación es el run del tren de integración (montado y consumido en su Phase 5) más el verde propio de cada PR; el CI de la base sólo se imprime como eco informativo. Jamás watchers de PRs ya mergeados; los deferred con `--watch` expirado ya montaron el suyo |
 | [[all-in-base]] | sweep de watchers propios obsoletos; mount nada propio (la delegación monta el suyo) |
 
 **Watcher canónico (run de una rama)** — montar con Bash `run_in_background:
