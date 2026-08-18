@@ -1,6 +1,7 @@
 interface:
   display_name: "Client Message"
-  short_description: "Draft the client email + WhatsApp pair in Spanish"
+  short_description: "Redacta el par correo + mensaje de WhatsApp para avisarle..."
+  default_prompt: "Use $client-message to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: true

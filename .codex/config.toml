@@ -1,11 +1,3 @@
-# Project-scoped Codex defaults for G__PROJECT_LABEL__M Staging.
-# Sincronizado desde vps-ops-toolkit/workflows/.codex/base/config.toml.tmpl
-# Keep this file small and stable. Override locally con .codex/config.local.toml
-# (no versionado) si necesitas customizacion por proyecto.
-
-approval_policy = "never"
-sandbox_mode = "danger-full-access"
-model = "gpt-5.4"
-model_reasoning_effort = "high"
-project_doc_max_bytes = 65536
-web_search = "live"
+# Project-scoped Codex additions for G&M Staging.
+# Model, reasoning, sandbox, approval, docs limit and web search inherit
+# from ~/.codex/config.toml. Add only genuine project-specific settings.

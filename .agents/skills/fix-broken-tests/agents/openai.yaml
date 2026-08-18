@@ -1,3 +1,7 @@
 interface:
   display_name: "Fix Broken Tests"
-  short_description: "Help with Fix Broken Tests tasks"
+  short_description: "Fix a specific list of broken tests provided by the user..."
+  default_prompt: "Use $fix-broken-tests to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

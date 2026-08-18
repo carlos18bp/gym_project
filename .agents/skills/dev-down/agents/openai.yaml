@@ -1,6 +1,7 @@
 interface:
   display_name: "Dev Down"
-  short_description: "Stop the local dev servers"
+  short_description: "Detiene el entorno de desarrollo LOCAL levantado por..."
+  default_prompt: "Use $dev-down to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: false

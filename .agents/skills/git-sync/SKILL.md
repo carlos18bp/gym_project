@@ -1,8 +1,6 @@
 ---
-name: git-sync
+name: "git-sync"
 description: "Sync the current branch: inspecciona stashes existentes (marca obsoletos/viejos), detecta PRs abiertos vía gh CLI y elige target PR-aware (protocolo por sesión: una rama pusheada con PR se sincroniza sólo contra su propio upstream — la base movida se absorbe con merge, nunca rebase; N PRs de sesión son estado normal), luego fetch + rebase + conflict resolution. Dos ejes ortogonales combinables: --all-repos (todos los repos de ESTE host) y --all-vps (el toolkit en TODOS los VPS). Sin flags: el repo del cwd. --all quedó retirado (error) por ambiguo."
-allowed-tools: Bash, AskUserQuestion
-argument-hint: "[--all-repos (todos los repos de este host)] [--all-vps (todos los VPS del fleet)]"
 ---
 
 # Git Sync
@@ -14,10 +12,10 @@ Rebase the current branch onto its parent (`main` / `master`) so it picks up wor
 >
 > | Invocación | Repos | Hosts |
 > |---|---|---|
-> | `/git-sync` | el repo del cwd | este host |
-> | `/git-sync --all-repos` | `LOCAL_PROJECTS` + toolkit | este host |
-> | `/git-sync --all-vps` | **sólo `vps-ops-toolkit`** | todos los VPS |
-> | `/git-sync --all-repos --all-vps` | toolkit + `LOCAL_PROJECTS` de cada host | todos los VPS |
+> | `$git-sync` | el repo del cwd | este host |
+> | `$git-sync --all-repos` | `LOCAL_PROJECTS` + toolkit | este host |
+> | `$git-sync --all-vps` | **sólo `vps-ops-toolkit`** | todos los VPS |
+> | `$git-sync --all-repos --all-vps` | toolkit + `LOCAL_PROJECTS` de cada host | todos los VPS |
 >
 > - **Sin argumento**: opera sobre el repo git del **cwd** — el repo desde el que
 >   se lanzó Claude Code. Se resuelve con `git rev-parse --show-toplevel`; **NO se
@@ -46,7 +44,7 @@ Rebase the current branch onto its parent (`main` / `master`) so it picks up wor
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+Gating ($output-protocol §4): (1) flags explícitos → ejecutar directo, sin
 menú; (2) intención clara por la sesión (p.ej. "sincronizá todo el fleet") →
 proponer el comando en una línea y esperar confirmación; (3) sin argumentos /
 intención difusa → UNA sola AskUserQuestion con Q1; (4) nunca dentro de un
@@ -57,10 +55,10 @@ interactiva single-target.
 
 | label | description | preview |
 |---|---|---|
-| Repo actual (Recommended) | el repo del cwd contra su upstream + target PR-aware, sólo este host | `/git-sync` |
-| --all-repos (este host) | LOCAL_PROJECTS + toolkit de ESTE host, flujo interactivo completo | `/git-sync --all-repos` |
-| --all-vps (fleet) | sólo `vps-ops-toolkit` en TODOS los VPS; el remoto recibe el core no-interactivo (conflicto ⇒ abort + reporte, sin stash inspection ni retargeting PR-aware) | `/git-sync --all-vps` |
-| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet; en los remotos siempre el core no-interactivo | `/git-sync --all-repos --all-vps` |
+| Repo actual (Recommended) | el repo del cwd contra su upstream + target PR-aware, sólo este host | `$git-sync` |
+| --all-repos (este host) | LOCAL_PROJECTS + toolkit de ESTE host, flujo interactivo completo | `$git-sync --all-repos` |
+| --all-vps (fleet) | sólo `vps-ops-toolkit` en TODOS los VPS; el remoto recibe el core no-interactivo (conflicto ⇒ abort + reporte, sin stash inspection ni retargeting PR-aware) | `$git-sync --all-vps` |
+| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet; en los remotos siempre el core no-interactivo | `$git-sync --all-repos --all-vps` |
 
 **Qué NO se pregunta:** `--all` (retirado, error-by-design con guía) jamás se
 ofrece; los drops de stash no son picker pre-run — se ofrecen post-run,
@@ -84,9 +82,9 @@ for tok in $ARGS_RAW; do
         --all-vps)   ALL_VPS=1 ;;
         --all)
             echo "❌ ERROR: --all es ambiguo y quedó retirado de git-sync."
-            echo "   ¿Todos los repos de ESTE host?   → /git-sync --all-repos"
-            echo "   ¿El toolkit en TODOS los VPS?    → /git-sync --all-vps"
-            echo "   ¿Ambos ejes?                     → /git-sync --all-repos --all-vps"
+            echo "   ¿Todos los repos de ESTE host?   → $git-sync --all-repos"
+            echo "   ¿El toolkit en TODOS los VPS?    → $git-sync --all-vps"
+            echo "   ¿Ambos ejes?                     → $git-sync --all-repos --all-vps"
             exit 2
             ;;
         *)
@@ -363,9 +361,9 @@ if [[ "$RELEASE_CANDIDATES" -gt 1 ]]; then
     echo "    release activa los PRs de sesión van con base=<release> (stacked) —"
     echo "    re-basar los mal abiertos: gh pr edit <n> --base <release>."
 fi
-# PRs de sesión >48h sin actividad = deuda de drenaje (sugerir /merge-queue)
+# PRs de sesión >48h sin actividad = deuda de drenaje (sugerir $merge-queue)
 echo "$PR_JSON" | jq -r --arg d "$PARENT" \
-  '.[] | select(.baseRefName!=$d) | select((now - (.updatedAt|fromdateiso8601)) > 172800) | "⚠️  PR de sesión frío (>48h): #\(.number) \(.headRefName) — drenar con /merge-queue"'
+  '.[] | select(.baseRefName!=$d) | select((now - (.updatedAt|fromdateiso8601)) > 172800) | "⚠️  PR de sesión frío (>48h): #\(.number) \(.headRefName) — drenar con $merge-queue"'
 ```
 
 ### Sub-fase 2c — Resolver `TARGET` del rebase
@@ -614,22 +612,22 @@ resolver con una sesión en ese host) · `UNREACHABLE`. Por repo de proyecto:
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| --all-repos (este host) | rebasa LOCAL_PROJECTS + toolkit de ESTE host | `/git-sync --all-repos` |
-| --all-vps (toolkit en el fleet) | core no-interactivo en cada VPS vía Tailscale; conflicto ⇒ abort + reporte | `/git-sync --all-vps` |
-| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet | `/git-sync --all-repos --all-vps` |
+| --all-repos (este host) | rebasa LOCAL_PROJECTS + toolkit de ESTE host | `$git-sync --all-repos` |
+| --all-vps (toolkit en el fleet) | core no-interactivo en cada VPS vía Tailscale; conflicto ⇒ abort + reporte | `$git-sync --all-vps` |
+| Ambos ejes | toolkit + LOCAL_PROJECTS de cada host del fleet | `$git-sync --all-repos --all-vps` |
 | Drop de stash OBSOLETO/VIEJO | SÓLO los que ESTE run clasificó así, uno por uno y con su evidencia | `git stash drop stash@{N}` |
 
-Blocklist ([[_output-protocol]] §4): nunca ofrecer drops masivos de stashes ni
+Blocklist ($output-protocol §4): nunca ofrecer drops masivos de stashes ni
 `git reset --hard` — el drop es per-stash, sólo con la clasificación
 OBSOLETO/VIEJO de esta corrida como evidencia visible.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/git-sync`:
+Reportar siguiendo $output-protocol. Plantilla específica de `$git-sync`:
 
 ```markdown
 🟢 git-sync OK — <repo> @ <SHA>
@@ -667,7 +665,7 @@ Casos con acción pendiente (omitir línea ✨, agregar `## Next steps`):
 - **PRs de sesión fríos (>48h)** (⚠️ en Phase 2 PR target):
   ```markdown
   ## Next steps
-  - `/merge-queue` — drenar los PRs de sesión pendientes: #X (<rama>), #Y (<rama>).
+  - `$merge-queue` — drenar los PRs de sesión pendientes: #X (<rama>), #Y (<rama>).
   ```
 
 - **Conflictos durante rebase** (❌ Phase 6):

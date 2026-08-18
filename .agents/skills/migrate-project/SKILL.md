@@ -1,8 +1,6 @@
 ---
-name: migrate-project
+name: "migrate-project"
 description: "Migra un proyecto Django entre VPS del fleet (20 pasos: git clone, creds, snapshot, systemd+nginx deploy, SSL emit, cutover). Per-project, no whole-VPS. v1.3 con deploy automático de systemd units (paso 16) + nginx site (paso 17) + SSL cert chicken-and-egg handler (paso 19) + auto-cleanup mysql-users.env post-cutover (paso 20.9). Reducción ~30 min de manual work por migración."
-argument-hint: "<project_name> <target_vps_alias> [--check|--apply|--cutover --confirm-downtime|--rollback]"
-allowed-tools: Bash, Read, Edit, AskUserQuestion
 ---
 
 ## Qué hace esta skill
@@ -52,7 +50,7 @@ La detección usa `resolve_server_alias` + `is_dev_machine` de `scripts/lib/boot
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4), en DOS niveles porque hay args posicionales:
+Gating ($output-protocol §4), en DOS niveles porque hay args posicionales:
 (1) posicionales + modo explícitos → directo, sin menú; (2) intención clara por contexto
 → proponer el comando en una línea y esperar confirmación; (3) posicionales resueltos y
 sin modo → UNA AskUserQuestion (Q1); (4) nunca en fleet/headless/cron. **Posicionales
@@ -421,7 +419,7 @@ Caso más simple del set analizado: sin twin staging, sin `extra_paths`, sólo `
 ## Acciones disponibles
 
 Menú **position-aware**: acá el operador siempre pasó argumentos (proyecto +
-target + modo), así que el gating de [[_output-protocol]] §4 aplica al PASO
+target + modo), así que el gating de $output-protocol §4 aplica al PASO
 SIGUIENTE — tras el reporte, si la sesión es interactiva, ofrecer vía
 AskUserQuestion la continuación según el modo que acaba de correr.
 
@@ -443,7 +441,7 @@ click — el operador lo tipea con su `--confirm-downtime`.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill
 (migra UN proyecto origin → target; el veredicto nombra ambos hosts):
 
 🟢 migrate-project <proj> <origin> → <target> OK — todas las celdas ✅

@@ -1,17 +1,16 @@
 ---
-name: implement
+name: "implement"
 description: "Implementation workflow — systematic code protocol with dependency analysis, step-by-step changes, and testing. Use when the user asks to build, code, or implement a feature or fix."
-argument-hint: "[description of what to implement]"
 ---
 
 Before starting, ALWAYS do 2 things:
 a. Read and understand the documentation in `docs/` and `tasks/`
 b. Get required code context from `backend/` and `frontend/` — o el layout que
-   exista en el repo (ver [[methodology-setup]])
+   exista en el repo (ver $methodology-setup)
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la tarea a implementar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+Gating ($output-protocol §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la tarea a implementar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
 
 Sin picker por diseño: no hay flags de modo — el argumento es la feature o el fix a implementar.
 
@@ -72,7 +71,7 @@ bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.s
 ### Step 3: Make Changes
 
 1. Document current state in the memory files — los 7 canónicos de
-   [[methodology-setup]]; `tasks/active_context.md` siempre
+   $methodology-setup; `tasks/active_context.md` siempre
 2. Plan single logical change at a time:
    - One logical feature at a time
    - Fully resolve by accommodating changes in other parts
@@ -86,7 +85,7 @@ bash $HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.s
 - Slice mínimo de verificación: el/los tests del comportamiento tocado (crear
   o correr sólo esos, en archivos separados) + confirmar que la regresión
   inmediata no se rompe.
-- La cobertura completa (edge cases, casos negativos, gate) la cierra [[qa]]
+- La cobertura completa (edge cases, casos negativos, gate) la cierra $qa
   en el Cierre — no dupliques su trabajo acá.
 
 ### Step 5: Loop Steps 1-4
@@ -102,7 +101,7 @@ Optimize the implemented code after all changes are tested and verified.
 After every implementation, ALWAYS do 2 things:
 a. Update other possibly affected codes in `backend/` and `frontend/`
 b. Update the memory files afectados por el cambio — los 7 canónicos de
-   [[methodology-setup]]: `docs/methodology/product_requirement_docs.md`,
+   $methodology-setup: `docs/methodology/product_requirement_docs.md`,
    `docs/methodology/technical.md`, `docs/methodology/architecture.md`,
    `docs/methodology/error-documentation.md`,
    `docs/methodology/lessons-learned.md`, `tasks/tasks_plan.md` y
@@ -113,26 +112,26 @@ b. Update the memory files afectados por el cambio — los 7 canónicos de
 ## Cierre — QA de lo implementado
 
 Al terminar la implementación (feature funcionalmente completa), la forma
-canónica de cerrar la cobertura es invocar **[[qa]]**: audita el flow-map,
+canónica de cerrar la cobertura es invocar **$qa**: audita el flow-map,
 escribe los tests faltantes al DoD de 3 puntos (casos negativos incluidos),
 corre el gate y purga junk — sin mergear. Sugerilo siempre en el cierre.
 
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y sin flags explícitos (reglas de
-gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| /qa (Recommended) | dry-run, no mergea; cierra la cobertura de lo implementado | `/qa` |
-| /git-commit | add+commit+push de lo implementado | `/git-commit` |
+| $qa (Recommended) | dry-run, no mergea; cierra la cobertura de lo implementado | `$qa` |
+| $git-commit | add+commit+push de lo implementado | `$git-commit` |
 
-**NUNCA** ofrecer `/deploy-and-check` (manual-only por política — sólo como
+**NUNCA** ofrecer `$deploy-and-check` (manual-only por política — sólo como
 texto en `## Next steps` si aplica).
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/implement`:
+Reportar siguiendo $output-protocol. Plantilla específica de `$implement`:
 
 ```markdown
 🟢 implement OK — <qué se implementó>

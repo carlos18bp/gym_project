@@ -1,7 +1,6 @@
 ---
-name: plan
+name: "plan"
 description: "Planning workflow — read context, clarify requirements, formulate solution. Use when the user asks to plan a feature, design a solution, or think through an approach before coding."
-argument-hint: "[description of the feature or problem to plan]"
 ---
 
 > *(Cuerpo en inglés por herencia; el cierre — `## Output final` — sigue el protocolo en español.)*
@@ -9,11 +8,11 @@ argument-hint: "[description of the feature or problem to plan]"
 Before starting, ALWAYS do these 3 things:
 a. Read the existing documentation in `docs/methodology/`: `architecture.md`, `product_requirement_docs.md`, `technical.md`
 b. Read the plans and context in `tasks/`: `active_context.md`, `tasks_plan.md`
-c. Get required solution context from the code files in `backend/` and `frontend/` — or whatever layout exists (see [[methodology-setup]])
+c. Get required solution context from the code files in `backend/` and `frontend/` — or whatever layout exists (see $methodology-setup)
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por el tema a planear (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+Gating ($output-protocol §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por el tema a planear (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
 
 Sin picker por diseño: no hay flags de modo — el argumento es la feature o el problema a planear.
 
@@ -58,7 +57,7 @@ Sin picker por diseño: no hay flags de modo — el argumento es la feature o el
 
 ---
 
-After planning, documenting is OPTIONAL — do it ONLY if the operator explicitly asks for it (it does NOT apply when invoked via `/plan-task`, which is read-only):
+After planning, documenting is OPTIONAL — do it ONLY if the operator explicitly asks for it (it does NOT apply when invoked via `$plan-task`, which is read-only):
 a. Document the plan in `docs/methodology/`: `architecture.md`, `product_requirement_docs.md`, `technical.md`
 b. Update planning context in `tasks/`: `active_context.md`, `tasks_plan.md`
 
@@ -68,7 +67,7 @@ b. Update planning context in `tasks/`: `active_context.md`, `tasks_plan.md`
 
 Sin menú por diseño (§4): el plan ES el entregable; su ejecución la decide el operador.
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill
 (el entregable sigue siendo el PLAN; esta tabla lo resume):
 
 ```markdown

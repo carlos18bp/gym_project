@@ -1,9 +1,6 @@
 ---
-name: dev-down
-description: "Detiene el entorno de desarrollo LOCAL levantado por /dev-up: mata los procesos de backend (runserver) y frontend (dev server) por PID file, con fallback por puerto, y verifica que queden libres. Solo dev machine — refusa en VPS/prod."
-disable-model-invocation: true
-allowed-tools: Bash, Read, AskUserQuestion
-argument-hint: "[--backend-port=8000] [--frontend-port=3000] [--clean-logs]"
+name: "dev-down"
+description: "Detiene el entorno de desarrollo LOCAL levantado por $dev-up: mata los procesos de backend (runserver) y frontend (dev server) por PID file, con fallback por puerto, y verifica que queden libres. Solo dev machine — refusa en VPS/prod."
 ---
 
 ## Entorno requerido
@@ -33,14 +30,14 @@ Si el bloque aborta con ❌, **NO continuar** — no es error, es un safety gate
 
 # Dev Down — Stop dev servers (local dev)
 
-Detiene los servers de desarrollo que `/dev-up` dejó corriendo en background:
+Detiene los servers de desarrollo que `$dev-up` dejó corriendo en background:
 backend (Django `runserver`) y frontend (dev server). Idempotente: si ya están
 caídos, lo reporta sin error.
 
 > **⚠️ How to invoke**:
-> - `/dev-down` → detiene backend + frontend de este proyecto.
-> - `/dev-down --backend-port=8001 --frontend-port=3001` → puertos custom.
-> - `/dev-down --clean-logs` → además borra los logs de `/tmp/<proyecto>-dev/`.
+> - `$dev-down` → detiene backend + frontend de este proyecto.
+> - `$dev-down --backend-port=8001 --frontend-port=3001` → puertos custom.
+> - `$dev-down --clean-logs` → además borra los logs de `/tmp/<proyecto>-dev/`.
 >
 > Claude Code substituye `$ARGUMENTS` con los flags pasados (vacío si se omiten).
 
@@ -48,14 +45,14 @@ caídos, lo reporta sin error.
 
 ## Cómo invocar este skill (§4)
 
-Gating ([[_output-protocol]] §4): correr **directo, sin menú** — con o sin
+Gating ($output-protocol §4): correr **directo, sin menú** — con o sin
 flags, la intención (bajar los dev servers de este proyecto) es inequívoca;
 nunca preguntar en modo fleet/headless/cron.
 
 Sin picker por diseño: flags de tuning (puertos); --clean-logs se ofrece post-run.
 
 **Qué NO se pregunta:** `--backend-port=`/`--frontend-port=` (defaults
-8000/3000; se tipean sólo si `/dev-up` corrió en puertos custom).
+8000/3000; se tipean sólo si `$dev-up` corrió en puertos custom).
 
 ---
 
@@ -87,7 +84,7 @@ EOF
 
 ## Phase 1 — Detener por PID file
 
-Primer intento: matar por el PID que `/dev-up` guardó. `SIGTERM` y, si sigue
+Primer intento: matar por el PID que `$dev-up` guardó. `SIGTERM` y, si sigue
 vivo tras 3s, `SIGKILL`. Mata también el árbol de hijos (runserver y nuxi/vite
 spawnean subprocesos).
 
@@ -166,23 +163,23 @@ fi
 - Mata el **grupo de procesos** (PID negativo) para llevarse runserver/nuxi y sus
   hijos; con fallback `fuser -k <puerto>/tcp` para listeners huérfanos.
 - Por defecto **conserva los logs** en `/tmp/<proyecto>-dev/` (útiles para post-mortem).
-- Complementaria de `/dev-up`.
+- Complementaria de `$dev-up`.
 
 ---
 
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Borrar logs (`--clean-logs`) | `rm -rf /tmp/<proyecto>-dev/` — pierde los logs del post-mortem (irreversible) | `/dev-down --clean-logs` |
-| Volver a levantar | re-bootstrapea lo que falte y arranca backend + frontend de nuevo | `/dev-up` |
+| Borrar logs (`--clean-logs`) | `rm -rf /tmp/<proyecto>-dev/` — pierde los logs del post-mortem (irreversible) | `$dev-down --clean-logs` |
+| Volver a levantar | re-bootstrapea lo que falte y arranca backend + frontend de nuevo | `$dev-up` |
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/dev-down`:
+Reportar siguiendo $output-protocol. Plantilla específica de `$dev-down`:
 
 ```markdown
 🟢 dev-down OK — <proyecto> (dev machine)
@@ -203,7 +200,7 @@ Si un puerto queda ocupado tras el fallback, reemplazar ✅ por 🔴 y agregar
 `## Next steps` con el `ss -ltnp` del listener remanente.
 
 ## Next steps
-- `/dev-up --restart` — volver a levantar limpio
+- `$dev-up --restart` — volver a levantar limpio
 - (operador) revisar logs si algo quedó colgado
 
 ---
@@ -212,4 +209,4 @@ Si un puerto queda ocupado tras el fallback, reemplazar ✅ por 🔴 y agregar
 
 - Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-down.md`. Las versiones
   en `.windsurf/` y `.agents/skills/` son copias (distintas por frontmatter).
-- Skill complementaria: `/dev-up` (levanta y monitorea los servers).
+- Skill complementaria: `$dev-up` (levanta y monitorea los servers).

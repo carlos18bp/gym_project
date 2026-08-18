@@ -1,19 +1,18 @@
 ---
-name: debugme
-description: "Legacy alias for [[debug]]. Use when older prompts or team habits still reference debugme for read-only diagnosis."
-argument-hint: "[error message, failing behavior, or suspected regression]"
+name: "debugme"
+description: "Legacy alias for $debug. Use when older prompts or team habits still reference debugme for read-only diagnosis."
 ---
 
-Use the same workflow as [[debug]]:
+Use the same workflow as $debug:
 - diagnose only
 - do not modify files
 - gather evidence first
 - return observations, root cause, recommended fix, and verification steps
 
-Gating e invocación: los de [[debug]] (alias, regla de `## Skills alias` de [[_output-protocol]]).
+Gating e invocación: los de $debug (alias, regla de `## Skills alias` de $output-protocol).
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Misma plantilla que `/debug`.
+Reportar siguiendo $output-protocol. Misma plantilla que `$debug`.

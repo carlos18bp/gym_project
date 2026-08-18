@@ -1,8 +1,6 @@
 ---
-name: debug
+name: "debug"
 description: "Agentic debug mode — diagnose and analyze bugs without modifying code. Read-only 4-phase workflow producing diagnosis and recommended fix. Use when the user reports a bug, error, or unexpected behavior."
-argument-hint: "[description of the bug, error message, or unexpected behavior]"
-allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Debug Mode
@@ -17,7 +15,7 @@ Act as an expert debugger. Your job is to **analyze and diagnose only**. Follow 
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por el bug a diagnosticar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+Gating ($output-protocol §4): con `$ARGUMENTS` o intención clara en la sesión → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por el bug a diagnosticar (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
 
 Sin picker por diseño: no hay flags de modo — el argumento es el bug: mensaje de error, stack trace o comportamiento inesperado.
 
@@ -117,7 +115,7 @@ If the user reports the recommended fix did not work:
 
 Sin menú por diseño (§4): read-only por diseño; el diagnóstico ES el entregable y el fix se decide fuera.
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill (read-only: diagnostica, NO aplica el fix):
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill (read-only: diagnostica, NO aplica el fix):
 
 🟢 debug OK   (🟡 si la hipótesis no alcanzó confianza alta; 🔴 si no se pudo reunir evidencia)
 

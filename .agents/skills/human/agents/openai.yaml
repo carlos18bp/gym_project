@@ -1,5 +1,7 @@
 interface:
   display_name: "Human"
-  short_description: "Respuesta puntual en espanol: conclusion primero, tablas/listas por default, cero relleno."
+  short_description: "Respuesta puntual y escaneable: conclusión primero..."
+  default_prompt: "Use $human to handle this task with its documented workflow."
+
 policy:
   allow_implicit_invocation: true

@@ -1,5 +1,5 @@
 ---
-name: fix-broken-tests
+name: "fix-broken-tests"
 description: "Fix a specific list of broken tests provided by the user. Runs only the failing tests + a regression subset — never the full suite."
 ---
 
@@ -13,10 +13,10 @@ Recibir una lista de tests rotos, entender por qué fallan, arreglarlos y verifi
 
 Sin picker por diseño: no hay flags; el insumo es la lista de tests.
 
-Gating de datos ([[_output-protocol]] §4): si el operador no pasó la lista de
+Gating de datos ($output-protocol §4): si el operador no pasó la lista de
 tests rotos, pedirla UNA sola vez en texto plano (≤3 bullets: qué tests, capa,
 error observado) — es un dato, no un modo: nunca un picker. Con la lista en
-mano, ejecutar directo. Invocada por [[qa]]/[[merge-when-green]] (fix loop):
+mano, ejecutar directo. Invocada por $qa/$merge-when-green (fix loop):
 hereda su gating, nunca pregunta. Tampoco preguntar en fleet/headless/cron.
 
 ## Restricciones No Negociables
@@ -37,7 +37,7 @@ Antes de modificar cualquier test, leer: `docs/TESTING_QUALITY_STANDARDS.md`
 ```bash
 cd backend && source venv/bin/activate
 pytest path/to/test_file.py::TestClass::test_name -v
-# Proyectos con `db: mysql` en projects.yml (engine check de [[backend-test-coverage]]):
+# Proyectos con `db: mysql` en projects.yml (engine check de $backend-test-coverage):
 DJANGO_ENV=production pytest path/to/test_file.py::TestClass::test_name -v
 ```
 
@@ -90,17 +90,17 @@ Entregar un resumen con: qué falló, por qué, qué se cambió, y los comandos 
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
 | Re-run de los arreglados (Recommended) | re-ejecuta SOLO los tests tocados + el archivo del módulo, nunca la suite | `pytest <test> -v` · `npm test -- <archivo>` · `npx playwright test <spec>` según capa |
-| Escalar a [[debug]] | tras ≤3 intentos en rojo, o si la causa apunta a código de producción | `/debug "<mensaje de error del test>"` |
+| Escalar a $debug | tras ≤3 intentos en rojo, o si la causa apunta a código de producción | `$debug "<mensaje de error del test>"` |
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/fix-broken-tests`:
+Reportar siguiendo $output-protocol. Plantilla específica de
+`$fix-broken-tests`:
 
 ```markdown
 🟢 fix-broken-tests OK

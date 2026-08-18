@@ -1,8 +1,6 @@
 ---
-name: skills-help
+name: "skills-help"
 description: "Catálogo de skills en tablas por categoría con ámbito de ejecución (repo/host/fleet/VPS-only/dev/buzones), modo default (check vs mutante), argumentos y alcance en una frase. Default: skills propias de .claude/skills. Con --all agrega plugins/globales. Respeta una lista de exclusión editable (ignore.txt). Acepta un término de filtro."
-allowed-tools: Bash, Read, AskUserQuestion
-argument-hint: "[--all] [filtro]"
 ---
 
 # Skills Help — catálogo de skills
@@ -13,16 +11,16 @@ frase) por cada una. Es dinámica: lee el frontmatter en vivo, así las skills
 nuevas aparecen solas y ninguna queda hardcodeada/obsoleta.
 
 > **⚠️ How to invoke**:
-> - `/skills-help` → tabla de las skills del proyecto (`.claude/skills/`).
-> - `/skills-help --all` → además, plugins/globales y comandos built-in.
-> - `/skills-help test` → solo las skills cuyo nombre/descripción matchee "test".
-> - `/skills-help --all coverage` → combinable: `--all` + filtro.
+> - `$skills-help` → tabla de las skills del proyecto (`.claude/skills/`).
+> - `$skills-help --all` → además, plugins/globales y comandos built-in.
+> - `$skills-help test` → solo las skills cuyo nombre/descripción matchee "test".
+> - `$skills-help --all coverage` → combinable: `--all` + filtro.
 >
 > Claude Code substituye `$ARGUMENTS` con los flags/términos pasados (vacío si se omiten).
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → directo, sin menú; (2) intención clara → proponer el comando en una línea; (3) sin args → UNA AskUserQuestion; (4) nunca en fleet/headless/cron.
+Gating ($output-protocol §4): (1) flags explícitos → directo, sin menú; (2) intención clara → proponer el comando en una línea; (3) sin args → UNA AskUserQuestion; (4) nunca en fleet/headless/cron.
 
 Sin picker por diseño: los flags son filtros aditivos de un catálogo read-only; se tipean (--all, término de filtro).
 
@@ -211,7 +209,7 @@ Con los datos crudos de Phase 1 (y Phase 2 si `--all`), Claude arma la salida:
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Skill informativa: la salida principal
+Reportar siguiendo $output-protocol. Skill informativa: la salida principal
 son las tablas-catálogo de Phase 3 (sus celdas no llevan emoji de estado). Cerrar
 con el veredicto de una línea, derivado del scan:
 
@@ -232,17 +230,17 @@ Tabla de dimensiones del scan (complementa las tablas-catálogo, no las reemplaz
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos (gating
-de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description | preview |
 |---|---|---|
-| Ver plugins/globales (Recommended) | agrega superpowers, built-ins y skills de plugins | `/skills-help --all` |
-| Filtrar por término | re-render sólo con las que matcheen | `/skills-help <término>` |
+| Ver plugins/globales (Recommended) | agrega superpowers, built-ins y skills de plugins | `$skills-help --all` |
+| Filtrar por término | re-render sólo con las que matcheen | `$skills-help <término>` |
 | Ocultar skills del catálogo | crear/editar la lista de exclusión local | `edit .claude/skills/skills-help/ignore.txt` |
 
 ## Next steps
-- `/skills-help --all` — agregar plugins/globales y comandos built-in
-- `/skills-help <término>` — filtrar el catálogo por nombre/descripción
+- `$skills-help --all` — agregar plugins/globales y comandos built-in
+- `$skills-help <término>` — filtrar el catálogo por nombre/descripción
 - (manual, operador) editar `.claude/skills/skills-help/ignore.txt` para ocultar skills
 
 ---

@@ -1,6 +1,7 @@
 interface:
-  display_name: "Deploy and Check"
-  short_description: "Help with Deploy and Check tasks"
+  display_name: "Deploy And Check"
+  short_description: "VPS-only — Deploy a project (any environment). Defaults to..."
+  default_prompt: "Use $deploy-and-check to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: false

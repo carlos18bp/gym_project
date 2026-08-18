@@ -1,6 +1,7 @@
 interface:
   display_name: "Skills Help"
-  short_description: "List available skills with a brief scope"
+  short_description: "Catálogo de skills en tablas por categoría con ámbito de..."
+  default_prompt: "Use $skills-help to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: true

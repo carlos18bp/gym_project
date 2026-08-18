@@ -1,8 +1,6 @@
 ---
-name: fake-data-refresh
+name: "fake-data-refresh"
 description: "Borra y recrea fake data en un proyecto Django. Refusa en producción. Detecta automáticamente las management commands del proyecto (delete_fake_data + create_fake_data) y las ejecuta con guardrails. Funciona en staging del fleet, dev local y proyectos no registrados."
-argument-hint: "[proyecto] [--records=N] [--skip-delete] [--dry-run]"
-allowed-tools: Bash, Read, AskUserQuestion
 ---
 
 # Fake Data Refresh
@@ -15,22 +13,22 @@ Skill para refrescar (`delete + create`) la fake data de un proyecto Django. Dis
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): flags/argumentos explícitos (`[proyecto]`,
+Gating ($output-protocol §4): flags/argumentos explícitos (`[proyecto]`,
 `--records=`, `--skip-delete`, `--dry-run`) → ejecutar directo, sin menú.
 Intención clara por la sesión (recién cambió un modelo y pide data fresca) →
 proponer el comando en una línea y esperar confirmación. Sin argumentos → UNA
 sola `AskUserQuestion` (Q1). Nunca preguntar en modo fleet/headless/cron ni
 dentro de un barrido.
 
-**Invocada por `/qa` (conductor): hereda su gating — dentro del barrido del
+**Invocada por `$qa` (conductor): hereda su gating — dentro del barrido del
 conductor esta skill NUNCA pregunta** (regla 4 de §4).
 
 **Q1 — Modo** (selección única):
 
 | label | description | preview |
 |---|---|---|
-| Dry-run (`--dry-run`) *(Recommended)* | corre gate + detección + sondeo de signatures e imprime el plan exacto; no ejecuta nada | `/fake-data-refresh --dry-run` |
-| Aplicar | BORRA y recrea fake data; rehusado en producción por guard | `/fake-data-refresh` |
+| Dry-run (`--dry-run`) *(Recommended)* | corre gate + detección + sondeo de signatures e imprime el plan exacto; no ejecuta nada | `$fake-data-refresh --dry-run` |
+| Aplicar | BORRA y recrea fake data; rehusado en producción por guard | `$fake-data-refresh` |
 
 **Qué NO se pregunta:** `--records=N` y `--skip-delete` son tuning (defaults:
 50 records, delete incluido) — se tipean a propósito. `[proyecto]` tampoco:
@@ -43,7 +41,7 @@ default es el CWD; para otro proyecto se pasa el path tipeado.
 Disparadores:
 
 - "refresca fake data en `<proyecto>`" / "borra y recrea data" / "reseed staging X"
-- Encadenada por el conductor [[qa]] (Fase 3) cuando el trabajo necesita fixtures frescas — con el MISMO gate inverso de producción: en prod el conductor la saltea de entrada
+- Encadenada por el conductor $qa (Fase 3) cuando el trabajo necesita fixtures frescas — con el MISMO gate inverso de producción: en prod el conductor la saltea de entrada
 - Después de un cambio de modelo / FK / lógica de negocio (referenciado por `new-feature-checklist`)
 - Cuando los counts de modelos quedaron en 0 o incoherentes
 - Como paso intermedio antes de invocar `playwright-validation` si el flujo a probar necesita data fresca
@@ -163,7 +161,7 @@ CMD_DIR="${PROJ_PATH}/backend"
 # Localizar venv. Fuente primaria: venv_path de projects.yml — 16 de 17 proyectos
 # del fleet lo tienen en backend/venv/, no en la raiz, asi que probar solo .venv/ y
 # venv/ hacia FATAL en casi todos los targets reales de esta skill.
-# /deploy-and-check ya resuelve el venv asi; esta skill se alinea.
+# $deploy-and-check ya resuelve el venv asi; esta skill se alinea.
 VENV_PY=""
 if $IN_FLEET; then
   VENV_REL=$(awk -v p="$PROJ_NAME" '
@@ -333,19 +331,19 @@ de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Aplicar el plan del dry-run | ejecuta el delete + create exactos que mostró el plan (BORRA fake data; prod sigue bloqueada por el gate) | `/fake-data-refresh <proyecto>` |
-| Re-correr con más volumen | más registros por modelo para paginación E2E profunda; delete + create de nuevo | `/fake-data-refresh <proyecto> --records=200` |
-| Dry-run del hermano staging | plan read-only de otro target real (tuhuella/vastago/tenndalux/gym_project_staging) | `/fake-data-refresh ~/webapps/<hermano> --dry-run` |
+| Aplicar el plan del dry-run | ejecuta el delete + create exactos que mostró el plan (BORRA fake data; prod sigue bloqueada por el gate) | `$fake-data-refresh <proyecto>` |
+| Re-correr con más volumen | más registros por modelo para paginación E2E profunda; delete + create de nuevo | `$fake-data-refresh <proyecto> --records=200` |
+| Dry-run del hermano staging | plan read-only de otro target real (tuhuella/vastago/tenndalux/gym_project_staging) | `$fake-data-refresh ~/webapps/<hermano> --dry-run` |
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill:
 
 ```markdown
 🟢 fake-data-refresh OK — <proyecto>

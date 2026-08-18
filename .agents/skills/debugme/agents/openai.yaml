@@ -1,3 +1,7 @@
 interface:
   display_name: "Debugme"
-  short_description: "Help with Debugme tasks and workflows"
+  short_description: "Legacy alias for $debug. Use when older prompts or team..."
+  default_prompt: "Use $debugme to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

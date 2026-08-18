@@ -1,0 +1,7 @@
+interface:
+  display_name: "User Walkthrough"
+  short_description: "Genera una guía paso a paso, amigable y no técnica, para que..."
+  default_prompt: "Use $user-walkthrough to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true
