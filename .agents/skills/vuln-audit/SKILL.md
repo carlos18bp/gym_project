@@ -1,16 +1,15 @@
 ---
-name: vuln-audit
+name: "vuln-audit"
 description: "Audita vulnerabilidades y dependencias en backend (Python) y frontend (npm). Default report-first: escanea (pip-audit + npm audit + outdated) y arma el plan de bumps SIN escribir nada. Con --apply (o vía el menú post-reporte) aplica los updates patch+minor del plan respetando pins, verifica con checks mínimos y deja 3 commits limpios (frontend deps, backend deps, audit-report.md)."
-argument-hint: "[backend|frontend] [--apply (aplica patch+minor del plan)]  # vacío = ambas superficies, solo auditoría"
 ---
 
 ## Cuándo usar cuál (familia de auditoría)
 
 | Skill | Úsala cuando | Cadencia típica |
 |---|---|---|
-| `/full-audit` | Veredicto integral 🟢/🟡/🔴 del VPS o del fleet (`--all`): configs, drift, envs, timers, health, email — 12 fases automatizadas, ~4 min | Post-cambio grande, post-incidente, trimestral |
-| `/server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
-| `/vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm): default arma el plan sin tocar nada; los bumps se aplican con `--apply` | Por proyecto, mensual o ante CVE |
+| `$full-audit` | Veredicto integral 🟢/🟡/🔴 del VPS o del fleet (`--all`): configs, drift, envs, timers, health, email — 12 fases automatizadas, ~4 min | Post-cambio grande, post-incidente, trimestral |
+| `$server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
+| `$vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm): default arma el plan sin tocar nada; los bumps se aplican con `--apply` | Por proyecto, mensual o ante CVE |
 
 No se orquestan entre sí (cada una es independiente); full-audit NO corre a las otras dos.
 
@@ -45,7 +44,7 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): si el operador pasó cualquier argumento
+Gating ($output-protocol §4): si el operador pasó cualquier argumento
 (`backend`/`frontend`/`--apply`) → ejecutar directo, sin menú. Si la intención
 es clara por la sesión (p.ej. acaba de llegar el aviso de un CVE puntual) →
 proponer el comando en una línea y esperar confirmación. Sin argumentos → UNA
@@ -56,16 +55,16 @@ fleet/headless/cron ni dentro de un barrido.
 
 | label | description | preview |
 |---|---|---|
-| Auditar *(Recommended)* | read-only: escanea y arma el plan de bumps, no escribe nada | `/vuln-audit` |
-| Aplicar (`--apply`) | aplica upgrades de dependencias — puede romper builds; corre tests después | `/vuln-audit --apply` |
+| Auditar *(Recommended)* | read-only: escanea y arma el plan de bumps, no escribe nada | `$vuln-audit` |
+| Aplicar (`--apply`) | aplica upgrades de dependencias — puede romper builds; corre tests después | `$vuln-audit --apply` |
 
 **Q2 — Capa** (selección única):
 
 | label | description | preview |
 |---|---|---|
-| Ambas *(Recommended)* | backend (pip-audit) + frontend (npm audit) | `/vuln-audit` |
-| Sólo backend | pip-audit + pip outdated sobre el venv | `/vuln-audit backend` |
-| Sólo frontend | npm audit + npm outdated | `/vuln-audit frontend` |
+| Ambas *(Recommended)* | backend (pip-audit) + frontend (npm audit) | `$vuln-audit` |
+| Sólo backend | pip-audit + pip outdated sobre el venv | `$vuln-audit backend` |
+| Sólo frontend | npm audit + npm outdated | `$vuln-audit frontend` |
 
 **Qué NO se pregunta:** no hay más flags que estos dos ejes. Los majors nunca
 tienen opción de aplicarse (no existe flag; se evalúan aparte vía el menú
@@ -340,11 +339,11 @@ Se ejecuta siempre que hubo `--apply` (incluso si una fase no produjo updates: e
   - Hacer el commit del reporte solo si su contenido cambió respecto al existente.
 
 ## Ejemplos de invocación
-- `/vuln-audit` — auditar backend + frontend y mostrar el plan (read-only).
-- `/vuln-audit frontend` — solo npm, solo plan.
-- `/vuln-audit backend` — solo pip, solo plan.
-- `/vuln-audit --apply` — aplicar patch+minor del plan en ambas superficies (commits separados).
-- `/vuln-audit backend --apply` — aplicar solo en Python.
+- `$vuln-audit` — auditar backend + frontend y mostrar el plan (read-only).
+- `$vuln-audit frontend` — solo npm, solo plan.
+- `$vuln-audit backend` — solo pip, solo plan.
+- `$vuln-audit --apply` — aplicar patch+minor del plan en ambas superficies (commits separados).
+- `$vuln-audit backend --apply` — aplicar solo en Python.
 
 ---
 
@@ -352,18 +351,18 @@ Se ejecuta siempre que hubo `--apply` (incluso si una fase no produjo updates: e
 
 Tras el reporte del plan (corrida default, sin `--apply`), si la sesión es
 interactiva y NO hubo flags explícitos (reglas de gating de
-[[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+$output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Aplicar patch+minor del plan (commits separados) (Recommended) | aplica los bumps del plan respetando pins, verifica (build / check / collect-only) y deja 1–3 commits locales — sin push | `/vuln-audit --apply` |
-| Sólo backend / sólo frontend | re-corre la auditoría acotada a una superficie | `/vuln-audit backend` · `/vuln-audit frontend` |
+| Aplicar patch+minor del plan (commits separados) (Recommended) | aplica los bumps del plan respetando pins, verifica (build / check / collect-only) y deja 1–3 commits locales — sin push | `$vuln-audit --apply` |
+| Sólo backend / sólo frontend | re-corre la auditoría acotada a una superficie | `$vuln-audit backend` · `$vuln-audit frontend` |
 | Evaluar los majors saltados (plan detallado por paquete) | analiza breaking changes, esfuerzo y orden sugerido de cada major — no aplica nada | análisis en la respuesta (read-only) |
 | Push + PR de los commits | sólo tras un `--apply`: empuja la rama y abre el PR | `git push -u origin <rama> && gh pr create` |
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/vuln-audit`.
+Reportar siguiendo $output-protocol. Plantilla específica de `$vuln-audit`.
 
 **Corrida default (report-first):** el veredicto acompaña a la tabla del plan
 de Fase 3 (que es el cuerpo del reporte):

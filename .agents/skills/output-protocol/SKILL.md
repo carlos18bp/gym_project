@@ -1,19 +1,18 @@
 ---
-name: _output-protocol
+name: "output-protocol"
 description: "Contrato compartido del bloque final de respuesta de toda skill operacional del fleet. Importado por las skills bajo workflows/.claude/. No invocable directamente."
-disable-model-invocation: true
 ---
 
 # Output protocol — bloque final estándar
 
 > Este archivo NO es una skill invocable. Es la fuente canónica del formato
 > final con el que toda skill operacional del fleet cierra su ejecución. Las
-> skills lo referencian con `[[_output-protocol]]` en su sección "Output final".
+> skills lo referencian con `$output-protocol` en su sección "Output final".
 
 ## Por qué existe
 
-El operador corre la misma skill (`/init-fleet`, `/full-audit`, `/server-diagnostic`,
-`/git-status-report`, etc.) en múltiples hosts a lo largo del día. Si cada
+El operador corre la misma skill (`$init-fleet`, `$full-audit`, `$server-diagnostic`,
+`$git-status-report`, etc.) en múltiples hosts a lo largo del día. Si cada
 skill cierra de forma distinta, leer "qué OK / qué falta" tarda más y se
 escapan signals. El protocolo unifica:
 
@@ -116,7 +115,7 @@ Dos posiciones, un mismo esquema de fila:
   sólo tuning aditivo (puertos, filtros, `--records=N`) puede eximirse con la
   línea literal `Sin picker por diseño: <razón>` dentro de esa sección —
   picker O waiver, nunca silencio (así el lint es decidible). Referencias
-  canónicas: [[sync-ai-ecosystems]] (Q1/Q2/Q3, targets gateados) e
+  canónicas: $sync-ai-ecosystems (Q1/Q2/Q3, targets gateados) e
   `init-fleet` (probe de entorno antes de armar opciones; multiSelect para
   add-ons; documenta qué flags quedan fuera del picker).
 - **Post-run (escalaciones):** skills con default mínimo/read-only. DESPUÉS del
@@ -137,7 +136,7 @@ Dos posiciones, un mismo esquema de fila:
    add-ons, listas de targets, capas — opciones no excluyentes entre sí);
    selección única sólo para modos excluyentes.
 7. **Una sola llamada:** todas las preguntas aplicables se fusionan en UNA
-   `AskUserQuestion` (Q1+Q2+Q3 juntas, estilo [[client-message]]). Un dato
+   `AskUserQuestion` (Q1+Q2+Q3 juntas, estilo $client-message). Un dato
    faltante posterior se pide en texto plano una única vez (≤3 bullets) —
    nunca un segundo picker.
 8. **Runtimes sin `AskUserQuestion`** (Codex/`.agents`, Windsurf): renderizar
@@ -151,11 +150,11 @@ ejecutaría.
 
 **Blocklist — filas que NINGUNA skill puede ofrecer como opción clickeable:**
 
-- `/deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
+- `$deploy-and-check` o `post-deploy-check.sh` (manual-only por política — sólo
   como texto en Next steps).
 - Merge de una rama release: no se ofrece ni se tipea — lo decide
   `release_merge:` en projects.yml (fuente de verdad, consultada por
-  [[merge-when-green]] en cada invocación).
+  $merge-when-green en cada invocación).
 - `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
   es una confirmación de downtime).
 - `--include-projects` de bootstrap/init-fleet como Recommended (es
@@ -192,7 +191,7 @@ de drift.
 - **Máx. 3 comandos de verificación por ciclo** — nunca una suite completa
   como verificación de un cambio puntual.
 
-## Ejemplo (skill /init-fleet, modo apply, dev)
+## Ejemplo (skill $init-fleet, modo apply, dev)
 
 ```markdown
 🟡 init-fleet OK con 2 warning(s)
@@ -219,7 +218,7 @@ Al final de cada skill `.md`:
 ```markdown
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill:
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
@@ -242,7 +241,7 @@ Si la skill ofrece menú interactivo (§4), lo declara así (antes del Output fi
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
@@ -257,7 +256,7 @@ Una skill que es wrapper/alias de otra (ej. `debugme` → `debug`, `plan-task` �
 ```markdown
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Misma plantilla que `/<skill-base>`.
+Reportar siguiendo $output-protocol. Misma plantilla que `/<skill-base>`.
 ```
 
 Eso evita drift entre la skill base y el alias: si la base cambia su tabla,

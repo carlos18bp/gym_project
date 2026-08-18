@@ -1,13 +1,6 @@
 ---
-name: qa
+name: "qa"
 description: "QA conductor for a project: after a feature or fix is functionally complete, close and validate its test coverage end to end. Refreshes the E2E flow map, audits coverage (junk-only first), fans out backend / frontend-unit / e2e subagents to author tests to the 3-part definition of done, runs the quality gate, purges junk via test-audit, and lands the tests on the correct branch — never merging. Default dry-run; --apply to write and commit. From the toolkit, --all-repos / --all-vps run an analysis-only QA sweep of the fleet. Use when the operator says 'QA this', 'cover/validate the tests', 'self-QA', or has just finished a feature — NOT on every trivial edit."
-argument-hint: "[proyecto] [--apply] [--layers=backend,frontend-unit,e2e] [--project=X] [--all-repos] [--all-vps]"
-allowed-tools: Bash, Read, Edit, Write, Grep, Glob, Agent, AskUserQuestion
-hooks:
-  Stop:
-    - hooks:
-        - type: command
-          command: "bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --gate-hook"
 ---
 
 # QA — the conductor
@@ -19,10 +12,10 @@ phases, with production guards wired in, and you **never merge**.
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) explicit flags → run direct, no menu;
+Gating ($output-protocol §4): (1) explicit flags → run direct, no menu;
 (2) clear intent from the session ("QA this" right after a feature landed
 here) → propose the command in one line and wait for confirmation; (3) bare
-`/qa` with no obvious project/feature → ONE AskUserQuestion with the fused
+`$qa` with no obvious project/feature → ONE AskUserQuestion with the fused
 questions below; (4) never inside fleet/headless sweeps (`--all-repos` /
 `--all-vps`) — and the skills this conductor dispatches (coverage skills,
 test-audit, fake-data-refresh) inherit THIS gating: they never ask on their own.
@@ -31,8 +24,8 @@ test-audit, fake-data-refresh) inherit THIS gating: they never ask on their own.
 
 | label | description | preview |
 |---|---|---|
-| Dry-run (Recommended) | analyze coverage + quality gate; writes nothing, reports the worklist | `/qa <proyecto>` |
-| Apply | authors tests to the 3-part DoD, purges junk via test-audit, commits on the resolved work branch | `/qa <proyecto> --apply` |
+| Dry-run (Recommended) | analyze coverage + quality gate; writes nothing, reports the worklist | `$qa <proyecto>` |
+| Apply | authors tests to the 3-part DoD, purges junk via test-audit, commits on the resolved work branch | `$qa <proyecto> --apply` |
 
 **Q2 — Layers** (`multiSelect: true` — combinable; no selection = all):
 
@@ -68,7 +61,7 @@ reimplement it.
 
 Each phase dispatches a dedicated agent. The agents are **distributed per-project
 at `.claude/agents/qa-*.md`** (canonical: `workflows/.user-level/.claude/agents/`;
-project-level wins over any `~/.claude/agents/` copy), so `/qa` works on any
+project-level wins over any `~/.claude/agents/` copy), so `$qa` works on any
 machine holding the repo. Caveat: the first time an `agents/` dir appears in a
 scope, restart the session for the watcher to pick it up. The Engineers, Auditor
 and Analyst **preload their skill via `skills:` frontmatter** (full content
@@ -108,8 +101,8 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
 - A **project repo** → single-project run (Phases 0–8).
 - **vps-ops-toolkit** + `--all-repos` or `--all-vps` → `qa-agent.sh` in fleet mode
   (analysis-only) and report. Never author on a fleet sweep.
-- **vps-ops-toolkit** with no fleet flag → refuse: run `/qa` inside a project, or
-  `/qa --all-vps` for a fleet audit.
+- **vps-ops-toolkit** with no fleet flag → refuse: run `$qa` inside a project, or
+  `$qa --all-vps` for a fleet audit.
 
 ## Safety rails — always ON (visible to the operator; override is explicit)
 
@@ -121,13 +114,14 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
    for every repo. Staging-first otherwise.
 3. **fake-data-refresh only off production.** `--preflight` reports
    `fake_data_allowed`. If `no`, SKIP the fake-data phase — never reseed prod.
-4. **Land on the resolved coordinate.** Commit only on `resolved_branch` from the
-   preflight. `host_status=wrong-host` blocks **authoring/landing** — STOP before
+4. **Land on the resolved coordinate.** `resolved_branch` from the preflight is
+   the BASE; the commit lands on a `qa/<fecha>-<slug>` session branch whose PR
+   targets it (Phase 7). `host_status=wrong-host` blocks **authoring/landing** — STOP before
    writing anything; the work lives in another VPS clone (use its `tailscale
    ssh`). The dry-run analysis (Phases 0–2) MAY proceed on the wrong host,
    flagged ⚠️ and declared in the verdict.
 5. **Never merge.** Stop at "committed on the work branch". Merging is
-   `/merge-when-green`. A release branch (`pr_state=single|ambiguous`) →
+   `$merge-when-green`. A release branch (`pr_state=single|ambiguous`) →
    commit-hold, no merge.
 6. **deploy-and-check is a suggestion.** Never auto-run it; name it in Next steps.
 7. **Clean tree before --apply.** Refuse to author on a dirty tree, so the QA
@@ -174,12 +168,16 @@ at the printed path.
   work — no dedicated agent) to build the Memory Bank. Safe anywhere.
 - Flow map: the preflight emits `flow_map_fresh=yes|no`; **if the key is ABSENT,
   the map does not exist** — same action as `no`: dispatch **`qa-analyst`** (it
-  preloads `e2e-user-flows-check`) to derive `frontend/e2e/flow-definitions.json`
-  + `docs/USER_FLOW_MAP.md` from the app's real code — the four outcome classes
-  (success/error/failure/display), **negative cases included**. The Analyst
-  RETURNS both files' content (role boundary: it never writes); the conductor
-  writes them (under dry-run: report the diff, write nothing). This is the
-  Analyst's ONLY duty — ranking belongs to the Architect. If `yes`, skip `⏭️`.
+  preloads `e2e-user-flows-check`) to derive the flow registry from the app's
+  real code — the four outcome classes (success/error/failure/display),
+  **negative cases included**. The Analyst RETURNS the content (role boundary:
+  it never writes); the conductor writes it **in the repo's declared layout**
+  (`.testquality.yml` → `flow_definitions_dir`): sharded ⇒ per-flow JSONs +
+  per-flow docs, then regenerate the derived aggregates with
+  `generate_flow_registry.py` (never hand-edit them); monolith ⇒
+  `frontend/e2e/flow-definitions.json` + `docs/USER_FLOW_MAP.md` as before.
+  Under dry-run: report the diff, write nothing. This is the Analyst's ONLY
+  duty — ranking belongs to the Architect. If `yes`, skip `⏭️`.
 
 ## Phase 2 — Coverage audit + worklist (conductor → Architect)
 
@@ -259,7 +257,11 @@ the pilot series all came from conductor paraphrase. Each engineer:
 - Hard constraints: run only touched files; a `db: mysql` project runs `manage.py`
   with `DJANGO_ENV=production` from `backend/` (see `--preflight db=`); stay inside
   your layer's directory; stop and fix if the gate flags junk on your batch
-  (quality ceiling beats volume); under `--apply` author and **leave staged — do
+  (quality ceiling beats volume) — **the self-check command the preamble hands the
+  engineer MUST carry the EXACT `run_gate_on_files` parity: `--semantic-rules
+  strict --junk-severity=error --external-lint run`** (a mirror without
+  `--external-lint run` measured a 100/100 false-clean against 10 CI-parity ruff
+  errors — F88, 2026-08-13); under `--apply` author and **leave staged — do
   not commit** (the conductor commits once); under dry-run, describe the diffs and
   write nothing.
 - Returns its fixed-format block (the agents' own contract): `STATUS
@@ -320,7 +322,7 @@ happen exclusively under `--apply`.
 4. Mutating drafts run only against `local:`/`staging:` targets — which is all
    the probe can return; if `app_reachable=no`, this phase is skipped, the
    markers stay, and the manual handoff (Next steps → `dev-up` +
-   `playwright-validation`, re-`/qa`) stays exactly as before.
+   `playwright-validation`, re-`$qa`) stays exactly as before.
 
 ## Phase 5 — Gate / verify (Verifier → Healer)
 
@@ -341,13 +343,15 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
 ## Phase 7 — Land + report (conductor)
 
 - Under `--apply`: commit the authored tests (Conventional Commits, English).
-  "Commit on `resolved_branch`" means the resolved branch is the **BASE** of the
-  work, not necessarily where the commit lands directly:
-  - **Open release branch** (`resolved_branch` = the release PR's head): commit
-    directly on that branch — current behavior, no new branch.
+  `resolved_branch` is always the **BASE** of the work, never where the commit
+  lands directly (per-session protocol — one session, one branch, one PR):
+  - **Release repo** (`resolved_branch` = the release): land as a session
+    branch `qa/<fecha>-<slug>` cut FROM the release, PR targeting the release
+    (stacked). Never commit directly on the release branch.
   - **Prod-direct repo** (`resolved_branch` = `main`/`master`): land as a
-    `qa/<fecha>` branch + PR targeting `resolved_branch`, per
-    `git-branch-protocol` — NEVER push directly to a project repo's main.
+    `qa/<fecha>-<slug>` branch + PR targeting `resolved_branch`.
+  Open the PR at first push with `Sesión:`/`Intención:` in the body, per
+  `git-branch-protocol` — NEVER push directly to a project repo's base branches.
   **Do not merge.**
 - **Git identity before committing:** `git var GIT_COMMITTER_IDENT` fails on a
   fresh clone — if it does, configure `user.name`/`user.email` **repo-local**
@@ -366,12 +370,12 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
   current `unvalidated_specs`. Respect the caps (quirks 30, watchlist 10) and
   the no-metrics rule. Commit it to the TOOLKIT on master as its own small
   commit — never mixed into the project's QA commit.
-- Close per `[[_output-protocol]]`. **Suggest — never run** — `/deploy-and-check`
-  and `/merge-when-green` in Next steps.
+- Close per `$output-protocol`. **Suggest — never run** — `$deploy-and-check`
+  and `$merge-when-green` in Next steps.
 
 ## Phase 8 — System retro: fix-or-file (conductor)
 
-The /qa system improves itself the way it improved through the pilots — every
+The $qa system improves itself the way it improved through the pilots — every
 run ends by triaging the frictions it hit **in the system** (engine errors,
 wrong or ambiguous skill/agent text, core false positives/negatives, doc gaps).
 Accumulate them during the run; act ONCE, here, after Phase 7. Findings about
@@ -414,7 +418,7 @@ Hard guardrails (all always ON):
 
 ## Fleet mode (analysis-only)
 
-`/qa --all-repos` (this host) or `/qa --all-vps` (fleet via tailscale) call
+`$qa --all-repos` (this host) or `$qa --all-vps` (fleet via tailscale) call
 `qa-agent.sh` in fleet mode: gate + flow-audit + per-project verdict + per-host
 report. **No authoring** — subagents run where Claude runs, and there is no Claude
 on a VPS. Authoring is always local + single-project. On a tailscale auth pause
@@ -440,7 +444,7 @@ substitute for billing-blocked private repos and the Fase 5b runner.
 
 Sin menú por diseño (§4): el cierre es el veredicto duro del gate; los siguientes pasos viven en el reporte y su Next steps.
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
+Reportar siguiendo $output-protocol. Plantilla específica de `$qa`
 (single-project):
 
 ```markdown
@@ -461,13 +465,13 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 | Mutation gate (si hay tooling) | ⏭️ | diff-scoped · survivors=N (o ⏭️ sin tooling) |
 | Healer | ⏭️ | N tests reparados (≤3 intentos c/u) · 0 cambios a código prod |
 | Junk purge (test-audit) | ⏭️ | dry-run: N candidatos DELETE/MERGE, sin aplicar |
-| Land | ✅ | commit en <resolved_branch>; sin merge (queda para merge-when-green) |
+| Land | ✅ | rama qa/<fecha>-<slug> + PR base=<resolved_branch>; sin merge (queda para merge-when-green) |
 
 ## Next steps
 - `bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proj> --files=<spec>` — reconfirmar el gate
-- (operador) `dev-up` + re-`/qa --apply` para VALIDAR los e2e en draft
-- (operador) `/merge-when-green` — integrar cuando el CI esté verde (QA nunca mergea)
-- (operador, opcional) `/deploy-and-check` — desplegar (sugerencia, nunca auto)
+- (operador) `dev-up` + re-`$qa --apply` para VALIDAR los e2e en draft
+- (operador) `$merge-when-green` — integrar cuando el CI esté verde (QA nunca mergea)
+- (operador, opcional) `$deploy-and-check` — desplegar (sugerencia, nunca auto)
 ```
 
 Casos de veredicto:

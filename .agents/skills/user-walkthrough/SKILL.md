@@ -1,7 +1,6 @@
 ---
-name: user-walkthrough
+name: "user-walkthrough"
 description: "Genera una guía paso a paso, amigable y no técnica, para que un usuario pueda entender, probar y validar cualquier funcionalidad, vista u opción del sistema. Úsalo cuando necesites explicarle a alguien no técnico cómo usar algo."
-argument-hint: "[funcionalidad, vista u opción a explicar]"
 ---
 
 # User Walkthrough
@@ -48,7 +47,7 @@ Señales visibles de éxito: un mensaje de confirmación, un cambio en pantalla,
 
 ## Output final
 
-Excepción output-es-el-producto de [[_output-protocol]]: la guía ES el entregable (para un usuario final no técnico). El cierre técnico se separa de la guía con la línea `— fin de la guía —` y se reduce a SÓLO la línea de veredicto, sin tabla de dimensiones ni Next steps técnicos:
+Excepción output-es-el-producto de $output-protocol: la guía ES el entregable (para un usuario final no técnico). El cierre técnico se separa de la guía con la línea `— fin de la guía —` y se reduce a SÓLO la línea de veredicto, sin tabla de dimensiones ni Next steps técnicos:
 
 — fin de la guía —
 

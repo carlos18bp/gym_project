@@ -1,0 +1,7 @@
+interface:
+  display_name: "Output Protocol"
+  short_description: "Contrato compartido del bloque final de respuesta de toda..."
+  default_prompt: "Use $output-protocol to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: false

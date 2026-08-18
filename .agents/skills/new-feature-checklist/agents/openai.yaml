@@ -1,3 +1,7 @@
 interface:
   display_name: "New Feature Checklist"
-  short_description: "Help with New Feature Checklist tasks"
+  short_description: "Checklist for new features — ensures fake data creation..."
+  default_prompt: "Use $new-feature-checklist to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

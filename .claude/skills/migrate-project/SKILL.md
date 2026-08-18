@@ -45,9 +45,9 @@ La detección usa `resolve_server_alias` + `is_dev_machine` de `scripts/lib/boot
 
 | Modo | Qué hace | ¿Downtime? |
 |---|---|---|
-| `--check` | Preflight + dry-run report de los 16 pasos. Sin mutaciones. | No |
-| `--apply` | Pasos 1-15: snapshot + transfer + clone + DB + media + bootstrap en target. Services en origin SIGUEN VIVOS. Idempotente. | No |
-| `--cutover --confirm-downtime` | Paso 16: stop origin → final delta dump → start target → DNS guidance → smoke tests → commit `projects.yml` flip | **Sí, ≤5 min HTTP / ≈0 min si SSL blue-green** |
+| `--check` | Preflight + dry-run report de los 20 pasos. Sin mutaciones. | No |
+| `--apply` | Pasos 1-19: snapshot + transfer + clone + DB + media + bootstrap + systemd/nginx/SSL en target. Services en origin SIGUEN VIVOS. Idempotente. | No |
+| `--cutover --confirm-downtime` | Paso 20: stop origin → final delta dump → start target → DNS guidance → smoke tests → commit `projects.yml` flip | **Sí, ≤5 min HTTP / ≈0 min si SSL blue-green** |
 | `--rollback` | Restart origin services, deja target en warm spare. DNS flip back es manual. | Reversión |
 
 ## Cómo invocar este skill

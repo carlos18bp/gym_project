@@ -1,0 +1,7 @@
+interface:
+  display_name: "Qa"
+  short_description: "QA conductor for a project: after a feature or fix is..."
+  default_prompt: "Use $qa to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

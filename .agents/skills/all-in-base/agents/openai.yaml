@@ -1,0 +1,7 @@
+interface:
+  display_name: "All In Base"
+  short_description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en..."
+  default_prompt: "Use $all-in-base to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

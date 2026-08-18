@@ -1,7 +1,6 @@
 ---
-name: test-quality-gate
+name: "test-quality-gate"
 description: "Phased plan to raise the Test Quality Gate score by refactoring high-impact backend and frontend tests. Use when the user wants to improve test quality or fix quality gate failures."
-argument-hint: "[--include-file <archivo> …] [--include-glob '<patrón>'] [--external-lint run] [--junk-severity=error]"
 ---
 
 # Test Quality Improvement Strategy
@@ -14,9 +13,9 @@ Create and execute a phased strategy to improve test quality by selecting a crit
 
 | Skill | Question it answers |
 |---|---|
-| [[test-audit]] | Which of these tests should exist at all? |
-| [[fix-broken-tests]] | Why is this specific test failing? |
-| [[qa]] | Runs this gate as its Phase 5 via `qa-agent.sh --verify` |
+| $test-audit | Which of these tests should exist at all? |
+| $fix-broken-tests | Why is this specific test failing? |
+| $qa | Runs this gate as its Phase 5 via `qa-agent.sh --verify` |
 | **test-quality-gate** | **How do I raise the gate score on tests I am keeping?** |
 
 ## Cómo invocar este skill
@@ -24,7 +23,7 @@ Create and execute a phased strategy to improve test quality by selecting a crit
 Sin picker por diseño: los flags son tuning del gate; --write-junk-baseline se
 TIPEA (el ratchet sólo se congela deliberadamente — blocklist §4).
 
-Con flags o intención clara → ejecutar directo. Invocada por [[qa]] (Phase 5,
+Con flags o intención clara → ejecutar directo. Invocada por $qa (Phase 5,
 vía `qa-agent.sh --verify`): hereda su gating y ahí NUNCA pregunta; tampoco en
 fleet/headless/cron.
 
@@ -52,9 +51,11 @@ Their severity is decided against `.junk-baseline.json` (the ratchet): with
 shrinks — after cleaning a batch, regenerate it with
 `--semantic-rules strict --write-junk-baseline`.
 
-A false positive is excused with a `quality: allow-*` marker. Six exist —
-`allow-no-interaction`, `allow-deep-link`, `allow-render-only`,
-`allow-duplicate`, `allow-mock-only`, `allow-reimpl` — the reason in
+A false positive is excused with a `quality: allow-*` marker. The registry
+lives in the canonical table (`TESTING_QUALITY_STANDARDS.md` §Junk-rule allow
+markers) plus the gate-local set in `test_quality_gate.py`
+`ALLOW_MARKER_RULE_IDS` — consult those, never a list copied here (F104: a
+hardcoded "six exist" survived two registry expansions). The reason in
 parentheses is **mandatory**, and the marker goes **inside the test block**:
 `// quality: allow-mock-only (fire-and-forget; the effect lives in the collaborator)`.
 
@@ -134,7 +135,7 @@ The JSON report lands at `test-results/test-quality-report.json` by default.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
@@ -147,7 +148,7 @@ una decisión deliberada que se tipea (blocklist §4).
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill
 (una fila por fase del plan; ⏭️ si la fase queda fuera del scope elegido):
 
 ```markdown

@@ -1,6 +1,7 @@
 interface:
   display_name: "Git Commit"
-  short_description: "Help with Git Commit tasks"
+  short_description: "Inspect git changes, generate a professional commit message..."
+  default_prompt: "Use $git-commit to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: false

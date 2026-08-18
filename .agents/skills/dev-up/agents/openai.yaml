@@ -1,6 +1,7 @@
 interface:
   display_name: "Dev Up"
-  short_description: "Bootstrap and run the local dev servers"
+  short_description: "Levanta el entorno de desarrollo LOCAL de un proyecto Django..."
+  default_prompt: "Use $dev-up to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: false

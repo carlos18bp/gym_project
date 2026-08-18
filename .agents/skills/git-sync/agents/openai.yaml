@@ -1,6 +1,7 @@
 interface:
   display_name: "Git Sync"
-  short_description: "Help with Git Sync tasks and workflows"
+  short_description: "Sync the current branch: inspecciona stashes existentes..."
+  default_prompt: "Use $git-sync to handle this task with its documented workflow."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

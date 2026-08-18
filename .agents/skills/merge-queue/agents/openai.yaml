@@ -1,0 +1,7 @@
+interface:
+  display_name: "Merge Queue"
+  short_description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N..."
+  default_prompt: "Use $merge-queue to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

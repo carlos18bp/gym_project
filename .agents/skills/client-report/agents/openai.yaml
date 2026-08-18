@@ -1,6 +1,7 @@
 interface:
   display_name: "Client Report"
-  short_description: "Create and browse client-facing change reports"
+  short_description: "Reportes de cambios para el cliente (docs/reports/): crea..."
+  default_prompt: "Use $client-report to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: true

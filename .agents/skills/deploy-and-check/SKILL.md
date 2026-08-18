@@ -1,9 +1,6 @@
 ---
-name: deploy-and-check
+name: "deploy-and-check"
 description: "VPS-only — Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
-disable-model-invocation: true
-allowed-tools: Bash, AskUserQuestion
-argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
 ---
 
 ## Entorno requerido
@@ -21,7 +18,7 @@ if is_dev_machine; then
   echo "❌ Esta skill no se puede ejecutar desde la dev machine."
   echo "   SSH primero al VPS destino:"
   echo "     ssh vps-projectapp-staging · vps-projectapp-prod · vps-gym"
-  echo "     cd ~/webapps/<proyecto> && claude → /deploy-and-check"
+  echo "     cd ~/webapps/<proyecto> && claude → $deploy-and-check"
   exit 2
 fi
 echo "✅ Entorno VPS detectado, procediendo."
@@ -40,8 +37,8 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-
 - **Branch**: por defecto usa la rama en que está parado el repositorio. Pasar argumento para hacer checkout a otra rama.
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `/deploy-and-check` → despliega en la rama actual del repo.
-> - Con argumento: `/deploy-and-check release/may-2026` → hace checkout a esa rama y despliega.
+> - Sin argumento: `$deploy-and-check` → despliega en la rama actual del repo.
+> - Con argumento: `$deploy-and-check release/may-2026` → hace checkout a esa rama y despliega.
 >
 > Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name (empty if omitted).
 
@@ -51,9 +48,9 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-
 
 Skill **manual-only por política** (`disable-model-invocation: true`): no es
 auto-invocable ni ofrecible como opción clickeable por otras skills — este picker
-aplica sólo cuando el operador la invoca por slash. Gating ([[_output-protocol]] §4):
+aplica sólo cuando el operador la invoca por slash. Gating ($output-protocol §4):
 
-1. Con argumento (`/deploy-and-check <rama>`) → ejecutar directo, sin menú.
+1. Con argumento (`$deploy-and-check <rama>`) → ejecutar directo, sin menú.
 2. Rama clara por el contexto de la sesión → proponer el comando en una línea y
    esperar confirmación.
 3. Sin argumento e intención difusa → UNA `AskUserQuestion` (Q1). Nunca en modo
@@ -63,8 +60,8 @@ aplica sólo cuando el operador la invoca por slash. Gating ([[_output-protocol]
 
 | label | description | preview |
 |---|---|---|
-| Rama actual del clon (Recommended) | despliega la rama en que está parado el repo (`git rev-parse --abbrev-ref HEAD`, el default de Phase 0) | `/deploy-and-check` |
-| Otra rama | elegir Other y tipear el nombre — hace checkout a esa rama y despliega | `/deploy-and-check <rama>` |
+| Rama actual del clon (Recommended) | despliega la rama en que está parado el repo (`git rev-parse --abbrev-ref HEAD`, el default de Phase 0) | `$deploy-and-check` |
+| Otra rama | elegir Other y tipear el nombre — hace checkout a esa rama y despliega | `$deploy-and-check <rama>` |
 
 **Qué NO se pregunta:** nada oculto — el único argumento es la rama.
 
@@ -316,7 +313,7 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
@@ -329,8 +326,8 @@ corrieron en Phase 3 y cualquier restart extra exige leer el journal antes.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/deploy-and-check`:
+Reportar siguiendo $output-protocol. Plantilla específica de
+`$deploy-and-check`:
 
 ```markdown
 🟢 deploy-and-check OK — <proyecto> @ <rama>
