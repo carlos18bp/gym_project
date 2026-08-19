@@ -1,8 +1,6 @@
 ---
-name: fake-data-refresh
+name: "fake-data-refresh"
 description: "Borra y recrea fake data en un proyecto Django. Refusa en producción. Detecta automáticamente las management commands del proyecto (delete_fake_data + create_fake_data) y las ejecuta con guardrails. Funciona en staging del fleet, dev local y proyectos no registrados."
-argument-hint: "[proyecto] [--records=N] [--skip-delete] [--dry-run]"
-allowed-tools: Bash, Read, AskUserQuestion
 ---
 
 # Fake Data Refresh
@@ -15,22 +13,22 @@ Skill para refrescar (`delete + create`) la fake data de un proyecto Django. Dis
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): flags/argumentos explícitos (`[proyecto]`,
+Gating ($output-protocol §4): flags/argumentos explícitos (`[proyecto]`,
 `--records=`, `--skip-delete`, `--dry-run`) → ejecutar directo, sin menú.
 Intención clara por la sesión (recién cambió un modelo y pide data fresca) →
 proponer el comando en una línea y esperar confirmación. Sin argumentos → UNA
 sola `AskUserQuestion` (Q1). Nunca preguntar en modo fleet/headless/cron ni
 dentro de un barrido.
 
-**Invocada por `/qa` (conductor): hereda su gating — dentro del barrido del
+**Invocada por `$qa` (conductor): hereda su gating — dentro del barrido del
 conductor esta skill NUNCA pregunta** (regla 4 de §4).
 
 **Q1 — Modo** (selección única):
 
 | label | description | preview |
 |---|---|---|
-| Dry-run (`--dry-run`) *(Recommended)* | corre gate + detección + sondeo de signatures e imprime el plan exacto; no ejecuta nada | `/fake-data-refresh --dry-run` |
-| Aplicar | BORRA y recrea fake data; rehusado en producción por guard | `/fake-data-refresh` |
+| Dry-run (`--dry-run`) *(Recommended)* | corre gate + detección + sondeo de signatures e imprime el plan exacto; no ejecuta nada | `$fake-data-refresh --dry-run` |
+| Aplicar | BORRA y recrea fake data; rehusado en producción por guard | `$fake-data-refresh` |
 
 **Qué NO se pregunta:** `--records=N` y `--skip-delete` son tuning (defaults:
 50 records, delete incluido) — se tipean a propósito. `[proyecto]` tampoco:
@@ -43,7 +41,7 @@ default es el CWD; para otro proyecto se pasa el path tipeado.
 Disparadores:
 
 - "refresca fake data en `<proyecto>`" / "borra y recrea data" / "reseed staging X"
-- Encadenada por el conductor [[qa]] (Fase 3) cuando el trabajo necesita fixtures frescas — con el MISMO gate inverso de producción: en prod el conductor la saltea de entrada
+- Encadenada por el conductor $qa (Fase 3) cuando el trabajo necesita fixtures frescas — con el MISMO gate inverso de producción: en prod el conductor la saltea de entrada
 - Después de un cambio de modelo / FK / lógica de negocio (referenciado por `new-feature-checklist`)
 - Cuando los counts de modelos quedaron en 0 o incoherentes
 - Como paso intermedio antes de invocar `playwright-validation` si el flujo a probar necesita data fresca
@@ -160,10 +158,31 @@ CMD_DIR="${PROJ_PATH}/backend"
 [ -f "${CMD_DIR}/manage.py" ] || CMD_DIR="${PROJ_PATH}"
 [ -f "${CMD_DIR}/manage.py" ] || { echo "FATAL: no manage.py en ${PROJ_PATH} ni en ${PROJ_PATH}/backend"; exit 2; }
 
-# Localizar venv
-VENV_PY="${PROJ_PATH}/.venv/bin/python"
-[ -x "$VENV_PY" ] || VENV_PY="${PROJ_PATH}/venv/bin/python"
-[ -x "$VENV_PY" ] || { echo "FATAL: no .venv/venv ejecutable en ${PROJ_PATH}"; exit 2; }
+# Localizar venv. Fuente primaria: venv_path de projects.yml — 16 de 17 proyectos
+# del fleet lo tienen en backend/venv/, no en la raiz, asi que probar solo .venv/ y
+# venv/ hacia FATAL en casi todos los targets reales de esta skill.
+# $deploy-and-check ya resuelve el venv asi; esta skill se alinea.
+VENV_PY=""
+if $IN_FLEET; then
+  VENV_REL=$(awk -v p="$PROJ_NAME" '
+      /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+      n==p && /^[[:space:]]+venv_path:/{
+        sub(/^[[:space:]]+venv_path:[[:space:]]*/,""); gsub(/"/,""); print; exit}
+  ' "${OPS_ROOT}/projects.yml")
+  [ -n "$VENV_REL" ] && [ -x "${PROJ_PATH}/${VENV_REL}" ] && VENV_PY="${PROJ_PATH}/${VENV_REL}"
+fi
+for candidate in "${PROJ_PATH}/.venv/bin/python" "${PROJ_PATH}/venv/bin/python" "${PROJ_PATH}/backend/venv/bin/python"; do
+  [ -n "$VENV_PY" ] && break
+  [ -x "$candidate" ] && VENV_PY="$candidate"
+done
+[ -n "$VENV_PY" ] || { echo "FATAL: no venv ejecutable en ${PROJ_PATH} (probe venv_path de projects.yml, .venv/, venv/, backend/venv/)"; exit 2; }
+echo "VENV detectado: $VENV_PY"
+
+# Los management commands corren DESDE CMD_DIR: los seeders usan paths
+# relativos al cwd (gym create_legal_requests -> os.listdir('media/example_files/'))
+# y con cwd=repo-root revientan a mitad del create, dejando la DB en estado
+# parcial (F99).
+cd "$CMD_DIR" || { echo "FATAL: no pude cd a ${CMD_DIR}"; exit 2; }
 
 # Inventariar management commands. NO silenciar un `manage.py help` roto:
 # distinguir "el proyecto no arranca" de "no tiene el comando".
@@ -191,10 +210,21 @@ CREATE_HELP="$("$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" --help 2>/dev/nul
 CREATE_ARGS=()
 if grep -q -- '--number-of-records' <<<"$CREATE_HELP"; then
   CREATE_ARGS=(--number-of-records="$RECORDS")
-elif grep -qE '^\s+records|positional arguments' <<<"$CREATE_HELP"; then
-  CREATE_ARGS=("$RECORDS")
 else
-  echo "AVISO: ${HAS_CREATE} no expone cantidad en --help; correrá con sus defaults."
+  # Per-domain volume flags: some seeders split the count per model instead of
+  # taking one total (Vástago: `--users N --items N`). They are independent, so
+  # take whichever the command actually exposes. Without this branch --records
+  # was accepted and then silently dropped: the run fell through to "correrá con
+  # sus defaults" and created 0 extra rows while reporting success.
+  grep -qE '(^|[[:space:]])--items([[:space:]]|=)' <<<"$CREATE_HELP" && CREATE_ARGS+=(--items "$RECORDS")
+  grep -qE '(^|[[:space:]])--users([[:space:]]|=)' <<<"$CREATE_HELP" && CREATE_ARGS+=(--users "$RECORDS")
+fi
+if [ "${#CREATE_ARGS[@]}" -eq 0 ]; then
+  if grep -qE '^\s+records|positional arguments' <<<"$CREATE_HELP"; then
+    CREATE_ARGS=("$RECORDS")
+  else
+    echo "AVISO: ${HAS_CREATE} no expone cantidad en --help; correrá con sus defaults."
+  fi
 fi
 DELETE_ARGS=()
 if [ -n "$HAS_DELETE" ]; then
@@ -214,7 +244,9 @@ fi
 # ---- Delete ----
 if [ -n "$HAS_DELETE" ] && ! $SKIP_DELETE; then
   echo ">>> Ejecutando: ${HAS_DELETE} ${DELETE_ARGS[*]:-}"
-  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" "${DELETE_ARGS[@]:-}" || { echo "FATAL: ${HAS_DELETE} falló."; exit 2; }
+  # ${arr[@]+"${arr[@]}"} and NOT "${arr[@]:-}": the latter expands an empty
+  # array to one EMPTY argument, and Django answers `unrecognized arguments:`.
+  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" ${DELETE_ARGS[@]+"${DELETE_ARGS[@]}"} || { echo "FATAL: ${HAS_DELETE} falló."; exit 2; }
 elif $SKIP_DELETE; then
   echo "Saltando delete (--skip-delete)"
 else
@@ -223,7 +255,7 @@ fi
 
 # ---- Create ----
 echo ">>> Ejecutando: ${HAS_CREATE} ${CREATE_ARGS[*]:-} (objetivo: ${RECORDS})"
-"$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" "${CREATE_ARGS[@]:-}" || { echo "FATAL: ${HAS_CREATE} falló."; exit 2; }
+"$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" ${CREATE_ARGS[@]+"${CREATE_ARGS[@]}"} || { echo "FATAL: ${HAS_CREATE} falló."; exit 2; }
 
 # ---- Verificar resultado ----
 echo ">>> Conteo post-create:"
@@ -254,7 +286,7 @@ de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 | Flag | Default | Descripción |
 |---|---|---|
 | `[proyecto]` | `$(pwd)` | Path al proyecto. Si se omite, usa el CWD. |
-| `--records=N` | `50` | Cantidad objetivo **por modelo principal** (50 alcanza para paginar 2 páginas en E2E). La signature real se sondea vía `--help`. |
+| `--records=N` | `50` | Cantidad objetivo **por modelo principal** (50 alcanza para paginar 2 páginas en E2E). La signature real se sondea vía `--help`: `--number-of-records=N`, el par `--users N --items N` (se pasan los que el comando exponga), o un posicional. Si no expone ninguna, avisa y corre con defaults — el valor NO se aplica. |
 | `--skip-delete` | `false` | Salta el delete y solo crea (⚠️ acumula registros — no idempotente). |
 | `--dry-run` | `false` | Corre gate + detección + sondeo de signatures (reales) e imprime el plan exacto sin ejecutar delete/create. Exit 0. |
 
@@ -299,19 +331,19 @@ de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Aplicar el plan del dry-run | ejecuta el delete + create exactos que mostró el plan (BORRA fake data; prod sigue bloqueada por el gate) | `/fake-data-refresh <proyecto>` |
-| Re-correr con más volumen | más registros por modelo para paginación E2E profunda; delete + create de nuevo | `/fake-data-refresh <proyecto> --records=200` |
-| Dry-run del hermano staging | plan read-only de otro target real (tuhuella/vastago/tenndalux/gym_project_staging) | `/fake-data-refresh ~/webapps/<hermano> --dry-run` |
+| Aplicar el plan del dry-run | ejecuta el delete + create exactos que mostró el plan (BORRA fake data; prod sigue bloqueada por el gate) | `$fake-data-refresh <proyecto>` |
+| Re-correr con más volumen | más registros por modelo para paginación E2E profunda; delete + create de nuevo | `$fake-data-refresh <proyecto> --records=200` |
+| Dry-run del hermano staging | plan read-only de otro target real (tuhuella/vastago/tenndalux/gym_project_staging) | `$fake-data-refresh ~/webapps/<hermano> --dry-run` |
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill:
 
 ```markdown
 🟢 fake-data-refresh OK — <proyecto>

@@ -1,7 +1,7 @@
 ---
 name: merge-when-green
 description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni en cron/headless. Las ramas release se mergean sólo si projects.yml las autoriza (release_merge: <rama>); sin autorización se integran y se espera el CI, sin merge. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: Bash, AskUserQuestion, TaskStop
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
 
@@ -75,8 +75,9 @@ Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, s
 menú; (2) intención clara en la sesión ("mergealo cuando esté verde" tras un
 commit reciente de esta conversación) → proponer el comando en una línea y
 esperar confirmación; (3) invocación ambigua (no está claro qué rama/repo se
-integra) → UNA sola AskUserQuestion; (4) nunca en cron/headless ni dentro del
-barrido Path C (los repos del barrido no re-preguntan).
+integra) → UNA sola AskUserQuestion; (4) nunca en cron/headless, ni dentro del
+barrido Path C, ni cuando el flujo viene ya decidido desde [[merge-queue]] o
+[[all-in-base]] (esos llamadores no re-preguntan: entran con defaults).
 
 **Q1 — Método de merge** (`multiSelect: false`; sólo Path A y sólo si el
 operador no lo indicó):
@@ -168,12 +169,13 @@ los Paths B y C.
 
 # Path A — repos de proyecto (PR + CI + merge)
 
-**Resolver la rama de trabajo (git-branch-protocol).** Si `CURRENT` es
-`main`/`master`: buscá una rama abierta para reutilizar (`gh pr list --state open
---json headRefName,url`); si hay una, `git checkout` a ella; si no hay ninguna y
-tenés cambios para commitear, creá una rama nueva (`<prefijo>/<DDMMYYYY>-<desc>`,
-fecha con `date +%d%m%Y`) — ver el protocolo en el `CLAUDE.md` del proyecto. **No
-se mergea `main`/`master` sobre sí mismo.**
+**Resolver la rama de trabajo (git-branch-protocol, protocolo por sesión).** Lo
+normal es llegar acá ya parado en TU rama de sesión (creada en tu worktree al
+empezar el trabajo). Si `CURRENT` es `main`/`master` y tenés cambios para
+commitear: creá TU rama de sesión (`<prefijo>/<DDMMYYYY>-<desc>`, fecha con
+`date +%d%m%Y`) — **nunca** reutilices la rama de otra sesión ni commitees en la
+release; ver el protocolo en el `CLAUDE.md` del proyecto. **No se mergea
+`main`/`master` sobre sí mismo.**
 
 ## Phase 0.5 — Coordenada de trabajo (guards)
 
@@ -268,6 +270,15 @@ Reportá `PR_STATE`, `HOST_ST`, `RELEASE_AUTH` y el valor final de
 `MERGE_ALLOWED` en la tabla de salida: el operador tiene que ver por qué se
 mergeó o por qué no.
 
+**Base de integración de la rama (stacked).** Bajo el protocolo por sesión la
+base de un PR **no siempre es la default**: en un repo que participa del flujo
+release (resolver: `pr_state=single`), una rama de sesión integra contra la
+**release** (`resolved_branch`), y sólo la release misma integra contra la
+default. Mergear un PR de sesión a la release **no** requiere `release_merge`
+(esa autorización gobierna únicamente release→default). Las Phases 1.5 y 2
+derivan `BASE_INT` con esta regla (cada bloque re-deriva lo suyo — las
+variables no sobreviven entre bloques).
+
 ## Phase 1 — Commit + push
 
 Reutilizá el flujo de `/git-commit` sobre la rama de trabajo:
@@ -298,8 +309,26 @@ después porque Phase 2 es la que crea el PR.
 # re-derivar todo acá, igual que Phase 0.5 y Phase 2.
 CURRENT="$(git rev-parse --abbrev-ref HEAD)"
 DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-git fetch origin "$DEFAULT_BRANCH" --quiet 2>/dev/null || true
-BASE="origin/$DEFAULT_BRANCH"
+# BASE_INT — base de integración de ESTA rama (stacked):
+#   1) la rama ya tiene PR abierto → la base ES la del PR;
+#   2) sin PR: repo participante con release viva (pr_state=single) y no estamos
+#      parados EN la release → la release; 3) si no → la default.
+# El nombre del proyecto sale del git-common-dir (en un worktree el toplevel es
+# ~/webapps/.wt/<repo>/<slug>, no el repo).
+BASE_INT="$DEFAULT_BRANCH"
+PR_BASE="$(gh pr view "$CURRENT" --json baseRefName,state -q 'select(.state=="OPEN") | .baseRefName' 2>/dev/null || true)"
+if [ -n "$PR_BASE" ]; then
+    BASE_INT="$PR_BASE"
+else
+    PROJ="$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")"
+    RESOLVER="$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh"
+    if [ -x "$RESOLVER" ]; then
+        RB="$(bash "$RESOLVER" --check "$PROJ" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')"
+        [ -n "$RB" ] && [ "$RB" != "$CURRENT" ] && BASE_INT="$RB"
+    fi
+fi
+git fetch origin "$BASE_INT" --quiet 2>/dev/null || true
+BASE="origin/$BASE_INT"
 LANDED=0; LANDED_HOW=""
 
 # Precondición: sólo se evalúa con el tree limpio. Con cambios sin commitear hay
@@ -311,10 +340,10 @@ if [ "$CURRENT" = "HEAD" ] || ! git rev-parse --verify --quiet "$BASE" >/dev/nul
     echo "⚠️  no evaluable (detached HEAD o falta $BASE) — sigue el flujo normal."
 elif [ -n "$(git status --porcelain)" ]; then
     echo "ℹ️  working tree con cambios — hay trabajo nuevo; sigue el flujo normal."
-elif [ "$CURRENT" = "$DEFAULT_BRANCH" ]; then
-    # La sesión quedó parada sobre la base (la rama anterior la borró --delete-branch
-    # + Phase 6 de la sesión que mergeó). No hay rama de trabajo que integrar.
-    LANDED=1; LANDED_HOW="la sesión ya está sobre $DEFAULT_BRANCH"
+elif [ "$CURRENT" = "$BASE_INT" ]; then
+    # La sesión quedó parada sobre su base de integración (la rama anterior la
+    # borró --delete-branch + el cierre de la sesión que mergeó). Nada que integrar.
+    LANDED=1; LANDED_HOW="la sesión ya está sobre $BASE_INT"
 else
     # Capa 1 — fast path. Cubre --merge, --rebase y la rama ya integrada tal cual.
     AHEAD="$(git rev-list --count "$BASE..HEAD" 2>/dev/null || echo -1)"
@@ -334,7 +363,7 @@ else
         MT="$(printf '%s\n' "$MT_OUT" | head -1)"
         BASE_TREE="$(git rev-parse "$BASE^{tree}" 2>/dev/null || echo none)"
         if [ "$MT_RC" -eq 0 ] && [ -n "$MT" ] && [ "$MT" = "$BASE_TREE" ]; then
-            LANDED=1; LANDED_HOW="mergear a $DEFAULT_BRANCH sería un no-op (mismo árbol)"
+            LANDED=1; LANDED_HOW="mergear a $BASE_INT sería un no-op (mismo árbol)"
         elif [ "$MT_RC" -gt 1 ]; then
             # git < 2.38 no tiene --write-tree. Sin capa 2 no se puede afirmar nada
             # sobre un squash ⇒ seguir el flujo normal (conservador, nunca al revés).
@@ -343,43 +372,54 @@ else
         # Señal informativa: parte del trabajo ya está y parte no.
         EQ="$(git cherry "$BASE" HEAD 2>/dev/null | grep -c '^-' || true)"
         if [ "$LANDED" -eq 0 ] && [ "${EQ:-0}" -gt 0 ]; then
-            echo "⚠️  parcial: $EQ de $AHEAD commit(s) ya están en $DEFAULT_BRANCH, el resto no."
+            echo "⚠️  parcial: $EQ de $AHEAD commit(s) ya están en $BASE_INT, el resto no."
             echo "    NO se cortocircuita — sigue el flujo normal para integrar lo que falta."
         fi
     fi
 fi
 
 if [ "$LANDED" -eq 1 ]; then
-    echo "✅ El trabajo de esta sesión YA está en $DEFAULT_BRANCH ($LANDED_HOW)."
+    echo "✅ El trabajo de esta sesión YA está en $BASE_INT ($LANDED_HOW)."
 else
     echo "→ Hay trabajo por integrar; sigue a Phase 2."
 fi
 ```
+
+**Sesgo del gate (a propósito, hacia el falso negativo):** un tree sucio, un
+`detached HEAD`, la falta de `origin/<base>`, un conflicto del merge de 3 vías o
+un git < 2.38 hacen que NO se cortocircuite y siga el flujo normal. Un falso
+positivo dejaría el trabajo del operador sin mergear para siempre; un falso
+negativo sólo cuesta una espera de CI (el comportamiento de antes). No hay flag
+para desactivarlo. La rama local obsoleta se **nombra pero no se borra**: tras un
+squash, `git branch -d` la rechaza; el `-D` lo decide el operador.
 
 **Si `LANDED=1`:** el trabajo está completo y en la base. Ya pasó el CI que gateó
 aquel merge, así que **saltá Phases 2-5** — ni PR, ni `--watch`, ni merge.
 
 1. **Evidencia** (el operador quiere saber *dónde* aterrizó su trabajo, no sólo
    que aterrizó). Buscá el PR que lo llevó y, si no hay, el commit de la base.
-   Bloque nuevo ⇒ re-derivar las variables (no persisten):
+   Bloque nuevo ⇒ re-derivar las variables (no persisten; `BASE_INT` con la
+   misma receta de arriba):
    ```bash
    CURRENT="$(git rev-parse --abbrev-ref HEAD)"
-   DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
    gh pr list --state merged --head "$CURRENT" --limit 1 \
      --json number,url,mergedAt,mergeCommit 2>/dev/null
-   git log "origin/$DEFAULT_BRANCH" --oneline -1
+   git log "origin/$BASE_INT" --oneline -1
    ```
-2. **Cierre** (equivalente a Phase 6) — dejar la sesión sobre la base al día.
-   Guardá el nombre de la rama obsoleta ANTES del checkout, que es lo que se
-   reporta:
-   ```bash
-   OLD_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-   DEFAULT_BRANCH="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-   git checkout "$DEFAULT_BRANCH" && git pull --ff-only origin "$DEFAULT_BRANCH"
-   if [ "$OLD_BRANCH" != "$DEFAULT_BRANCH" ]; then
-       echo "⏭️  rama local obsoleta: $OLD_BRANCH (NO se borra)"
-   fi
-   ```
+2. **Cierre** (equivalente a Phase 6). Depende de DÓNDE está corriendo la sesión:
+   - **En un worktree de sesión** (`git rev-parse --show-toplevel` cae bajo
+     `.wt/`): **no** se hace checkout de la base — la base vive checkouteada en
+     el clon principal y git lo rechazaría. Sólo `git fetch origin "$BASE_INT"`
+     y reportar; el retiro del worktree lo hace [[all-in-base]] al cierre.
+   - **En el clon principal** (transicional/legacy): volver al **`branch:` de
+     deploy** del proyecto (el `deploy_branch=` que emite el resolver), NUNCA a
+     la default a ciegas — en clones staging que deployan desde la release, un
+     checkout de la default cambiaría el código del servicio corriendo:
+     ```bash
+     OLD_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+     git checkout "$DEPLOY_BRANCH" && git pull --ff-only origin "$DEPLOY_BRANCH"
+     [ "$OLD_BRANCH" != "$DEPLOY_BRANCH" ] && echo "⏭️  rama local obsoleta: $OLD_BRANCH (NO se borra)"
+     ```
    La rama local obsoleta se **reporta, NO se borra** — borrarla es decisión del
    operador.
 3. Reportá con el veredicto `⏭️` (ver "Output final").
@@ -395,14 +435,22 @@ CURRENT="$(git rev-parse --abbrev-ref HEAD)"
 PR_JSON="$(gh pr view "$CURRENT" --json number,url,state,baseRefName 2>/dev/null || echo '')"
 ```
 
-- Si existe un PR **abierto** para `CURRENT` → usalo (`number`, `url`).
+- Si existe un PR **abierto** para `CURRENT` → usalo (`number`, `url`) y tomá su
+  `baseRefName` como la base (no la recalcules).
 - Si `state` es **`MERGED`** o `CLOSED` → **no** cuenta como PR abierto. `gh pr view`
   devuelve el PR más reciente de la rama aunque esté cerrado, así que hay que mirar
   `state` (por eso se pide en el `--json`) y no sólo si vino algo. Llegar acá con un
   `MERGED` significa que Phase 1.5 ya verificó que **hay trabajo nuevo** sobre una
   rama reusada después de su merge → crear un PR nuevo es lo correcto.
-- Si no existe y `CREATE_PR=1` → `gh pr create --base "$DEFAULT_BRANCH" --fill`
-  (título/cuerpo desde los commits). Capturá la URL.
+- Si no existe y `CREATE_PR=1` → crear con la base de integración (`BASE_INT`,
+  misma receta de Phase 1.5: la release en repos participantes, la default si no)
+  y con el **ownership del protocolo por sesión** en el body:
+  ```bash
+  gh pr create --base "$BASE_INT" --fill \
+    --body "$(printf 'Sesión: %s\nIntención: %s\n\n%s' "<nombre de la sesión, o el slug de la rama si no lo sabés>" "<1 línea: qué entrega esta rama>" "<resumen de los commits>")"
+  ```
+  Capturá la URL. Las dos líneas `Sesión:` / `Intención:` son el contrato que
+  [[merge-queue]] usa para delegar conflictos a la sesión dueña — no las omitas.
 - Si no existe y `CREATE_PR=0` → **frená** y reportá: "rama sin PR abierto; pasá sin
   `--no-create-pr` o abrí el PR a mano".
 
@@ -412,6 +460,7 @@ Reportá la URL del PR (`PR URL: <url>`).
 
 ```bash
 # Bloquea hasta que todos los checks resuelvan; no aborta al primer fallo.
+# Llamada foreground: pasarle timeout: 600000 al tool Bash (su default es 120000).
 gh pr checks "$PR_NUMBER" --watch --fail-fast=false; RC=$?
 # Estado por check (nombre + conclusión) para clasificar:
 gh pr checks "$PR_NUMBER" --json name,state,bucket 2>/dev/null \
@@ -421,7 +470,13 @@ gh pr checks "$PR_NUMBER" --json name,state,bucket 2>/dev/null \
 
 - `RC == 0` (todos los checks en verde/`bucket=pass`) → **Phase 5 (merge)**.
 - Algún check en `fail` → **Phase 4 (fix loop)**.
-- Checks `pending` que nunca resuelven (timeout del `--watch`) → reportá y frená.
+- El `--watch` foreground muere al tope de la tool Bash (600000 ms; exit 143 —
+  les pasa a suites E2E largas). Si expira: **NO re-bloquees con otro `--watch`**.
+  Montá el watcher variante PR-checks del «Cierre asíncrono de CI» (abajo) con
+  `NEXT:` verde = "retomar Phase 5 (merge) del PR #<n>" / rojo = "Phase 4 (fix
+  loop)", reportá `⏸️ CI en vuelo — CI-MONITOR [<repo>#<n>] montado` y cortá el
+  turno: el flujo se retoma al llegar la notificación (regla de reanudación de
+  esa sección, re-verificando el estado en vivo).
 - Si el PR **no tiene checks** (repo sin CI en esa rama) → avisá "sin checks; no
   hay verde que esperar" y frená (no mergees a ciegas salvo que el operador lo pida).
 
@@ -477,6 +532,10 @@ if [ "${MERGE_ALLOWED:-1}" = "0" ]; then
 fi
 ```
 
+Antes de terminar con `MERGE_ALLOWED=0`, aplicá el «Cierre asíncrono de CI»
+(caso release-hold): normalmente NO se monta nada — Phase 3 ya vio el veredicto
+del PR; sólo queda watcher si su `--watch` expiró.
+
 Con `MERGE_ALLOWED=1`, seguí normalmente:
 
 ```bash
@@ -515,11 +574,22 @@ refrescar `branch_working`/`branch:` ahora que la release aterrizó.
 **No corras esta fase si `MERGE_ALLOWED=0`** — no hubo merge y la rama release
 sigue siendo la rama de trabajo del proyecto.
 
-```bash
-git checkout "$DEFAULT_BRANCH" && git pull --ff-only origin "$DEFAULT_BRANCH"
-```
+El cierre **nunca flipea el checkout del clon principal** (en VPS es el tree del
+servicio corriendo):
 
-Reportá el PR mergeado + el SHA del merge en `$DEFAULT_BRANCH`.
+- **En un worktree de sesión** (`git rev-parse --show-toplevel` bajo `.wt/`):
+  sólo `git fetch origin "$PR_BASE"` para dejar la ref al día. El worktree se
+  retira en el cierre de sesión ([[all-in-base]]) o lo limpia [[merge-queue]].
+- **En el clon principal** (transicional/legacy): volver al `branch:` de deploy
+  del proyecto (`deploy_branch=` del resolver) y `git pull --ff-only` — no a la
+  default a ciegas (clones staging deployan desde la release).
+
+Reportá el PR mergeado + el SHA del merge en la base del PR.
+
+Cerrá con el «Cierre asíncrono de CI» (caso Path A mergeado): **sweep** de
+watchers propios obsoletos primero; después, si el squash disparó un run en
+la base que sigue en vuelo (`gh pr view <n> --json mergeCommit` da el
+SHA), UN watcher sobre `<base>@<merge-sha>`.
 
 ---
 
@@ -666,6 +736,7 @@ else
         --workflow=validation-coverage.yml --json databaseId -q '.[0].databaseId' 2>/dev/null || true)"
     # El run puede tardar unos segundos en aparecer; reintentá 1-2 veces si viene vacío.
     if [ -n "$RUN_ID" ]; then
+        # gh run watch es foreground: pasarle timeout: 600000 al tool Bash.
         gh run watch "$RUN_ID" --exit-status; echo "CI_RC=$?"
     else
         echo "⚠️  aún no aparece el run para $SHA; revisá: gh run list --branch master --limit 3"
@@ -679,6 +750,12 @@ fi
   no se puede "des-pushear") → el operador arregla **hacia adelante** con un commit de
   fix. NO revierte el commit ya hecho.
 - Sin `gh` → saltar; el run corre igual en GitHub Actions (revisar a mano).
+- El `gh run watch` expiró (exit 143) o el run no apareció tras 1-2 reintentos →
+  **NO re-bloquees**: montá el watcher canónico del «Cierre asíncrono de CI»
+  sobre `master@<SHA>` (su loop tolera el run ausente), reportá la fila
+  `Monitor CI 👁️` y seguí al Output final — la notificación trae el veredicto
+  (rojo ⇒ fix hacia adelante; master no se des-pushea). Con `--no-ci-watch` NO
+  se monta nada: el opt-out es del operador.
 
 ---
 
@@ -711,9 +788,11 @@ Por cada repo en `REPOS`, con `cd "$HOME/webapps/<repo>"`:
    pushear (`git log @{u}..HEAD`). No generes mensaje ni toques nada; antes de
    clasificar corré el chequeo de **Phase 1.5** (con su `git fetch` de la base):
    - la rama ya está contenida en la base → ⏭️ `skipped:ya-en-base`. Nombrá la
-     rama obsoleta (**no la borres**) y dejá ese clon al día:
-     `git checkout <base> && git pull --ff-only origin <base>` (el tree está
-     limpio por la condición de este paso).
+     rama obsoleta (**no la borres**) y dejá ese clon en su **`branch:` de
+     deploy** (`deploy_branch=` del resolver) con `git pull --ff-only` — nunca
+     un checkout de la default a ciegas: en clones staging que deployan desde
+     la release cambiaría el código del servicio corriendo. Si el clon YA está
+     en su rama de deploy, sólo el pull.
    - no está → ⏭️ `skipped:sin-cambios`, como hasta ahora.
 2. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
    `skipped:wrong-host:<vps_work>`; ese repo se trabaja en otro VPS.
@@ -753,6 +832,104 @@ final lista los N repos con su estado.
 
 ---
 
+## Cierre asíncrono de CI
+
+**Por qué:** un CI-wait bloqueante (`gh pr checks --watch`, `gh run watch`) corre
+foreground bajo el timeout de la tool Bash (default 120000 ms; máx 600000) — una
+suite E2E larga lo mata con exit 143 y el veredicto se pierde. La alternativa: el
+veredicto llega como **notificación de una task de fondo** (Bash con
+`run_in_background`), que corre detached, sobrevive turnos y no está sujeta al
+timeout foreground. Esta sección es el contrato canónico; [[merge-queue]] y
+[[all-in-base]] lo instancian por prosa.
+
+**Regla de no-redundancia:** se monta un watcher SÓLO si queda un run/checks EN
+VUELO cuyo veredicto esta sesión no vio. Antes de montar, UN chequeo
+`--json status`: si ya está `completed` → veredicto inline, sin watcher. Verde ya
+confirmado (T4 con `CI_RC=0`, `--watch` con RC=0, short-circuit ya-en-base) ⇒
+nada. Rojo ya visto ⇒ nada (ya se reportó con `--log-failed`). **Máximo un
+watcher por objeto** — jamás dos del mismo run/PR.
+
+**Qué monitorear por caso:**
+
+| Caso | Al cierre |
+|---|---|
+| Path A mergeado | el run de la BASE para el merge SHA (`gh pr view <n> --json mergeCommit`) si sigue en vuelo — el CI del PR validó la rama, no el squash sobre la base movida. Repo sin CI on-push a la base → nada, y se dice |
+| Path A release-hold | nada — Phase 3 ya vio el veredicto del PR; watcher sólo si su `--watch` expiró |
+| Path A ya-en-base (1.5) | nada — el CI que gateó aquel merge ya corrió |
+| Path B toolkit | nada si T4 vio `CI_RC`; watcher sobre `master@<SHA>` sólo si el watch expiró o el run no apareció; con `--no-ci-watch`, nada (opt-out del operador) |
+| Path C / [[merge-queue]] | **nada sobre la base** — merge-queue no la vigila: su validación es el run del tren de integración (montado y consumido en su Phase 5) más el verde propio de cada PR; el CI de la base sólo se imprime como eco informativo. Jamás watchers de PRs ya mergeados; los deferred con `--watch` expirado ya montaron el suyo |
+| [[all-in-base]] | sweep de watchers propios obsoletos; mount nada propio (la delegación monta el suyo) |
+
+**Watcher canónico (run de una rama)** — montar con Bash `run_in_background:
+true`. El bloque es autocontenido: los literales se hornean AL MONTAR (las
+variables no persisten entre bloques y `-R` lo hace cwd-independiente). Se
+auto-capea a 2h y **emite igual al agotarse** — el silencio nunca es éxito:
+
+```bash
+R="<owner/repo>"; BR="<base>"; SHA="<sha>"; L="CI-MONITOR [<repo> base:<base>@<sha7>]"
+ID=""; ST="absent"; CONC=""
+for i in $(seq 1 240); do          # 240 × 30s = 2h de tope propio
+  read -r ID ST CONC <<<"$(gh run list -R "$R" --branch "$BR" --commit "$SHA" --limit 1 \
+    --json databaseId,status,conclusion -q '.[0] | "\(.databaseId) \(.status) \(.conclusion)"' 2>/dev/null)"
+  [ "$ST" = "completed" ] && break
+  sleep 30
+done
+case "$CONC" in
+  success) echo "$L ✅ success (run $ID). NEXT: nada pendiente — cerrar." ;;
+  failure|cancelled|timed_out)
+    echo "$L ❌ $CONC (run $ID). NEXT: gh run view $ID -R $R --log-failed → fix hacia adelante." ;;
+  *) if [ -z "$ID" ]; then echo "$L ⚠️ run ausente para $SHA tras 2h. NEXT: gh run list -R $R --branch $BR --limit 3"
+     else echo "$L ⚠️ watcher agotado (status=$ST, run $ID). NEXT: gh run view $ID -R $R"; fi ;;
+esac
+```
+
+**Variante PR-checks** (mismo esqueleto, para un PR cuyo `--watch` expiró):
+terminal cuando `gh pr checks <n> -R <slug> --json bucket -q
+'[.[]|select(.bucket=="pending")]|length'` llega a 0; rojo si algún bucket ∈
+{fail, cancel}. `NEXT:` verde = «retomar merge-when-green Phase 5 (merge) del PR
+#<n>» · rojo = «Phase 4 (fix loop): gh run view <id> --log-failed».
+
+**Labels:** `CI-MONITOR [<repo>#<pr> tren]` · `CI-MONITOR [<repo>#<pr> hold]` ·
+`CI-MONITOR [<repo> base:<default>@<sha7>]` — estables, horneados como literal al
+montar. El reporte final lista el **ledger**: `label → qué vigila → acción al
+resolver` (la referencia cruzada cuando llega cada notificación).
+
+**Reanudación por notificación:** (1) al montar un watcher, registralo en el
+reporte: «👁️ `CI-MONITOR [<label>]` montado (task de fondo) — al llegar su
+notificación: <acción>». (2) La línea final del watcher es autosuficiente (label
++ veredicto + `NEXT:`): al recibir una notificación cuyo output contenga
+`CI-MONITOR [`, tratala como continuación de esta skill **sin reconstruir
+contexto** — respondé con UNA línea de veredicto y ejecutá el `NEXT:` de la
+línea, sin importar cuántos mensajes hubo en el medio. (3) Si el `NEXT:` retoma
+una fase (p.ej. «retomar Phase 5 del PR #n»), **re-verificá el estado en vivo
+antes** (`gh pr view <n> --json state,mergeStateStatus` — otro proceso pudo
+mergearlo/cerrarlo mientras tanto) y recién entonces ejecutala. (4) Con varios
+watchers en vuelo jamás asumas cuál resolvió: **el label lo dice**; respondé
+sólo por el que notificó y dejá los demás listados como "en vuelo".
+
+**Higiene de shells (sweep → mount, siempre en ese orden):**
+- **Matable (las tres condiciones a la vez):** la task la montó ESTA sesión · su
+  comando/output lleva el prefijo `CI-MONITOR [` · quedó obsoleta — su run/PR ya
+  está `completed`/mergeado (confirmalo con UN `gh run view <id> --json status`
+  ANTES de matar) o duplica un watcher del mismo objeto. Matar con `TaskStop`.
+- **Intocable:** cualquier shell sin el prefijo o fuera del ledger de la sesión —
+  dev servers de `dev-up`, `tailscale up`, tasks del operador, otras sesiones.
+  Fuente: tu propio contexto/ledger, **jamás `ps`**. En duda: reportar, no matar.
+- **Orden fijo — sweep ANTES de mount:** el watcher nuevo aún no existe
+  (imposible matarlo por error) y el trabajo recién hecho es lo que invalidó los
+  viejos. Doble seguro: el label nuevo lleva el run-id/SHA nuevo, así que ni un
+  sweep torpe lo matchea.
+
+**Degradación (espejos Codex/Windsurf):** si el harness no soporta shells de
+fondo con notificación, saltá mount y sweep, y dejá en Next steps el comando
+manual `gh run watch <id> -R <repo>`.
+
+**Output final:** si esta sección montó o barrió algo, agregá la fila condicional
+`Monitor CI` (👁️ montado + label / 🧹 N barridos) a la tabla y el bullet de
+respaldo manual en Next steps. Sin actividad de monitores: sin fila (cero ruido).
+
+---
+
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
@@ -762,8 +939,8 @@ Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
 |---|---|---|
 | --merge-method=merge\|rebase | mergear el PR sin squash (conserva los commits de la rama) | `/merge-when-green --merge-method=merge` |
 | --fix-nontest | deja que el fix loop arregle también código no-test (lint/gates rojos) | `/merge-when-green --fix-nontest` |
-| --no-ci-watch | toolkit: push sin esperar acá el run de CI en master | `/merge-when-green --no-ci-watch` |
 | Ver el PR en el browser | abrir el PR para review manual | `gh pr view <n> --web` |
+| Drenar varias ramas/PRs pendientes | si el repo acumuló trabajo de varias sesiones (N ramas/PRs), la cola ordenada la arma [[merge-queue]] | `/merge-queue` |
 
 NUNCA ofrecer `--autonomous` ni `--no-verify` como opciones — se tipean
 deliberadamente (pausa del fix loop / green gate del toolkit). El merge de una
@@ -771,7 +948,10 @@ release tampoco se ofrece: lo decide `release_merge:` en projects.yml.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]].
+Reportar siguiendo [[_output-protocol]]. Si el «Cierre asíncrono de CI» montó o
+barrió monitores, agregá la fila condicional `Monitor CI` (👁️ montado + label /
+🧹 N barridos) y el bullet de respaldo manual en Next steps; sin actividad de
+monitores, sin fila.
 
 **Path A — proyecto (`/merge-when-green` en un repo con PR/CI):**
 

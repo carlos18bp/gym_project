@@ -1,3 +1,7 @@
 interface:
   display_name: "Test Quality Gate"
-  short_description: "Help with Test Quality Gate tasks"
+  short_description: "Phased plan to raise the Test Quality Gate score by..."
+  default_prompt: "Use $test-quality-gate to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

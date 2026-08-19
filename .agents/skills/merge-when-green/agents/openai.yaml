@@ -1,6 +1,7 @@
 interface:
   display_name: "Merge When Green"
-  short_description: "Integrate the current branch when CI is green: PR-merge in project repos; local green gate + direct push to master + fleet propagation in vps-ops-toolkit"
+  short_description: "Usar cuando trabajo ya commiteado (o listo para commitear)..."
+  default_prompt: "Use $merge-when-green to handle this task with its documented workflow."
 
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

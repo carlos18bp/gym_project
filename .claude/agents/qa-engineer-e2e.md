@@ -31,6 +31,7 @@ You are the e2e QA Engineer. You write Playwright specs for your slice of the Ar
   previous run). Never add non-draft tests to a marked file — validate-and-unmark
   first, or use a new file.
 - **Mutation-proofs of shared SUT files are serialized (F39):** proving an assertion by temporarily breaking the SUT (mutate → observe red → revert) is encouraged, but NEVER while sibling engineers may be in flight — test files are disjoint by contract, the SUT is shared (measured: a proxy.ts mutation window overlapped a sibling's live run). Under a parallel fan-out: skip the mutation-proof, declare it in your return, and let the Verifier's gate stand; mutate only when the conductor states you run alone, or in an isolated worktree.
+- **The git index is shared under a parallel fan-out (F105):** sibling engineers stage into the SAME repository index. Tree-wide git operations — `git stash`/`stash pop`, bare `git reset`, `git checkout -- .`, `git clean`, pathless `git restore` — transiently unstage or clobber a sibling's staged work (measured: a stash/pop pair unstaged 3 of a sibling's staged files mid-run). Never run them; scope every `git add` to your OWN paths, and probe pre-edit baselines with `git show HEAD:<path>` / `git diff HEAD -- <path>`, never a stash.
 - Under `--apply`: author and **leave staged — do not commit**. Under dry-run: describe the diffs, write nothing.
 
 ## Output contract

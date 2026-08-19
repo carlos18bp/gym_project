@@ -121,8 +121,9 @@ Run `basename "$(git rev-parse --show-toplevel)"`:
    for every repo. Staging-first otherwise.
 3. **fake-data-refresh only off production.** `--preflight` reports
    `fake_data_allowed`. If `no`, SKIP the fake-data phase — never reseed prod.
-4. **Land on the resolved coordinate.** Commit only on `resolved_branch` from the
-   preflight. `host_status=wrong-host` blocks **authoring/landing** — STOP before
+4. **Land on the resolved coordinate.** `resolved_branch` from the preflight is
+   the BASE; the commit lands on a `qa/<fecha>-<slug>` session branch whose PR
+   targets it (Phase 7). `host_status=wrong-host` blocks **authoring/landing** — STOP before
    writing anything; the work lives in another VPS clone (use its `tailscale
    ssh`). The dry-run analysis (Phases 0–2) MAY proceed on the wrong host,
    flagged ⚠️ and declared in the verdict.
@@ -174,12 +175,16 @@ at the printed path.
   work — no dedicated agent) to build the Memory Bank. Safe anywhere.
 - Flow map: the preflight emits `flow_map_fresh=yes|no`; **if the key is ABSENT,
   the map does not exist** — same action as `no`: dispatch **`qa-analyst`** (it
-  preloads `e2e-user-flows-check`) to derive `frontend/e2e/flow-definitions.json`
-  + `docs/USER_FLOW_MAP.md` from the app's real code — the four outcome classes
-  (success/error/failure/display), **negative cases included**. The Analyst
-  RETURNS both files' content (role boundary: it never writes); the conductor
-  writes them (under dry-run: report the diff, write nothing). This is the
-  Analyst's ONLY duty — ranking belongs to the Architect. If `yes`, skip `⏭️`.
+  preloads `e2e-user-flows-check`) to derive the flow registry from the app's
+  real code — the four outcome classes (success/error/failure/display),
+  **negative cases included**. The Analyst RETURNS the content (role boundary:
+  it never writes); the conductor writes it **in the repo's declared layout**
+  (`.testquality.yml` → `flow_definitions_dir`): sharded ⇒ per-flow JSONs +
+  per-flow docs, then regenerate the derived aggregates with
+  `generate_flow_registry.py` (never hand-edit them); monolith ⇒
+  `frontend/e2e/flow-definitions.json` + `docs/USER_FLOW_MAP.md` as before.
+  Under dry-run: report the diff, write nothing. This is the Analyst's ONLY
+  duty — ranking belongs to the Architect. If `yes`, skip `⏭️`.
 
 ## Phase 2 — Coverage audit + worklist (conductor → Architect)
 
@@ -259,7 +264,11 @@ the pilot series all came from conductor paraphrase. Each engineer:
 - Hard constraints: run only touched files; a `db: mysql` project runs `manage.py`
   with `DJANGO_ENV=production` from `backend/` (see `--preflight db=`); stay inside
   your layer's directory; stop and fix if the gate flags junk on your batch
-  (quality ceiling beats volume); under `--apply` author and **leave staged — do
+  (quality ceiling beats volume) — **the self-check command the preamble hands the
+  engineer MUST carry the EXACT `run_gate_on_files` parity: `--semantic-rules
+  strict --junk-severity=error --external-lint run`** (a mirror without
+  `--external-lint run` measured a 100/100 false-clean against 10 CI-parity ruff
+  errors — F88, 2026-08-13); under `--apply` author and **leave staged — do
   not commit** (the conductor commits once); under dry-run, describe the diffs and
   write nothing.
 - Returns its fixed-format block (the agents' own contract): `STATUS
@@ -341,13 +350,15 @@ per-batch operator approval (test-audit's own guardrail). Dry-run unless `--appl
 ## Phase 7 — Land + report (conductor)
 
 - Under `--apply`: commit the authored tests (Conventional Commits, English).
-  "Commit on `resolved_branch`" means the resolved branch is the **BASE** of the
-  work, not necessarily where the commit lands directly:
-  - **Open release branch** (`resolved_branch` = the release PR's head): commit
-    directly on that branch — current behavior, no new branch.
+  `resolved_branch` is always the **BASE** of the work, never where the commit
+  lands directly (per-session protocol — one session, one branch, one PR):
+  - **Release repo** (`resolved_branch` = the release): land as a session
+    branch `qa/<fecha>-<slug>` cut FROM the release, PR targeting the release
+    (stacked). Never commit directly on the release branch.
   - **Prod-direct repo** (`resolved_branch` = `main`/`master`): land as a
-    `qa/<fecha>` branch + PR targeting `resolved_branch`, per
-    `git-branch-protocol` — NEVER push directly to a project repo's main.
+    `qa/<fecha>-<slug>` branch + PR targeting `resolved_branch`.
+  Open the PR at first push with `Sesión:`/`Intención:` in the body, per
+  `git-branch-protocol` — NEVER push directly to a project repo's base branches.
   **Do not merge.**
 - **Git identity before committing:** `git var GIT_COMMITTER_IDENT` fails on a
   fresh clone — if it does, configure `user.name`/`user.email` **repo-local**
@@ -461,7 +472,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/qa`
 | Mutation gate (si hay tooling) | ⏭️ | diff-scoped · survivors=N (o ⏭️ sin tooling) |
 | Healer | ⏭️ | N tests reparados (≤3 intentos c/u) · 0 cambios a código prod |
 | Junk purge (test-audit) | ⏭️ | dry-run: N candidatos DELETE/MERGE, sin aplicar |
-| Land | ✅ | commit en <resolved_branch>; sin merge (queda para merge-when-green) |
+| Land | ✅ | rama qa/<fecha>-<slug> + PR base=<resolved_branch>; sin merge (queda para merge-when-green) |
 
 ## Next steps
 - `bash $HOME/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --verify <proj> --files=<spec>` — reconfirmar el gate

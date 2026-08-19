@@ -1,7 +1,6 @@
 ---
-name: client-report
+name: "client-report"
 description: "Reportes de cambios para el cliente (docs/reports/): crea uno en español, no técnico, de lo hecho en la sesión. --list tabula; --find busca por tema. Publica al Gestor de Documentos (MCP) si está disponible, confirmando antes de crear/actualizar."
-argument-hint: "[--list | --find <descripción> | <instrucciones libres>]"
 ---
 
 # Client Report — reportes de cambios para el cliente
@@ -12,7 +11,7 @@ explica qué se hizo y le da una guía paso a paso para validarlo él mismo. Est
 skill crea esos reportes con el formato estándar del fleet, y también los lista
 y los busca.
 
-**Cadena:** [[client-message]] corre esta skill como su Phase 4 cuando el operador
+**Cadena:** $client-message corre esta skill como su Phase 4 cuando el operador
 pide además el reporte. Invocable suelta para crear/listar/buscar reportes sin el par
 correo+WhatsApp. La coordenada del Gestor (`gestor:` en
 `config/client-comms/clients/<codebase>.yml`) se resuelve y persiste **acá**, no allá.
@@ -29,10 +28,10 @@ correo+WhatsApp. La coordenada del Gestor (`gestor:` en
   sufijo `_R2`, `_R3` antes de la fecha.
 
 > **⚠️ How to invoke**:
-> - `/client-report` → crea el reporte de lo hecho en **esta sesión**.
-> - `/client-report enfócate solo en el módulo X y omite Y` → crear, con instrucciones libres.
-> - `/client-report --list` → tabla concisa de los reportes existentes.
-> - `/client-report --find notificaciones` → busca reportes donde se tocó ese tema.
+> - `$client-report` → crea el reporte de lo hecho en **esta sesión**.
+> - `$client-report enfócate solo en el módulo X y omite Y` → crear, con instrucciones libres.
+> - `$client-report --list` → tabla concisa de los reportes existentes.
+> - `$client-report --find notificaciones` → busca reportes donde se tocó ese tema.
 >
 > Claude Code substituye `$ARGUMENTS` con los flags/término pasados (vacío si se omiten).
 
@@ -98,7 +97,7 @@ Claude renderiza UNA tabla concisa:
 ## Phase 2 — `--find <descripción>` (solo MODE=find)
 
 ```bash
-[ -z "$FIND_TERM" ] && { echo "❌ --find requiere una descripción. Ej: /client-report --find notificaciones"; exit 1; }
+[ -z "$FIND_TERM" ] && { echo "❌ --find requiere una descripción. Ej: $client-report --find notificaciones"; exit 1; }
 for f in "$REPORTS_DIR"/*.md; do
   [ -f "$f" ] || continue
   grep -qiF "$FIND_TERM" "$f" || continue
@@ -178,7 +177,7 @@ OUT="$REPORTS_DIR/<Tema_En_Snake_Case>_${FECHA}.md"
 ```
 
 5. **NO commitees automáticamente.** El operador decide cuándo y cómo (o usa
-   `/git-commit`). Sí sugiere el commit en Next steps.
+   `$git-commit`). Sí sugiere el commit en Next steps.
 
 ---
 
@@ -257,7 +256,7 @@ esto.**
 
    El `naming` se deriva de los títulos que ya viven en la carpeta (`list_documents`)
    — la convención NO es uniforme entre clientes y se respeta, no se normaliza.
-   No commitees: dejá el cambio visible para `/git-commit`. Schema completo en
+   No commitees: dejá el cambio visible para `$git-commit`. Schema completo en
    `config/client-comms/README.md`.
 
 ---
@@ -332,21 +331,21 @@ esto.**
 ## Acciones disponibles
 
 Tras el reporte (modo create), si la sesión es interactiva y NO hubo flags
-explícitos (reglas de gating de [[_output-protocol]] §4), ofrecer vía
+explícitos (reglas de gating de $output-protocol §4), ofrecer vía
 AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Listar reportes existentes | tabla concisa de `docs/reports/` (read-only) | `/client-report --list` |
-| Buscar por tema | busca en qué reportes se tocó un tema | `/client-report --find <tema>` |
-| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | `/client-report publicá en el Gestor el reporte recién creado` |
-| Commitear el reporte | add+commit+push del reporte recién creado | `/git-commit` |
+| Listar reportes existentes | tabla concisa de `docs/reports/` (read-only) | `$client-report --list` |
+| Buscar por tema | busca en qué reportes se tocó un tema | `$client-report --find <tema>` |
+| Publicar en Gestor de Documentos | sube el .md al gestor (pide confirmación como siempre antes de crear/actualizar) | `$client-report publicá en el Gestor el reporte recién creado` |
+| Commitear el reporte | add+commit+push del reporte recién creado | `$git-commit` |
 
 ---
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica:
+Reportar siguiendo $output-protocol. Plantilla específica:
 
 ```markdown
 🟢 client-report OK — <archivo> creado

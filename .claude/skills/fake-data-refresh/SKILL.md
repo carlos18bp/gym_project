@@ -160,10 +160,31 @@ CMD_DIR="${PROJ_PATH}/backend"
 [ -f "${CMD_DIR}/manage.py" ] || CMD_DIR="${PROJ_PATH}"
 [ -f "${CMD_DIR}/manage.py" ] || { echo "FATAL: no manage.py en ${PROJ_PATH} ni en ${PROJ_PATH}/backend"; exit 2; }
 
-# Localizar venv
-VENV_PY="${PROJ_PATH}/.venv/bin/python"
-[ -x "$VENV_PY" ] || VENV_PY="${PROJ_PATH}/venv/bin/python"
-[ -x "$VENV_PY" ] || { echo "FATAL: no .venv/venv ejecutable en ${PROJ_PATH}"; exit 2; }
+# Localizar venv. Fuente primaria: venv_path de projects.yml — 16 de 17 proyectos
+# del fleet lo tienen en backend/venv/, no en la raiz, asi que probar solo .venv/ y
+# venv/ hacia FATAL en casi todos los targets reales de esta skill.
+# /deploy-and-check ya resuelve el venv asi; esta skill se alinea.
+VENV_PY=""
+if $IN_FLEET; then
+  VENV_REL=$(awk -v p="$PROJ_NAME" '
+      /^[[:space:]]*-[[:space:]]+name:/{n=$NF; gsub(/"/,"",n)}
+      n==p && /^[[:space:]]+venv_path:/{
+        sub(/^[[:space:]]+venv_path:[[:space:]]*/,""); gsub(/"/,""); print; exit}
+  ' "${OPS_ROOT}/projects.yml")
+  [ -n "$VENV_REL" ] && [ -x "${PROJ_PATH}/${VENV_REL}" ] && VENV_PY="${PROJ_PATH}/${VENV_REL}"
+fi
+for candidate in "${PROJ_PATH}/.venv/bin/python" "${PROJ_PATH}/venv/bin/python" "${PROJ_PATH}/backend/venv/bin/python"; do
+  [ -n "$VENV_PY" ] && break
+  [ -x "$candidate" ] && VENV_PY="$candidate"
+done
+[ -n "$VENV_PY" ] || { echo "FATAL: no venv ejecutable en ${PROJ_PATH} (probe venv_path de projects.yml, .venv/, venv/, backend/venv/)"; exit 2; }
+echo "VENV detectado: $VENV_PY"
+
+# Los management commands corren DESDE CMD_DIR: los seeders usan paths
+# relativos al cwd (gym create_legal_requests -> os.listdir('media/example_files/'))
+# y con cwd=repo-root revientan a mitad del create, dejando la DB en estado
+# parcial (F99).
+cd "$CMD_DIR" || { echo "FATAL: no pude cd a ${CMD_DIR}"; exit 2; }
 
 # Inventariar management commands. NO silenciar un `manage.py help` roto:
 # distinguir "el proyecto no arranca" de "no tiene el comando".
@@ -191,10 +212,21 @@ CREATE_HELP="$("$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" --help 2>/dev/nul
 CREATE_ARGS=()
 if grep -q -- '--number-of-records' <<<"$CREATE_HELP"; then
   CREATE_ARGS=(--number-of-records="$RECORDS")
-elif grep -qE '^\s+records|positional arguments' <<<"$CREATE_HELP"; then
-  CREATE_ARGS=("$RECORDS")
 else
-  echo "AVISO: ${HAS_CREATE} no expone cantidad en --help; correrá con sus defaults."
+  # Per-domain volume flags: some seeders split the count per model instead of
+  # taking one total (Vástago: `--users N --items N`). They are independent, so
+  # take whichever the command actually exposes. Without this branch --records
+  # was accepted and then silently dropped: the run fell through to "correrá con
+  # sus defaults" and created 0 extra rows while reporting success.
+  grep -qE '(^|[[:space:]])--items([[:space:]]|=)' <<<"$CREATE_HELP" && CREATE_ARGS+=(--items "$RECORDS")
+  grep -qE '(^|[[:space:]])--users([[:space:]]|=)' <<<"$CREATE_HELP" && CREATE_ARGS+=(--users "$RECORDS")
+fi
+if [ "${#CREATE_ARGS[@]}" -eq 0 ]; then
+  if grep -qE '^\s+records|positional arguments' <<<"$CREATE_HELP"; then
+    CREATE_ARGS=("$RECORDS")
+  else
+    echo "AVISO: ${HAS_CREATE} no expone cantidad en --help; correrá con sus defaults."
+  fi
 fi
 DELETE_ARGS=()
 if [ -n "$HAS_DELETE" ]; then
@@ -214,7 +246,9 @@ fi
 # ---- Delete ----
 if [ -n "$HAS_DELETE" ] && ! $SKIP_DELETE; then
   echo ">>> Ejecutando: ${HAS_DELETE} ${DELETE_ARGS[*]:-}"
-  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" "${DELETE_ARGS[@]:-}" || { echo "FATAL: ${HAS_DELETE} falló."; exit 2; }
+  # ${arr[@]+"${arr[@]}"} and NOT "${arr[@]:-}": the latter expands an empty
+  # array to one EMPTY argument, and Django answers `unrecognized arguments:`.
+  "$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_DELETE" ${DELETE_ARGS[@]+"${DELETE_ARGS[@]}"} || { echo "FATAL: ${HAS_DELETE} falló."; exit 2; }
 elif $SKIP_DELETE; then
   echo "Saltando delete (--skip-delete)"
 else
@@ -223,7 +257,7 @@ fi
 
 # ---- Create ----
 echo ">>> Ejecutando: ${HAS_CREATE} ${CREATE_ARGS[*]:-} (objetivo: ${RECORDS})"
-"$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" "${CREATE_ARGS[@]:-}" || { echo "FATAL: ${HAS_CREATE} falló."; exit 2; }
+"$VENV_PY" "${CMD_DIR}/manage.py" "$HAS_CREATE" ${CREATE_ARGS[@]+"${CREATE_ARGS[@]}"} || { echo "FATAL: ${HAS_CREATE} falló."; exit 2; }
 
 # ---- Verificar resultado ----
 echo ">>> Conteo post-create:"
@@ -254,7 +288,7 @@ de dimensiones + `## Next steps`. No imprimir listas ad-hoc de bullets.
 | Flag | Default | Descripción |
 |---|---|---|
 | `[proyecto]` | `$(pwd)` | Path al proyecto. Si se omite, usa el CWD. |
-| `--records=N` | `50` | Cantidad objetivo **por modelo principal** (50 alcanza para paginar 2 páginas en E2E). La signature real se sondea vía `--help`. |
+| `--records=N` | `50` | Cantidad objetivo **por modelo principal** (50 alcanza para paginar 2 páginas en E2E). La signature real se sondea vía `--help`: `--number-of-records=N`, el par `--users N --items N` (se pasan los que el comando exponga), o un posicional. Si no expone ninguna, avisa y corre con defaults — el valor NO se aplica. |
 | `--skip-delete` | `false` | Salta el delete y solo crea (⚠️ acumula registros — no idempotente). |
 | `--dry-run` | `false` | Corre gate + detección + sondeo de signatures (reales) e imprime el plan exacto sin ejecutar delete/create. Exit 0. |
 

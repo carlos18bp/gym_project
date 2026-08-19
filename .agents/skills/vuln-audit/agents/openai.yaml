@@ -1,0 +1,7 @@
+interface:
+  display_name: "Vuln Audit"
+  short_description: "Audita vulnerabilidades y dependencias en backend (Python) y..."
+  default_prompt: "Use $vuln-audit to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

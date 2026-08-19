@@ -1,18 +1,15 @@
 ---
-name: git-commit
-description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd). Cuando el repo del cwd es vps-ops-toolkit, tras un push exitoso propaga el commit al resto del fleet (otros VPS + dev si está prendida) vía Tailscale (ON por defecto, --no-propagate para saltar); un repo de proyecto nunca se propaga. Pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host. git-commit NO tiene modo fleet: --all-vps y --all son error (no se commitea a ciegas en clones de otros VPS); para el eje fleet usar /git-sync --all-vps."
-disable-model-invocation: true
-allowed-tools: Bash, AskUserQuestion
-argument-hint: "[--all-repos (todos los repos de este host)] [--no-propagate (no sincroniza el toolkit al fleet)]"
+name: "git-commit"
+description: "Inspect git changes, generate a professional commit message with FEAT/FIX/DOCS prefix, and execute git add + commit + push. Defaults to the current repo (cwd). Cuando el repo del cwd es vps-ops-toolkit, tras un push exitoso propaga el commit al resto del fleet (otros VPS + dev si está prendida) vía Tailscale (ON por defecto, --no-propagate para saltar); un repo de proyecto nunca se propaga. Pass --all-repos to iterate over LOCAL_PROJECTS + toolkit on this host. git-commit NO tiene modo fleet: --all-vps y --all son error (no se commitea a ciegas en clones de otros VPS); para el eje fleet usar $git-sync --all-vps."
 ---
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `/git-commit` → opera sobre el repo git del **directorio
+> - Sin argumento: `$git-commit` → opera sobre el repo git del **directorio
 >   actual (cwd)** — el repo desde el que se lanzó Claude Code. Se resuelve
 >   con `git rev-parse --show-toplevel`; **NO se asume `vps-ops-toolkit`**.
 >   ⚠️ **Ignorá el estado del hook `SessionStart`** (siempre reporta el
 >   toolkit) para decidir el target — el target lo manda el cwd, no ese reporte.
-> - Con `--all-repos`: `/git-commit --all-repos` → itera sobre `LOCAL_PROJECTS`
+> - Con `--all-repos`: `$git-commit --all-repos` → itera sobre `LOCAL_PROJECTS`
 >   del host + `vps-ops-toolkit`. En cada repo: si está clean, SKIP; si tiene
 >   cambios, generar mensaje propio y commit+push independiente. **Convención del
 >   fleet: `--all` = todos los VPS** (full-audit/git-status-report); git-commit
@@ -34,7 +31,7 @@ argument-hint: "[--all-repos (todos los repos de este host)] [--no-propagate (no
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → directo, sin menú;
+Gating ($output-protocol §4): (1) flags explícitos → directo, sin menú;
 (2) intención clara en la sesión ("commiteá esto", "guardá lo que hicimos") →
 proponer el comando en una línea y esperar confirmación; (3) invocación
 ambigua (¿este repo o todos los del host?) → UNA sola AskUserQuestion; (4)
@@ -44,12 +41,12 @@ nunca en fleet/headless/cron.
 
 | label | description | preview |
 |---|---|---|
-| Repo actual (Recommended) | commit + push del repo del cwd; si es el toolkit, propaga al fleet al final | `/git-commit` |
-| Todos los repos de este host | un commit por repo dirty (LOCAL_PROJECTS + toolkit), mensaje propio por repo | `/git-commit --all-repos` |
-| Repo actual sin propagar | commit + push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `/git-commit --no-propagate` |
+| Repo actual (Recommended) | commit + push del repo del cwd; si es el toolkit, propaga al fleet al final | `$git-commit` |
+| Todos los repos de este host | un commit por repo dirty (LOCAL_PROJECTS + toolkit), mensaje propio por repo | `$git-commit --all-repos` |
+| Repo actual sin propagar | commit + push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `$git-commit --no-propagate` |
 
 **Qué NO se pregunta:** `--all-vps` y `--all` (error-by-design: no se commitea
-a ciegas en clones de otros VPS — el eje fleet es `/git-sync --all-vps`).
+a ciegas en clones de otros VPS — el eje fleet es `$git-sync --all-vps`).
 
 ## Phase 0 — Resolución de la lista de repos
 
@@ -69,16 +66,16 @@ for tok in $ARGS_RAW; do
             echo "   No se commitea a ciegas en clones de otros VPS: pueden estar dirty o"
             echo "   parados en una rama de release, y el mensaje se redactaría sobre diffs"
             echo "   que nunca viste."
-            echo "   ¿Los repos de ESTE host?              → /git-commit --all-repos"
+            echo "   ¿Los repos de ESTE host?              → $git-commit --all-repos"
             echo "   ¿Sincronizar el toolkit en el fleet?  → ya ocurre solo tras el push"
-            echo "                                           (o: /git-sync --all-vps)"
-            echo "   ¿Rebasar todos los repos del fleet?   → /git-sync --all-repos --all-vps"
+            echo "                                           (o: $git-sync --all-vps)"
+            echo "   ¿Rebasar todos los repos del fleet?   → $git-sync --all-repos --all-vps"
             exit 2
             ;;
         --all)
             echo "❌ ERROR: --all es ambiguo y quedó retirado de git-commit."
-            echo "   ¿Todos los repos de ESTE host? → /git-commit --all-repos"
-            echo "   (git-commit no acepta --all-vps: ver /git-sync para el eje fleet.)"
+            echo "   ¿Todos los repos de ESTE host? → $git-commit --all-repos"
+            echo "   (git-commit no acepta --all-vps: ver $git-sync para el eje fleet.)"
             exit 2
             ;;
         *)
@@ -265,20 +262,20 @@ En modo `--no-propagate`, omití esta fase por completo y decílo en el resumen.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| --all-repos | un commit por cada repo dirty de ESTE host (mensaje propio por repo) | `/git-commit --all-repos` |
-| Re-run sin propagar | commit+push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `/git-commit --no-propagate` |
-| Integrar con CI verde | espera el CI y mergea/pushea según el repo (Path A/B) | `/merge-when-green` |
+| --all-repos | un commit por cada repo dirty de ESTE host (mensaje propio por repo) | `$git-commit --all-repos` |
+| Re-run sin propagar | commit+push sin sincronizar el toolkit al fleet (offline / sin Tailscale) | `$git-commit --no-propagate` |
+| Integrar con CI verde | espera el CI y mergea/pushea según el repo (Path A/B) | `$merge-when-green` |
 
 NO ofrecer `--all-vps` ni `--all`: son error-by-design en git-commit (no se
-commitea a ciegas en clones de otros VPS) — el eje fleet es `/git-sync --all-vps`.
+commitea a ciegas en clones de otros VPS) — el eje fleet es `$git-sync --all-vps`.
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill:
+Reportar siguiendo $output-protocol. Plantilla específica de esta skill:
 
 🟢 git-commit OK   (🟡 si el push quedó pendiente o un host requiere sync manual; ⏸️ si Tailscale pide auth (exit 75); ⏭️ si no había cambios)
 
@@ -301,5 +298,5 @@ Propagación del toolkit — una fila por host:
 | dev | ⏭️ | `UNREACHABLE` (apagada) |
 
 ## Next steps
-- (host con `CONFLICT_NEEDS_MANUAL_SYNC`) correr `/git-sync` en ese host — divergencia real
+- (host con `CONFLICT_NEEDS_MANUAL_SYNC`) correr `$git-sync` en ese host — divergencia real
 - (si el push quedó pendiente) resolver upstream/conflicto y `git push`
