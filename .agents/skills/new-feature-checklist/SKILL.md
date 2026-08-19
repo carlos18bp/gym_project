@@ -1,18 +1,18 @@
 ---
-name: new-feature-checklist
+name: "new-feature-checklist"
 description: "Checklist for new features — ensures fake data creation follows business rules and test coverage is complete across backend, frontend unit, and E2E layers."
 ---
 
 # New Feature Checklist
 
-> **La forma canónica de ejecutar los pasos 1-3 es invocar [[qa]]** — el
+> **La forma canónica de ejecutar los pasos 1-3 es invocar $qa** — el
 > conductor corre flow-map → cobertura (backend/unit/e2e) → gate → test-audit
 > como fases ordenadas con las guardas de producción ya cableadas (y salta
 > fake-data en prod solo). Esta checklist queda como la vía granular manual.
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): con `$ARGUMENTS` o intención clara en la sesión (la feature recién implementada) → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la feature a cubrir (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
+Gating ($output-protocol §4): con `$ARGUMENTS` o intención clara en la sesión (la feature recién implementada) → ejecutar directo, PROHIBIDO preguntar el tema (un dato menor faltante se marca en el texto, no se convierte en pregunta). Sin argumentos ni contexto → UNA sola pregunta corta en texto por la feature a cubrir (no picker: el insumo es libre). Nunca en modo fleet/headless/cron.
 
 Sin picker por diseño: no hay flags de modo — el argumento es la feature cuya fake data y cobertura se cierran.
 
@@ -71,7 +71,7 @@ Per-test: `@flow:` + `@outcome:<success|error|failure|display>` tags (un spec si
 
 ## 3. Update User Flow Map
 
-Update the flow registry if new user flows are created — o invocar [[e2e-user-flows-check]], que lo mantiene en el layout del repo (sharded: un JSON por flow + doc por flow, agregados regenerados con `generate_flow_registry.py`; monolito: `docs/USER_FLOW_MAP.md` + `frontend/e2e/flow-definitions.json`).
+Update the flow registry if new user flows are created — o invocar $e2e-user-flows-check, que lo mantiene en el layout del repo (sharded: un JSON por flow + doc por flow, agregados regenerados con `generate_flow_registry.py`; monolito: `docs/USER_FLOW_MAP.md` + `frontend/e2e/flow-definitions.json`).
 
 ## Execution Order
 
@@ -87,10 +87,10 @@ Update the flow registry if new user flows are created — o invocar [[e2e-user-
 
 ## Output final
 
-Sin menú por diseño (§4): es un checklist-guía; la ejecución canónica es /qa.
+Sin menú por diseño (§4): es un checklist-guía; la ejecución canónica es $qa.
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/new-feature-checklist`:
+Reportar siguiendo $output-protocol. Plantilla específica de
+`$new-feature-checklist`:
 
 ```markdown
 🟢 new-feature-checklist OK — <feature-name>
@@ -110,5 +110,5 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 Si la skill detecta que el feature tocó modelos/FK pero no se corrió
 `fake-data-refresh`, o algún layer de tests no fue cubierto, reemplazar el ✅
 correspondiente por ⚠️/❌, omitir la línea ✨ y agregar `## Next steps` con la
-skill o el comando exacto a invocar (ej. `/fake-data-refresh <proyecto>`,
+skill o el comando exacto a invocar (ej. `$fake-data-refresh <proyecto>`,
 `pytest <path>`, etc.).

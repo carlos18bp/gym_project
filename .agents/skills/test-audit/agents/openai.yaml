@@ -1,0 +1,7 @@
+interface:
+  display_name: "Test Audit"
+  short_description: "Audit the whole test corpus for junk tests — specs that..."
+  default_prompt: "Use $test-audit to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

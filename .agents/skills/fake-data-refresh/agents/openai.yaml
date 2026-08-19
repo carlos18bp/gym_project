@@ -1,3 +1,7 @@
 interface:
   display_name: "Fake Data Refresh"
-  short_description: "Borra y recrea fake data en un proyecto Django; refusa en producción"
+  short_description: "Borra y recrea fake data en un proyecto Django. Refusa en..."
+  default_prompt: "Use $fake-data-refresh to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

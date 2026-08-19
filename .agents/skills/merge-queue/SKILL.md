@@ -1,12 +1,10 @@
 ---
-name: merge-queue
-description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs de sesión con dueño en el body + ramas sin PR + local-only + gone + ya-en-base), arma la estrategia en dos niveles (tier 1: sesiones→release o →default; tier 2: release→default sólo con release_merge y tier 1 drenado) y ejecuta: batch de verdes disjuntos server-side + TREN DE INTEGRACIÓN (rama temporal queue/integration-* que valida la COMBINACIÓN con UN solo run de CI — verde ⇒ merges de corrido sin re-CI por unidad; rojo ⇒ bisect). NO espera ni vigila el CI de la base: la confianza está en el verde de cada sesión + el run del tren. Al cerrar avisa a cada sesión dueña que su trabajo ya aterrizó y le pide su propio visto bueno con `/all-in-base --check-only` (fire-and-forget, no espera respuesta). Conflictos semánticos y fix loop se DELEGAN a la sesión dueña vía SendMessage (señal de resuelto = push al head; timeout ⇒ inline). En cada pausa y al final emite el Tablero de estado. NO usar para una sola rama ([[merge-when-green]]), ni para commits sueltos ([[git-commit]]), ni para sync sin merge ([[git-sync]]), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado); nunca toca el checkout del clon principal: toda mutación de tree ocurre en el worktree propio de la queue (~/webapps/.wt/<repo>/queue-*)."
-allowed-tools: Bash, AskUserQuestion, ListAgents, SendMessage, TaskStop
-argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r2] [--autonomous] [--max-iterations=N]"
+name: "merge-queue"
+description: "Usar cuando VARIAS ramas/PRs pendientes (trabajo de N sesiones paralelas) deben integrarse en orden: 'mergeá todo lo pendiente', 'drená las ramas', 'cerrá el trabajo de todas las sesiones', 'merge queue/train'. Censa el trabajo pendiente (PRs de sesión con dueño en el body + ramas sin PR + local-only + gone + ya-en-base), arma la estrategia en dos niveles (tier 1: sesiones→release o →default; tier 2: release→default sólo con release_merge y tier 1 drenado) y ejecuta: batch de verdes disjuntos server-side + TREN DE INTEGRACIÓN (rama temporal queue/integration-* que valida la COMBINACIÓN con UN solo run de CI — verde ⇒ merges de corrido sin re-CI por unidad; rojo ⇒ bisect). NO espera ni vigila el CI de la base: la confianza está en el verde de cada sesión + el run del tren. Al cerrar avisa a cada sesión dueña que su trabajo ya aterrizó y le pide su propio visto bueno con `$all-in-base --check-only` (fire-and-forget, no espera respuesta). Conflictos semánticos y fix loop se DELEGAN a la sesión dueña vía SendMessage (señal de resuelto = push al head; timeout ⇒ inline). En cada pausa y al final emite el Tablero de estado. NO usar para una sola rama ($merge-when-green), ni para commits sueltos ($git-commit), ni para sync sin merge ($git-sync), ni en cron/headless. Nunca rebasea ramas pusheadas (force push denegado); nunca toca el checkout del clon principal: toda mutación de tree ocurre en el worktree propio de la queue (~/webapps/.wt/<repo>/queue-*)."
 ---
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `/merge-queue` → arma y ejecuta la cola de merges del repo git
+> - Sin argumento: `$merge-queue` → arma y ejecuta la cola de merges del repo git
 >   del **cwd** (resuelto con `git rev-parse --show-toplevel`). Pensada para el
 >   estado que N sesiones paralelas dejan atrás: varias ramas/PRs pendientes que,
 >   mergeados sin orden, generan conflictos y reprocesos.
@@ -17,14 +15,14 @@ argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r
 >   para commitear en UN solo paso el `projects.yml` que los merges de release
 >   hayan dejado dirty.
 > - `--all` / `--all-vps` → **error duro**: no se mergea a ciegas en clones de
->   otros VPS (mismo racional que [[merge-when-green]]).
+>   otros VPS (mismo racional que $merge-when-green).
 > - `--plan-only`: censo + estrategia + tabla del plan, sin ejecutar nada.
 > - `--batch-only`: ejecuta sólo el batch (verdes disjuntos, server-side); el tren
 >   queda planificado en Next steps.
 > - `--include-no-pr=r1,r2`: incluye esas ramas sin PR en la cola sin preguntar
 >   (útil para re-invocar tras un primer censo).
 >
-> **Qué ejecuta cada merge:** los guards de [[merge-when-green]] (mergeable,
+> **Qué ejecuta cada merge:** los guards de $merge-when-green (mergeable,
 > `gh pr merge --squash --delete-branch`, consumo de `release_merge`), pero la
 > **validación de CI es por GRUPO, no por unidad**: los verdes disjuntos van en
 > batch sin re-CI, y el resto se valida COMBINADO en el tren de integración (un
@@ -63,7 +61,7 @@ argument-hint: "[--all-repos] [--plan-only] [--batch-only] [--include-no-pr=r1,r
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+Gating ($output-protocol §4): (1) flags explícitos → ejecutar directo, sin
 menú — la tabla del plan (Phase 2) se muestra igual y el operador puede cortar;
 con flags, las ramas sin PR quedan **excluidas por default** (se re-invoca con
 `--include-no-pr=`); (2) intención clara en la sesión ("drená todo lo pendiente")
@@ -76,8 +74,8 @@ en una llamada); (4) nunca en cron/headless ni dentro de un barrido.
 | label | description | preview |
 |---|---|---|
 | Ejecutar todo (Recommended) | release autorizada + batch + tren + holds según la tabla; CIs en paralelo, merges en orden | la cola completa de la tabla |
-| Sólo el batch | mergea únicamente los PRs verdes disjuntos (server-side, minutos); el tren queda en Next steps | `/merge-queue --batch-only` |
-| Sólo el plan | quedarse con el censo + estrategia, sin ejecutar | `/merge-queue --plan-only` |
+| Sólo el batch | mergea únicamente los PRs verdes disjuntos (server-side, minutos); el tren queda en Next steps | `$merge-queue --batch-only` |
+| Sólo el plan | quedarse con el censo + estrategia, sin ejecutar | `$merge-queue --plan-only` |
 | Abortar | salir sin tocar nada | — |
 
 **Q2 — Ramas sin PR a incluir** (`multiSelect: true`; SÓLO si el censo encontró
@@ -130,15 +128,15 @@ REPO_NAME="$(basename "$REPO_ROOT")"
 # (mismo guard que merge-when-green Path C).
 if (( ALL_REPOS == 1 )) && [ "$REPO_NAME" != "vps-ops-toolkit" ]; then
     echo "❌ ERROR: --all-repos sólo se invoca desde vps-ops-toolkit."
-    echo "   Estás en '$REPO_NAME'. Para la cola de SÓLO este repo: /merge-queue (sin flags)."
+    echo "   Estás en '$REPO_NAME'. Para la cola de SÓLO este repo: $merge-queue (sin flags)."
     exit 2
 fi
 
 # El toolkit no tiene cola propia (trunk flow: commit directo a master, sin ramas).
 if (( ALL_REPOS == 0 )) && [ "$REPO_NAME" = "vps-ops-toolkit" ]; then
     echo "❌ El toolkit no tiene cola de ramas (trunk flow)."
-    echo "   ¿La cola de los proyectos de este host? → /merge-queue --all-repos"
-    echo "   ¿Integrar el toolkit en sí?             → /merge-when-green"
+    echo "   ¿La cola de los proyectos de este host? → $merge-queue --all-repos"
+    echo "   ¿Integrar el toolkit en sí?             → $merge-when-green"
     exit 2
 fi
 
@@ -149,12 +147,12 @@ gh auth status >/dev/null 2>&1 || { echo "❌ ERROR: gh sin auth — corré 'gh 
 # Lock advisory per-repo en /tmp (a propósito: tiene que ser visible ENTRE
 # sesiones de esta máquina; un scratchpad per-sesión no sirve acá). No es
 # exclusión dura: protege del accidente de dos merge-queue simultáneos, no de un
-# /merge-when-green suelto. TTL 30 min; cada fase re-toca el lock (los archivos
+# $merge-when-green suelto. TTL 30 min; cada fase re-toca el lock (los archivos
 # SÍ persisten entre bloques bash, las variables no).
 QDIR="/tmp/merge-queue-${REPO_NAME}"
 if [ -f "$QDIR/lock" ] && [ -n "$(find "$QDIR/lock" -mmin -30 2>/dev/null)" ]; then
     echo "🚫 Lock advisory fresco: $(cat "$QDIR/lock")"
-    echo "   ¿Otro /merge-queue en vuelo sobre $REPO_NAME? Si estás seguro de que no:"
+    echo "   ¿Otro $merge-queue en vuelo sobre $REPO_NAME? Si estás seguro de que no:"
     echo "   rm $QDIR/lock   (y re-invocá)"
     exit 1
 fi
@@ -383,7 +381,7 @@ gh pr view "$RAMA" --json number,url -q '"PR #\(.number) — \(.url)"'
 
 - Si la unidad es la rama ACTUAL e incluye cambios sin commitear que el operador
   pidió incluir explícitamente (vía "Other" en Q2): primero el flujo de
-  [[git-commit]] sobre esa rama (add selectivo + commit + push), como la Phase 1
+  $git-commit sobre esa rama (add selectivo + commit + push), como la Phase 1
   de merge-when-green.
 - Una release (autorizada o hold) ya tiene su PR: no se crea uno nuevo.
 
@@ -486,7 +484,7 @@ ningún workflow. Ese draft **jamás se mergea** y se cierra en 5.5. (Optimizaci
 opcional por repo: trigger `push: queue/**` — evita el PR draft; si existe, el
 push de arriba alcanza.)
 
-La espera sigue el «Cierre asíncrono de CI» de [[merge-when-green]]: consultá
+La espera sigue el «Cierre asíncrono de CI» de $merge-when-green: consultá
 el run una vez (`gh run list --branch "queue/integration-$TS" --limit 1`); si
 sigue en vuelo, montá el watcher `CI-MONITOR [<repo> integración@<sha7>]` con
 `NEXT: verde ⇒ drenar (5.3) · rojo ⇒ bisect (5.4)` y pausa de tablero (en
@@ -539,7 +537,7 @@ esac
 
 Un rojo de la integración no dice qué unidad lo causó. Triage barato primero:
 si los tests rojos mapean a archivos de UNA unidad (matriz de Phase 2) ⇒ es la
-culpable — fix **delegado a su dueña** (o `/fix-broken-tests` inline tras
+culpable — fix **delegado a su dueña** (o `$fix-broken-tests` inline tras
 timeout, con la pausa por código de producción salvo `--autonomous`), y al
 llegar el push se re-mergea esa unidad en la integración y se re-pushea (un
 run nuevo). Si no es atribuible: **bisect por mitades** — rebuild de
@@ -565,7 +563,7 @@ combinación; lo que aterriza en la base son los squashes por unidad
 **Holds al final:** integrar + esperar CI + reportar veredicto, sin merge (⏸️).
 **Tier 2 (release autorizada):** recién acá, con su tier 1 drenado (si quedan
 PRs de sesión colgando de la release ⇒ `hold:tier1-pendiente` con la lista) —
-flujo completo de [[merge-when-green]] con espera de CI real (el atajo
+flujo completo de $merge-when-green con espera de CI real (el atajo
 sin-re-CI NO aplica al tier 2) y consumo de `release_merge` (el `projects.yml`
 del toolkit queda dirty y se ACUMULA para el cierre — no se commitea acá).
 
@@ -628,7 +626,7 @@ Los **worktrees de sesión** cuyo PR quedó mergeado se reportan como retirables
 (`git worktree remove <path>` — lo corre la sesión dueña o el operador; la
 queue sólo retira los `queue-*` propios).
 
-**Cierre asíncrono** — regla completa en [[merge-when-green]] § «Cierre
+**Cierre asíncrono** — regla completa en $merge-when-green § «Cierre
 asíncrono de CI»; instancia de esta skill, en este orden:
 
 1. **Sweep primero** (TaskStop): sólo watchers `CI-MONITOR [...]` que ESTA
@@ -652,10 +650,10 @@ asíncrono de CI»; instancia de esta skill, en este orden:
 **Toolkit (recolector de `release_merge`):**
 - En `--all-repos`: si `projects.yml` quedó dirty por consumos de autorizaciones,
   UN solo commit al final reusando por prosa las Phases T1–T2 de
-  [[merge-when-green]] (green gate local + commit directo a master + push; T3
+  $merge-when-green (green gate local + commit directo a master + push; T3
   propagación incluida).
 - En modo default (cwd = repo de proyecto): **NO se commitea el toolkit** desde
-  acá — se reporta pendiente con `/git-commit` en Next steps (espejo exacto del
+  acá — se reporta pendiente con `$git-commit` en Next steps (espejo exacto del
   comportamiento de merge-when-green Path A).
 
 **Aviso a las sesiones activas** (si el harness expone las tools; si no, se
@@ -669,13 +667,13 @@ fallback `ListAgents` + solapamiento de tokens nombre-de-sesión ↔ nombre-de-r
 
 > 🚂 merge-queue: tu trabajo ya está en `<base>`. Mergeadas: `<rama>` (PR #N,
 > squash `<sha7>`)… Tu worktree quedó retirable: `git worktree remove <path>`.
-> **Verificalo vos y dame tu veredicto: corré `/all-in-base --check-only`.**
-> Si seguís trabajando en este repo, `/git-sync` primero (la base se movió).
+> **Verificalo vos y dame tu veredicto: corré `$all-in-base --check-only`.**
+> Si seguís trabajando en este repo, `$git-sync` primero (la base se movió).
 
 **(b) Sesión activa que no es dueña de nada mergeado** — informativo:
 
 > 🚂 merge-queue: se drenó la cola de `<repo>` — mergeadas: `<rama1>`, `<rama2>`
-> (…). La base `<default>` se movió: corré `/git-sync` antes de seguir
+> (…). La base `<default>` se movió: corré `$git-sync` antes de seguir
 > trabajando. Ramas en hold/pausadas: `<lista o "ninguna">`.
 
 **Reglas del aviso (a):**
@@ -686,7 +684,7 @@ fallback `ListAgents` + solapamiento de tokens nombre-de-sesión ↔ nombre-de-r
   head, timeout 15 min): ahí se pide trabajo, acá sólo se informa y se sugiere
   una verificación. No confundir los dos mecanismos.
 - **El `--check-only` es obligatorio en el pedido.** Sin el flag, un veredicto NO
-  hace que [[all-in-base]] delegue en [[merge-when-green]] y se ponga a mergear
+  hace que $all-in-base delegue en $merge-when-green y se ponga a mergear
   en paralelo con esta queue, que puede seguir drenando otros repos/unidades. Con
   el flag responde SÍ/NO y no toca git.
 - **Dueña declarada pero sin sesión viva** (no aparece en `ListAgents`) → no se
@@ -721,7 +719,7 @@ unidad `deferred`/`paused` — y **SIEMPRE al final**, emití este tablero:
   `⏸️ paused:tree-sucio` · `🧹 cleanup` · `⏭️ excluida:<razón>` ·
   `❌ failed:<razón>`.
 - **Aviso** (vocabulario fijo — el aviso post-merge de Phase 6): `📨 notificada`
-  (se le mandó el mensaje con el pedido de `/all-in-base --check-only`) ·
+  (se le mandó el mensaje con el pedido de `$all-in-base --check-only`) ·
   `⚠️ sesión no alcanzable` (dueña declarada, sin sesión viva en `ListAgents`) ·
   `— (sin dueño)` (el PR no trae línea `Sesión:`) · `n/a (harness sin
   SendMessage)`. Hasta Phase 6 la columna va `—`: sólo se puebla al cerrar, y
@@ -769,7 +767,7 @@ vuelo, watcher del CI combinado, bisect) · en Phase 6 como reporte final.
 - **Ningún fallo individual corta la cola** (política Path C): cada unidad
   termina en ✅/⏸️/⏭️/❌ con su razón, y se sigue.
 - **El lock es advisory**: protege del doble-merge-queue accidental, NO de un
-  `/merge-when-green` suelto en otra sesión. La mitigación real es de uso: al
+  `$merge-when-green` suelto en otra sesión. La mitigación real es de uso: al
   drenar multi-rama se usa esta skill EN VEZ de merge-when-green por sesión —
   para eso existe.
 - **TaskStop sólo sobre watchers `CI-MONITOR` propios y obsoletos** — jamás una
@@ -785,21 +783,21 @@ vuelo, watcher del CI combinado, bisect) · en Phase 6 como reporte final.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos (reglas
-de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Ejecutar el tren pendiente | si corrió `--batch-only`/`--plan-only` o quedaron unidades pausadas | `/merge-queue` |
+| Ejecutar el tren pendiente | si corrió `--batch-only`/`--plan-only` o quedaron unidades pausadas | `$merge-queue` |
 | Borrar ramas ya-en-base (lote con evidencia) | `-D` SÓLO las listadas arriba como ya-en-base/gone-limpia — el trabajo está verificado en la base | `git branch -D <r1> <r2>` |
 | Ver un PR puntual | review manual en el browser | `gh pr view <n> --web` |
-| Re-censo | refrescar el estado tras cambios externos | `/merge-queue --plan-only` |
+| Re-censo | refrescar el estado tras cambios externos | `$merge-queue --plan-only` |
 
 NUNCA ofrecer `--autonomous` (se tipea) ni el merge de una release (lo decide
 `release_merge:` en projects.yml).
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]].
+Reportar siguiendo $output-protocol.
 
 ```markdown
 🟢 merge-queue OK — cola drenada
@@ -832,15 +830,15 @@ En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
 `## Next steps` — sólo lo accionable, con el comando exacto:
 - `failed:*` → el comando del próximo intento (`gh run view <id> --log-failed`, …).
 - Holds listos para lanzar → «setear `release_merge: <rama>` al proyecto en
-  projects.yml (vps-ops-toolkit) y correr `/merge-when-green`».
+  projects.yml (vps-ops-toolkit) y correr `$merge-when-green`».
 - `paused:tree-sucio` → «cerrá/commiteá la sesión dueña del tree y re-invocá
-  `/merge-queue`».
-- Toolkit pendiente (consumo de `release_merge` en modo default) → `/git-commit`
+  `$merge-queue`».
+- Toolkit pendiente (consumo de `release_merge` en modo default) → `$git-commit`
   en vps-ops-toolkit.
 - `excluida:base-rara` → `gh pr edit <n> --base <base-correcta>` (la release en
   repos participantes, la default en prod-directos) y re-censar.
 - `failed:integracion-roja` / `deferred:delegada` → el estado de la delegación
-  (dueña, deadline) + el comando de re-entrada: `/merge-queue` re-censa y
+  (dueña, deadline) + el comando de re-entrada: `$merge-queue` re-censa y
   re-integra al llegar el push.
 - PRs sin `Sesión:` en el body → pedirle a cada sesión que lo agregue
   (`gh pr edit <n> --body ...`) — sin dueño declarado la delegación degrada a
@@ -850,7 +848,7 @@ En `--all-repos`: columna `Repo` primero; >15 filas ⇒ anteponer
 - (manual) `git branch -D <ramas ya-en-base>` — borrado a decisión del operador.
 - Si no se pudo avisar a las sesiones (harness sin ListAgents/SendMessage, o
   filas `⚠️ sesión no alcanzable`) → «en cada sesión dueña de este repo:
-  `/all-in-base --check-only` para su visto bueno, y `/git-sync` antes de seguir
+  `$all-in-base --check-only` para su visto bueno, y `$git-sync` antes de seguir
   trabajando».
 - Monitores en vuelo → una fila del ledger por watcher (`label → qué vigila →
   acción al resolver`) + respaldo manual `gh run watch <id> -R <repo>` por si la

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Playwright Validation"
+  short_description: "Validar/probar/debuggear UI de proyectos del fleet con..."
+  default_prompt: "Use $playwright-validation to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

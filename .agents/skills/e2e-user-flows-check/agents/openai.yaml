@@ -1,3 +1,7 @@
 interface:
   display_name: "E2e User Flows Check"
-  short_description: "Help with E2e User Flows Check tasks"
+  short_description: "User flow mapping — walk every view, module and component..."
+  default_prompt: "Use $e2e-user-flows-check to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,3 +1,7 @@
 interface:
   display_name: "Plan"
-  short_description: "Help with Plan tasks and workflows"
+  short_description: "Planning workflow — read context, clarify requirements..."
+  default_prompt: "Use $plan to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,12 +1,10 @@
 ---
-name: all-in-base
-description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en main/master?', '¿quedó algo sin mergear?', '¿todo el trabajo de esta sesión ya aterrizó?', '¿puedo cerrar?'. Responde SÍ/NO por repo — default: los repos que ESTA sesión tocó (la lista sale del contexto de la conversación; git la verifica), fallback el repo del cwd — chequeando tree limpio + commits sin push + contenido en la base (misma mecánica ya-en-base de merge-when-green, cubre squash) + PRs de la sesión abiertos. Si el veredicto es NO y no se pasó --check-only, lo TERMINA delegando: 1 rama pendiente → flujo merge-when-green; varias ramas/repos → merge-queue; toolkit → Path B. Una release sin release_merge queda ⏸️, jamás se mergea. NO usar para drenar ramas ajenas a la sesión ([[merge-queue]]) ni para un merge puntual ya decidido ([[merge-when-green]]), ni en cron/headless. Sesgo heredado: ante duda dice NO — jamás un SÍ falso."
-allowed-tools: Bash, AskUserQuestion, TaskStop, ListAgents, SendMessage
-argument-hint: "[--check-only] [--all-repos]"
+name: "all-in-base"
+description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en main/master?', '¿quedó algo sin mergear?', '¿todo el trabajo de esta sesión ya aterrizó?', '¿puedo cerrar?'. Responde SÍ/NO por repo — default: los repos que ESTA sesión tocó (la lista sale del contexto de la conversación; git la verifica), fallback el repo del cwd — chequeando tree limpio + commits sin push + contenido en la base (misma mecánica ya-en-base de merge-when-green, cubre squash) + PRs de la sesión abiertos. Si el veredicto es NO y no se pasó --check-only, lo TERMINA delegando: 1 rama pendiente → flujo merge-when-green; varias ramas/repos → merge-queue; toolkit → Path B. Una release sin release_merge queda ⏸️, jamás se mergea. NO usar para drenar ramas ajenas a la sesión ($merge-queue) ni para un merge puntual ya decidido ($merge-when-green), ni en cron/headless. Sesgo heredado: ante duda dice NO — jamás un SÍ falso."
 ---
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `/all-in-base` → responde la pregunta "¿todo el trabajo de ESTA
+> - Sin argumento: `$all-in-base` → responde la pregunta "¿todo el trabajo de ESTA
 >   sesión ya está en `main`/`master`?" y, si la respuesta es NO, lo termina.
 > - **Alcance default = los repos que esta sesión tocó**: la lista sale del contexto
 >   de la conversación (vos sabés qué repos editaste/commiteaste en esta sesión);
@@ -21,11 +19,11 @@ argument-hint: "[--check-only] [--all-repos]"
 > - `--all` / `--all-vps` → **error duro**: no se audita ni mergea a ciegas en
 >   clones de otros VPS.
 > - Esta skill **no audita ramas ajenas a la sesión** en el modo default: si el
->   censo las ve, van como ℹ️ con puntero a [[merge-queue]] (que es quien drena
+>   censo las ve, van como ℹ️ con puntero a $merge-queue (que es quien drena
 >   colas multi-rama).
 >
 > **Qué significa "terminarlo":** la delegación es decision-complete — cada repo
-> pendiente entra al flujo de [[merge-when-green]] (o [[merge-queue]] si hay varias
+> pendiente entra al flujo de $merge-when-green (o $merge-queue si hay varias
 > unidades) por la fase de su primer faltante, con defaults (squash) y sin
 > re-preguntar. Los guards de coordenada (wrong-host, release) son siempre-ON y
 > nunca se saltan: una release sin `release_merge:` se integra y espera su CI, pero
@@ -33,9 +31,9 @@ argument-hint: "[--check-only] [--all-repos]"
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → directo, sin menú; (2)
+Gating ($output-protocol §4): (1) flags explícitos → directo, sin menú; (2)
 intención clara en la sesión ("¿ya quedó todo mergeado?", "¿puedo cerrar?") →
-proponer `/all-in-base` en una línea y esperar confirmación; (3) invocación ambigua
+proponer `$all-in-base` en una línea y esperar confirmación; (3) invocación ambigua
 → la única AskUserQuestion es la Q1 de abajo (post-veredicto); (4) nunca en
 cron/headless ni dentro de un barrido.
 
@@ -45,7 +43,7 @@ es NO y no se pasó `--check-only`):
 | label | description | preview |
 |---|---|---|
 | Terminar lo pendiente (Recommended) | delegar cada repo según la tabla (merge-when-green / merge-queue); releases quedan ⏸️ | la columna "Falta" de la tabla |
-| Sólo responder | quedarse con el veredicto (equivale a `--check-only`) | `/all-in-base --check-only` |
+| Sólo responder | quedarse con el veredicto (equivale a `--check-only`) | `$all-in-base --check-only` |
 | Abortar | salir sin tocar nada | — |
 
 **Qué NO se pregunta:** el merge de una release — lo decide `release_merge:` en
@@ -77,7 +75,7 @@ cd "$REPO_ROOT"
 
 if (( ALL_REPOS == 1 )) && [ "$(basename "$REPO_ROOT")" != "vps-ops-toolkit" ]; then
     echo "❌ ERROR: --all-repos sólo se invoca desde vps-ops-toolkit."
-    echo "   Para el veredicto de la sesión desde acá: /all-in-base (sin flags)."
+    echo "   Para el veredicto de la sesión desde acá: $all-in-base (sin flags)."
     exit 2
 fi
 
@@ -103,7 +101,7 @@ echo "🎯 all-in-base — check-only=$CHECK_ONLY all-repos=$ALL_REPOS"
 
 Un bloque autocontenido por repo (las variables no persisten entre bloques). La
 mecánica "¿el contenido ya está en la base?" es la MISMA de la Phase 1.5 de
-[[merge-when-green]] (dos capas: rev-list + merge-tree squash-aware, rc sin pipe).
+$merge-when-green (dos capas: rev-list + merge-tree squash-aware, rc sin pipe).
 **Diferencia deliberada con 1.5:** allá un tree sucio significa "no evaluable ⇒
 seguir el flujo"; acá la pregunta es "¿está en la base?" y trabajo sin commitear
 NO está en la base por definición ⇒ **tree sucio = NO rotundo**, no abstención.
@@ -190,7 +188,7 @@ stacked es la RELEASE, y un ✅ ahí significa "en la release", no "en main"
 | vastago_project_staging | release-v2 | ✅ | 0 | vs master: ahead 5 | #12 CI ✅ | ⏸️ NO (hold) | `release_merge:` |
 
 Ramas del repo ajenas a la sesión con trabajo pendiente: fila ℹ️ con puntero a
-`/merge-queue` (no entran al veredicto de la sesión).
+`$merge-queue` (no entran al veredicto de la sesión).
 
 - `--check-only` → saltá a Output final (el SÍ/NO va en la línea de veredicto).
 - Veredicto global SÍ → saltá a Phase 4 (no hay nada que terminar).
@@ -200,28 +198,28 @@ Ramas del repo ajenas a la sesión con trabajo pendiente: fila ℹ️ con punter
 
 Por prosa + wikilink — jamás el tool `Skill`. En orden de la tabla:
 
-- **1 unidad pendiente en 1 repo** → ejecutá el flujo de [[merge-when-green]]
+- **1 unidad pendiente en 1 repo** → ejecutá el flujo de $merge-when-green
   **entrando por la fase del primer faltante**: tree sucio → Phase 1 (commit) ·
   commits sin push → el push de Phase 1 · sin PR → Phase 2 · CI pendiente →
   Phase 3 · verde sin mergear → Phase 5. Defaults (squash), sin re-preguntar
   (regla (4) de su gating: el flujo viene decidido del llamador). Los guards de
   coordenada (Phase 0.5: wrong-host, release) **nunca se saltan**.
-- **≥2 unidades pendientes en un repo** → [[merge-queue]] desde ese repo (su censo
+- **≥2 unidades pendientes en un repo** → $merge-queue desde ese repo (su censo
   completo manda; esta tabla es su input, no su reemplazo).
 - **≥2 repos pendientes** → repo por repo en el orden de la tabla. Desde el
-  toolkit con `--all-repos`, el atajo es [[merge-queue]] `--all-repos`.
-- **Toolkit pendiente** → Path B de [[merge-when-green]] (T1 green gate → T2
+  toolkit con `--all-repos`, el atajo es $merge-queue `--all-repos`.
+- **Toolkit pendiente** → Path B de $merge-when-green (T1 green gate → T2
   commit+push → T3 propagación → T4).
 - **Release sin autorizar** → se integra y espera su CI si falta, pero queda ⏸️ —
   next step exacto: setear `release_merge: <rama>` en projects.yml y
-  `/merge-when-green`.
+  `$merge-when-green`.
 
 Tras cada delegación, **re-corré el censo de Phase 1 de ese repo** y actualizá la
 tabla: el SÍ final se afirma con evidencia, no por haber delegado.
 
 ## Phase 4 — Cierre asíncrono (instancia)
 
-Regla completa en [[merge-when-green]] § «Cierre asíncrono de CI». Instancia de
+Regla completa en $merge-when-green § «Cierre asíncrono de CI». Instancia de
 esta skill:
 
 1. **Sweep** (TaskStop): esta skill es el punto natural de higiene de fin de
@@ -262,18 +260,18 @@ esta skill:
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos (gating
-[[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+$output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Terminar lo pendiente | si corrió `--check-only` y el veredicto fue NO | `/all-in-base` |
-| Drenar con merge-queue | si hay VARIAS ramas/PRs pendientes (de la sesión o ajenas) | `/merge-queue` |
+| Terminar lo pendiente | si corrió `--check-only` y el veredicto fue NO | `$all-in-base` |
+| Drenar con merge-queue | si hay VARIAS ramas/PRs pendientes (de la sesión o ajenas) | `$merge-queue` |
 | Ver un PR puntual | review manual en el browser | `gh pr view <n> --web` |
-| Re-censar | refrescar el veredicto tras cambios externos | `/all-in-base --check-only` |
+| Re-censar | refrescar el veredicto tras cambios externos | `$all-in-base --check-only` |
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]].
+Reportar siguiendo $output-protocol.
 
 ```markdown
 🟢 all-in-base — SÍ: todo el trabajo de la sesión está en la base (N repos verificados)
@@ -290,6 +288,6 @@ Fila condicional `Monitor CI` / `Sweep` sólo si Phase 4 actuó: 👁️ label m
 por la delegación / 🧹 N watchers barridos.)
 
 `## Next steps` — sólo accionables: release en hold → `release_merge:` +
-`/merge-when-green` · ramas locales obsoletas → `git branch -D <rama>` (manual) ·
+`$merge-when-green` · ramas locales obsoletas → `git branch -D <rama>` (manual) ·
 monitores en vuelo → su ledger (`label → vigila → acción`) + respaldo manual
-`gh run watch <id> -R <repo>` · repos ℹ️ con trabajo ajeno → `/merge-queue`.
+`gh run watch <id> -R <repo>` · repos ℹ️ con trabajo ajeno → `$merge-queue`.

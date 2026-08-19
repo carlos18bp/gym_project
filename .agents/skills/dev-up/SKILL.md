@@ -1,16 +1,13 @@
 ---
-name: dev-up
+name: "dev-up"
 description: "Levanta el entorno de desarrollo LOCAL de un proyecto Django del fleet: bootstrap de venv/pip, deps de backend (SQLite dev, sin mysqlclient) y frontend, migrate, arranca runserver + frontend dev en background y monitorea sus logs. Auto-descubre desde projects.yml. Solo dev machine — refusa en VPS/prod."
-disable-model-invocation: true
-allowed-tools: Bash, Read, AskUserQuestion
-argument-hint: "[--restart] [--backend-port=8000] [--frontend-port=3000] [--frontend-cmd='npm run dev']"
 ---
 
 ## Entorno requerido
 
 **Esta skill SOLO funciona desde la dev machine** — bootstrapea un entorno local
 (venv + SQLite + servers en background). En el VPS los servers corren como
-servicios systemd; ahí usá `/deploy-and-check`, no esta skill.
+servicios systemd; ahí usá `$deploy-and-check`, no esta skill.
 
 **Verificación obligatoria ANTES de cualquier otro paso**:
 
@@ -24,7 +21,7 @@ if [[ -d /home/ryzepeck/webapps ]] \
    || systemctl is-active --quiet "$PROJECT_NAME.service" 2>/dev/null; then
   echo "❌ Esto parece un VPS / entorno de producción."
   echo "   Esta skill es solo para la dev machine."
-  echo "   En el VPS los servers corren como servicios — usá /deploy-and-check."
+  echo "   En el VPS los servers corren como servicios — usá $deploy-and-check."
   exit 2
 fi
 echo "✅ Dev machine detectada, procediendo."
@@ -47,19 +44,19 @@ hay venv, `node_modules` ni base de datos.
 - **Logs**: `/tmp/<proyecto>-dev/{backend,frontend}.log` (+ `.pid`). Cero footprint en el repo.
 
 > **⚠️ How to invoke**:
-> - `/dev-up` → bootstrap (si hace falta) + arranca lo que no esté arriba + monitorea.
-> - `/dev-up --restart` → mata los servers viejos y relanza.
-> - `/dev-up --backend-port=8001 --frontend-port=3001` → puertos custom.
-> - `/dev-up --frontend-cmd='npm run serve'` → comando de dev del frontend custom.
+> - `$dev-up` → bootstrap (si hace falta) + arranca lo que no esté arriba + monitorea.
+> - `$dev-up --restart` → mata los servers viejos y relanza.
+> - `$dev-up --backend-port=8001 --frontend-port=3001` → puertos custom.
+> - `$dev-up --frontend-cmd='npm run serve'` → comando de dev del frontend custom.
 >
 > Claude Code substituye `$ARGUMENTS` con los flags pasados (vacío si se omiten).
-> Para bajar los servers usar `/dev-down`.
+> Para bajar los servers usar `$dev-down`.
 
 ---
 
 ## Cómo invocar este skill (picker condicional — §4)
 
-Gating ([[_output-protocol]] §4): la invocación normal corre **directo, sin
+Gating ($output-protocol §4): la invocación normal corre **directo, sin
 menú** — con o sin flags, la intención de levantar el entorno ya es clara
 (reglas 1/2). El único picker es condicional: SOLO si Phase 5 detecta un puerto
 ocupado sin `--restart` pasado (conflicto: entorno ya corriendo), disparar UNA
@@ -70,8 +67,8 @@ pregunta (regla 1); nunca en modo fleet/headless/cron.
 
 | label | description | preview |
 |---|---|---|
-| Dejar lo que corre (Recommended) | reusa el server que ya escucha en el puerto y sigue con el resto de las fases | `/dev-up` (default: reusa y sigue) |
-| Relanzar (`--restart`) | mata el proceso viejo (PID file + `fuser -k`) y vuelve a subirlo en el mismo puerto | `/dev-up --restart` |
+| Dejar lo que corre (Recommended) | reusa el server que ya escucha en el puerto y sigue con el resto de las fases | `$dev-up` (default: reusa y sigue) |
+| Relanzar (`--restart`) | mata el proceso viejo (PID file + `fuser -k`) y vuelve a subirlo en el mismo puerto | `$dev-up --restart` |
 
 **Qué NO se pregunta:** `--backend-port=`/`--frontend-port=` y `--frontend-cmd=`
 — tuning aditivo que el operador tipea cuando lo necesita.
@@ -329,7 +326,7 @@ Seguimiento (bajo demanda):
   tail -f $LOG_DIR/backend.log
   tail -f $LOG_DIR/frontend.log
 Bajar los servers:
-  /dev-down            (o: kill \$(cat $LOG_DIR/*.pid) 2>/dev/null)
+  $dev-down            (o: kill \$(cat $LOG_DIR/*.pid) 2>/dev/null)
 EOF
 ```
 
@@ -349,25 +346,25 @@ EOF
 - Sin `--restart` reusa servers ya escuchando; con `--restart` los relanza.
 - No requiere `.env` ni Redis: settings `*_dev` usa SQLite y el cache cae a local.
 - `mysqlclient` se omite a propósito en dev (solo se usa con MySQL en prod).
-- La BD SQLite arranca **vacía**. Para datos usar `/fake-data-refresh`; para acceso
+- La BD SQLite arranca **vacía**. Para datos usar `$fake-data-refresh`; para acceso
   al panel, `manage.py createsuperuser`.
-- Para detener: `/dev-down`.
+- Para detener: `$dev-down`.
 
 ---
 
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Bajar los servers | apaga backend + frontend (PID file + fallback por puerto); los logs se conservan | `/dev-down` |
-| Relanzar en otro puerto | si el default choca con otro proyecto en dev: baja lo levantado y sube en puertos alternos | `/dev-up --restart --backend-port=8001 --frontend-port=3001` |
+| Bajar los servers | apaga backend + frontend (PID file + fallback por puerto); los logs se conservan | `$dev-down` |
+| Relanzar en otro puerto | si el default choca con otro proyecto en dev: baja lo levantado y sube en puertos alternos | `$dev-up --restart --backend-port=8001 --frontend-port=3001` |
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/dev-up`:
+Reportar siguiendo $output-protocol. Plantilla específica de `$dev-up`:
 
 ```markdown
 🟢 dev-up OK — <proyecto> (dev machine)
@@ -387,15 +384,15 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/dev-up`:
 ```
 
 Si el gate refusa (corriendo en VPS), reportar 🚫 con `## Next steps` indicando
-`/deploy-and-check` — **no es error**, es safety gate.
+`$deploy-and-check` — **no es error**, es safety gate.
 
 Si un server no levanta, health 000, o aparece un crash/error en los logs,
 reemplazar ✅ por 🔴, omitir la línea ✨ y agregar `## Next steps` con el extracto
 relevante de `/tmp/<proyecto>-dev/{backend,frontend}.log`.
 
 ## Next steps
-- `/dev-down` — apagar los servers
-- `/qa` — cerrar cobertura de lo implementado
+- `$dev-down` — apagar los servers
+- `$qa` — cerrar cobertura de lo implementado
 - (operador) abrir http://localhost:<frontend-port>
 
 ---
@@ -404,4 +401,4 @@ relevante de `/tmp/<proyecto>-dev/{backend,frontend}.log`.
 
 - Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-up.md`. Las versiones en
   `.windsurf/` y `.agents/skills/` son copias del mismo contenido (distintas por frontmatter).
-- Skill complementaria: `/dev-down` (detiene los servers que esta skill levanta).
+- Skill complementaria: `$dev-down` (detiene los servers que esta skill levanta).

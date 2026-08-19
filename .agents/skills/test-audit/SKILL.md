@@ -1,7 +1,6 @@
 ---
-name: test-audit
+name: "test-audit"
 description: "Audit the whole test corpus for junk tests — specs that raise coverage without verifying behavior. Classifies every finding, decides DELETE / REWRITE / MERGE / KEEP, and applies the cleanup in operator-approved batches. Default dry-run."
-argument-hint: "[--check | --apply] [--suite=e2e|unit|backend] [--since=<ref>]"
 ---
 
 # Test Audit
@@ -31,39 +30,39 @@ count is **1152 / 3271 E2E tests (35%)** (`docs/audits/test-junk-audit-2026-07-2
 
 | Skill | Question it answers |
 |---|---|
-| [[test-quality-gate]] | How do I raise the gate score on tests I am keeping? |
-| [[fix-broken-tests]] | Why is this specific test failing? |
-| [[qa]] | Runs this audit as its Phase 6 (junk purge) inside the full QA chain |
+| $test-quality-gate | How do I raise the gate score on tests I am keeping? |
+| $fix-broken-tests | Why is this specific test failing? |
+| $qa | Runs this audit as its Phase 6 (junk purge) inside the full QA chain |
 | **test-audit** | **Which of these tests should exist at all?** |
 
 Only this skill will conclude that a test should be deleted.
 
 ## Invocation
 
-- `/test-audit` — full audit, **report only** (default, writes nothing)
-- `/test-audit --check` — explicit alias of the default dry-run (same behavior)
-- `/test-audit --apply` — audit, then propose cleanup batches for approval
-- `/test-audit --suite=e2e|unit|backend` — restrict the scope
-- `/test-audit --since=<ref>` — only tests added since a ref (post-campaign check).
+- `$test-audit` — full audit, **report only** (default, writes nothing)
+- `$test-audit --check` — explicit alias of the default dry-run (same behavior)
+- `$test-audit --apply` — audit, then propose cleanup batches for approval
+- `$test-audit --suite=e2e|unit|backend` — restrict the scope
+- `$test-audit --since=<ref>` — only tests added since a ref (post-campaign check).
   Not a gate flag: it materializes as
   `git diff --name-only <ref> -- '*test*' '*spec*'`, feeding one repeated
   `--include-file` per changed file into `test_quality_gate.py`.
 
 ## Cómo invocar este skill
 
-Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+Gating ($output-protocol §4): (1) flags explícitos → ejecutar directo, sin
 menú; (2) intención clara en la sesión ("auditá la basura de tests", "aplicá la
 limpieza") → proponer el comando en una línea y esperar confirmación; (3) sin
 argumentos → UNA sola AskUserQuestion (Q1); (4) nunca en modo fleet/headless/cron
-ni como subagente de [[qa]] (Phase 6 del conductor): ahí NUNCA pregunta — hereda
+ni como subagente de $qa (Phase 6 del conductor): ahí NUNCA pregunta — hereda
 el modo con el que corre el conductor.
 
 **Q1 — Modo** (`multiSelect: false`):
 
 | label | description | preview |
 |---|---|---|
-| --check (Recommended) | dry-run: triage completo DELETE/REWRITE/MERGE/KEEP + reporte, no escribe nada | `/test-audit --check` |
-| --apply | borra/reescribe tests POR LOTES con aprobación del operador — es la única skill que concluye que un test debe morir | `/test-audit --apply` |
+| --check (Recommended) | dry-run: triage completo DELETE/REWRITE/MERGE/KEEP + reporte, no escribe nada | `$test-audit --check` |
+| --apply | borra/reescribe tests POR LOTES con aprobación del operador — es la única skill que concluye que un test debe morir | `$test-audit --apply` |
 
 **Qué NO se pregunta:** `--suite=`, `--since=`, `--json` y `--name-only` son
 tuning de alcance y formato — se tipean cuando hacen falta, no van en el picker.
@@ -156,7 +155,7 @@ Write `docs/audits/test-audit-<YYYY-MM-DD>.md` with the inventory, the class
 breakdown, the triage table, and the before/after coverage figures. Coverage
 states are `covered` / `partial` / `junk-only` / `missing` / `exempt` —
 `exempt` (`expectedSpecs: 0`) is a deliberate exemption, NOT a gap and not a
-cleanup candidate. Then report per [[_output-protocol]].
+cleanup candidate. Then report per $output-protocol.
 
 **In `--check` mode this is the end. Nothing is written to the test corpus.**
 
@@ -190,7 +189,7 @@ Only with `--apply`, and only after the operator approves each batch.
 - **Never modify production code.** If a test is wrong because the code is wrong,
   report it and stop.
 - **Never run the full suite** — touched files plus the affected module only,
-  consistent with [[fix-broken-tests]] and [[test-quality-gate]].
+  consistent with $fix-broken-tests and $test-quality-gate.
 - **Never delete a test whose behavior is not covered elsewhere** unless there is
   no behavior to cover. A junk test still marks intent; deleting it silently
   loses the record that the flow was meant to be covered. Register the flow as
@@ -206,19 +205,19 @@ Only with `--apply`, and only after the operator approves each batch.
 ## Acciones disponibles
 
 Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
-(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+(reglas de gating de $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Aplicar lotes de limpieza | propone cada lote como lista `file:line — test — verdict — reason` y espera aprobación POR LOTE; un commit aislado por lote | `/test-audit --apply` |
-| Re-auditar una suite | re-corre el triage acotado a una capa tras limpiar | `/test-audit --suite=e2e` |
+| Aplicar lotes de limpieza | propone cada lote como lista `file:line — test — verdict — reason` y espera aprobación POR LOTE; un commit aislado por lote | `$test-audit --apply` |
+| Re-auditar una suite | re-corre el triage acotado a una capa tras limpiar | `$test-audit --suite=e2e` |
 
 Los DELETE jamás se ofrecen sueltos ni sin evidencia: siempre por lote, con la
 lista visible y la aprobación explícita de ese lote (blocklist §4).
 
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica:
+Reportar siguiendo $output-protocol. Plantilla específica:
 
 ```markdown
 🟡 test-audit OK con N warning(s) — 520 tests con señal de basura sobre 5652
@@ -243,7 +242,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica:
 ```
 
 ## Next steps
-- `/test-audit --apply` — proponer los lotes de limpieza para aprobación
+- `$test-audit --apply` — proponer los lotes de limpieza para aprobación
 - (por cada KEEP) agregar DENTRO del bloque del test el marcador que corresponda —
   `allow-no-interaction` / `allow-deep-link` / `allow-render-only` /
   `allow-duplicate` / `allow-mock-only` / `allow-reimpl` — con la razón entre
