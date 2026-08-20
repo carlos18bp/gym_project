@@ -23,7 +23,6 @@ approval_policy = "never"           # valid: untrusted | on-request | never
 sandbox_mode    = "workspace-write" # valid: read-only | workspace-write | danger-full-access
 web_search      = "live"            # valid: disabled | cached | live
 
-file_opener = "windsurf"            # opens file citations in Windsurf IDE
 ```
 
 These settings take effect for any Codex session started from within this repository.

@@ -191,8 +191,8 @@ Cuando termines de implementar un cambio que afecte un **flujo de usuario en el 
 
 ## Ecosistemas IA paralelos
 
-Este proyecto tiene tres ecosistemas activos en paralelo: Claude Code (`CLAUDE.md` + `.claude/`), Codex (`AGENTS.md` + `.agents/skills/` + `.codex/config.toml`)
-y Windsurf (`.windsurf/rules/` + `.windsurf/workflows/`). Los tres comparten el
+Este proyecto tiene dos ecosistemas activos en paralelo: Claude Code (`CLAUDE.md` + `.claude/`) y Codex (`AGENTS.md` + `.agents/skills/` + `.codex/config.toml`).
+Ambos comparten el
 mismo cuerpo de instrucciones general; el frontmatter y la estructura cambian
 por ecosistema. La fuente de verdad es `vps-ops-toolkit/workflows/`.
 <!-- fleet-base:end -->

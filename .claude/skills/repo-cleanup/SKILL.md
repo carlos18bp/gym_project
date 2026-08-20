@@ -113,7 +113,7 @@ reporte, con lista y evidencia visibles (ver `## Acciones disponibles`).
 
 ## Rules
 - **Read-only until user approves.** Do not delete, edit, or move any file during the audit. Present the report and wait for confirmation.
-- Do not flag files in `.agents/`, `.claude/`, `.windsurf/`, or `.codex/` as obsolete — these are intentional multi-tool compatibility layers.
+- Do not flag files in `.agents/`, `.claude/`, or `.codex/` as obsolete — these are intentional compatibility layers. `.windsurf/` is retired fleet-wide and must be reported as obsolete if present.
 - Do not flag Django migrations as obsolete unless they are clearly broken merge migrations.
 - Do not flag `__init__.py` files as empty/unnecessary — they mark Python packages.
 - Verify dead code claims: a file is only "unused" if it has zero imports AND is not referenced in URL configs, management commands, or template tags.
