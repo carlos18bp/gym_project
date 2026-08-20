@@ -207,6 +207,6 @@ Si un puerto queda ocupado tras el fallback, reemplazar ✅ por 🔴 y agregar
 
 ## Notas de fleet
 
-- Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-down.md`. Las versiones
-  en `.windsurf/` y `.agents/skills/` son copias (distintas por frontmatter).
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-down.md`. La versión
+  en `.agents/skills/` es la copia generada para Codex.
 - Skill complementaria: `$dev-up` (levanta y monitorea los servers).

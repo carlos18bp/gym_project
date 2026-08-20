@@ -649,13 +649,12 @@ Project documentation lives in the `docs/` directory:
 
 ## AI Development Tools
 
-This project uses three AI coding assistants that coexist without interfering:
+This project uses two AI coding assistants that coexist without interfering:
 
 | Tool | Config | Skills/Workflows |
 |---|---|---|
 | **OpenAI Codex** | `.codex/config.toml` | `.agents/skills/` (16 skills, invoke with `/skill-name`) |
 | **Claude Code** | `.claude/settings.json`, `CLAUDE.md` | `.claude/skills/` (16 skills, invoke with `/skill-name`) |
-| **Windsurf** | `.windsurf/rules/`, `.windsurf/workflows/` | 13 rules + 14 workflows |
 
 ### Codex skills quick reference
 
