@@ -306,7 +306,7 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 
 - Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/vps-ops-toolkit/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
-- Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. Las versiones en `.windsurf/` y `.agents/skills/` son copias del mismo contenido.
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. La versión en `.agents/skills/` es la copia generada para Codex.
 
 ---
 

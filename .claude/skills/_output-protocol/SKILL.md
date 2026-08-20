@@ -140,7 +140,7 @@ Dos posiciones, un mismo esquema de fila:
    `AskUserQuestion` (Q1+Q2+Q3 juntas, estilo [[client-message]]). Un dato
    faltante posterior se pide en texto plano una única vez (≤3 bullets) —
    nunca un segundo picker.
-8. **Runtimes sin `AskUserQuestion`** (Codex/`.agents`, Windsurf): renderizar
+8. **Runtimes sin `AskUserQuestion`** (Codex/`.agents`): renderizar
    las mismas filas como lista numerada en texto y esperar la respuesta
    tipeada — la spec es la misma, sólo cambia el medio.
 

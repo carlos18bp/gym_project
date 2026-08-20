@@ -10,7 +10,7 @@ When sources disagree, apply this order:
 2. `docs/CODEX_METHODOLOGY_GUIDE.md` (this document)
 3. `docs/CODEX_SETUP.md` (runtime setup and installation)
 4. `.agents/skills/*/SKILL.md` (workflow-specific behavior)
-5. Legacy references (`.claude/`, `.windsurf/`) for historical traceability only
+5. Claude guidance (`.claude/`) and Codex guidance (`.agents/`)
 
 Legacy assets are not normative for day-to-day Codex operation.
 
@@ -126,7 +126,6 @@ Project-scoped Codex defaults are defined in `.codex/config.toml`:
 | `approval_policy` | `never` | No approval prompts — full auto execution |
 | `sandbox_mode` | `workspace-write` | Can read/write workspace files; network is restricted |
 | `web_search` | `live` | Fetches live pages (not cached) |
-| `file_opener` | `windsurf` | File citations open in Windsurf IDE |
 
 Global user config (`~/.codex/config.toml`) sets the same model/reasoning and marks both project paths as `trust_level = "trusted"`.
 
@@ -150,6 +149,6 @@ Global user config (`~/.codex/config.toml`) sets the same model/reasoning and ma
 
 ## 9) Legacy Compatibility Policy
 
-- `.claude/` and `.windsurf/` remain in the repository as active tools for Claude Code and Windsurf respectively.
+- `.claude/` remains active for Claude Code; Codex uses `.agents/` and `AGENTS.md`.
 - New Codex operational changes are implemented in Codex assets (`AGENTS.md`, `.agents/skills`, Codex docs).
 - `~/.codex/skills` is not the canonical location for repository-managed skills in this project.

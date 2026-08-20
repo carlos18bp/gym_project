@@ -261,6 +261,6 @@ de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
 
 ## Notas de fleet
 
-- Fuente canónica: `vps-ops-toolkit/workflows/.claude/skills-help.md`. Las versiones
-  en `.windsurf/` y `.agents/skills/` son copias (distintas por frontmatter).
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/skills-help.md`. La versión
+  en `.agents/skills/` es la copia generada para Codex.
 - El `ignore.txt` NO se distribuye por el sync (no está en el baseline): es por-proyecto.

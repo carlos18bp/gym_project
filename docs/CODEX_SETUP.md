@@ -23,7 +23,6 @@ approval_policy = "never"           # valid: untrusted | on-request | never
 sandbox_mode    = "workspace-write" # valid: read-only | workspace-write | danger-full-access
 web_search      = "live"            # valid: disabled | cached | live
 
-file_opener = "windsurf"            # opens file citations in Windsurf IDE
 ```
 
 These settings take effect for any Codex session started from within this repository.
@@ -127,6 +126,6 @@ Restart the Codex client/session after adding or modifying skills so the updated
 |----------|---------|
 | `AGENTS.md` | Project-wide guardrails and operating policy for Codex |
 | `docs/CODEX_METHODOLOGY_GUIDE.md` | Skill taxonomy, invocation model, daily routine |
-| `docs/CODEX_MIGRATION_MAP.md` | Equivalence map: Claude/Windsurf assets → Codex skills |
+| `docs/CODEX_MIGRATION_MAP.md` | Equivalence map: Claude assets → Codex skills |
 | `.agents/skills/` | All 16 repository-managed Codex skills |
 | `.codex/config.toml` | Project-scoped Codex defaults |

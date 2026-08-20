@@ -399,6 +399,6 @@ relevante de `/tmp/<proyecto>-dev/{backend,frontend}.log`.
 
 ## Notas de fleet
 
-- Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-up.md`. Las versiones en
-  `.windsurf/` y `.agents/skills/` son copias del mismo contenido (distintas por frontmatter).
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/dev-up.md`. La versión en
+  `.agents/skills/` es la copia generada para Codex.
 - Skill complementaria: `$dev-down` (detiene los servers que esta skill levanta).
