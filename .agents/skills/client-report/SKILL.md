@@ -191,8 +191,8 @@ El `.md` en `docs/reports/` sigue siendo la fuente; este paso lo sincroniza al g
 conector "Gestor de Documentos" en la sesión — nombre MCP completo:
 `mcp__claude_ai_Gestor_de_Documentos__list_folders`, y con el mismo prefijo
 `…__list_documents`, `…__read_document`, `…__create_folder`, `…__create_document`,
-`…__update_document` — un conector claude.ai del operador. Si NO están disponibles (sesión sin el conector, Windsurf/Codex
-sin acceso, etc.), **SALTAR** el paso: dejar constancia en el output (`Gestor de
+`…__update_document` — un conector claude.ai del operador. Si NO están disponibles
+(sesión sin el conector o runtime sin acceso), **SALTAR** el paso: dejar constancia en el output (`Gestor de
 Documentos: n/a en esta sesión`) y terminar con el reporte local. **Nunca falles por
 esto.**
 
@@ -371,8 +371,8 @@ Report path: docs/reports/<archivo>.md
 
 ## Notas de fleet
 
-- Fuente canónica: `vps-ops-toolkit/workflows/.claude/client-report.md`. Las
-  copias en `.agents/skills/` y `.windsurf/` difieren solo en frontmatter.
+- Fuente canónica: `vps-ops-toolkit/workflows/.claude/client-report.md`. La
+  copia generada en `.agents/skills/` adapta el frontmatter para Codex.
 - La convención `docs/reports/` + `_DDMMYYYY` es fleet-wide: aplica igual en
   todos los proyectos que reciben esta skill.
 - `docs/tmp/` sigue siendo el espacio de borradores (gitignorado); lo que se

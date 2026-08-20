@@ -920,7 +920,7 @@ sólo por el que notificó y dejá los demás listados como "en vuelo".
   viejos. Doble seguro: el label nuevo lleva el run-id/SHA nuevo, así que ni un
   sweep torpe lo matchea.
 
-**Degradación (espejos Codex/Windsurf):** si el harness no soporta shells de
+**Degradación (espejo Codex):** si el harness no soporta shells de
 fondo con notificación, saltá mount y sweep, y dejá en Next steps el comando
 manual `gh run watch <id> -R <repo>`.
 

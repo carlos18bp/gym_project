@@ -28,55 +28,43 @@ Al inicio de **cada sesión y antes de editar archivos**, debes invocar la skill
 <!-- session-start-protocol:end -->
 
 <!-- git-branch-protocol:begin -->
-## Reglas de trabajo con Git: ramas y commits
+## Reglas de trabajo con Git: ramas, worktrees y commits (protocolo por sesión)
 
-**Nunca hagas commits directamente sobre `main` o `master`.** Estas ramas están protegidas y los pushes serán rechazados por GitHub.
+**Nunca hagas commits directamente sobre `main`/`master`, sobre una rama release, ni sobre la rama de OTRA sesión.**
 
-**El default es REUTILIZAR una rama abierta, no crear una nueva.** La convención del fleet es **máximo 1 PR feature activo por proyecto**: todo el trabajo en curso — aunque sean features o arreglos distintos entre sí — se acumula como **commits sucesivos sobre esa misma rama** hasta que mergee. **Lo que identifica cada pieza de trabajo es el COMMIT, no una rama nueva.** Crear una rama por cada cambio fragmenta el trabajo en PRs paralelos y hace imposible un code review unificado. **Sólo se crea una rama cuando estás en `main`/`master` y NO hay ninguna rama abierta.** Antes de cualquier `git commit`, seguí este protocolo:
+**El modelo es 1 sesión = 1 rama = 1 worktree = 1 PR.** Cada sesión crea SU rama al arrancar trabajo, en SU git worktree, y abre el PR en el primer push con dueño e intención declarados. Está PROHIBIDO reutilizar la rama de otra sesión o acumular trabajo de varias tareas en una rama compartida — eso produce ramas con N dueños, archivos contaminados con hunks ajenos y merges imposibles de ordenar (medido en el fleet el 2026-08-16). El drenaje ordenado de vuelta a la base lo hace `/merge-queue` (varias ramas) o `/merge-when-green` (la tuya). Antes de cualquier `git commit`, seguí este protocolo:
 
-### 0. (Fleet) Confirmá la coordenada de trabajo del proyecto
+### 0. (Fleet) Confirmá la coordenada: host + base de integración
 
-Si este repo pertenece al fleet `vps-ops-toolkit` (existe `~/webapps/vps-ops-toolkit/projects.yml`), la **fuente de verdad de dónde y sobre qué rama se trabaja** es `projects.yml` + los PRs abiertos, no tu intuición. Resolvé la coordenada antes de reutilizar/crear rama:
+Si este repo pertenece al fleet `vps-ops-toolkit` (existe `~/webapps/vps-ops-toolkit/projects.yml`), la **fuente de verdad de dónde se trabaja y sobre qué BASE se corta tu rama** es `projects.yml` validado contra los PRs abiertos:
 
 ```bash
 OPS=~/webapps/vps-ops-toolkit
 RESOLVER="$OPS/scripts/maintenance/resolve-work-coordinate.sh"
-PROJ=$(basename "$(git rev-parse --show-toplevel)")
-[[ -x "$RESOLVER" ]] && bash "$RESOLVER" --check "$PROJ"   # imprime vps_work, resolved_branch, host_status, matches_yml
+# OJO worktrees: el nombre del proyecto sale del git-common-dir (el clon
+# principal) — en un worktree, el toplevel es ~/webapps/.wt/<repo>/<slug>.
+PROJ=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+[[ -x "$RESOLVER" ]] && bash "$RESOLVER" --check "$PROJ"   # imprime vps_work, resolved_branch, pr_state, host_status, matches_yml
 ```
 
 - **`host_status=wrong-host`** → **PARÁ**. El trabajo de este proyecto va en OTRO clon (el `vps_work` que imprime el resolver — p.ej. kore se trabaja en el clon de `vps-projectapp-staging`, no en el de producción). Avisá al operador antes de commitear acá.
-- **`resolved_branch` es una rama release** (`pr_state=single`) → **esa** es la rama de trabajo: `git checkout <resolved_branch>` y commiteá ahí (es la rama del PR abierto; la reutilizás igual que en la sección 2). **No crees una feature branch nueva.**
-- **`matches_yml=no`** (la rama del PR difiere de la registrada, p.ej. la release anterior se mergeó y hay otra) → avisá al operador; puede que haya que refrescar `projects.yml` con `bash "$RESOLVER" --apply "$PROJ"` en el toolkit.
+- **`BASE` de tu rama de sesión**: con `pr_state=single` (repo con release activa) la base es **`resolved_branch`** — tu rama sale DE la release y tu PR apunta A la release (modelo stacked; la release mantiene su propio PR hacia `main`/`master`, gateado por `release_merge`). Con `prod-direct`/`no-pr`, la base es la default (`main`/`master`). **NUNCA hagas checkout de la release ni commitees en ella** — la release sólo recibe trabajo vía PRs de sesión.
+- **`matches_yml=no`** (el candidato a release difiere del registrado, p.ej. la release anterior se mergeó y hay otra) → avisá al operador; puede que haya que refrescar `projects.yml` con `bash "$RESOLVER" --apply "$PROJ"` en el toolkit.
 - **`branch_deploy_status=yml-stale`** (el clon acá ya está en la rama nueva y el `branch:` de projects.yml quedó viejo) → avisá y refrescá el yml con `bash "$RESOLVER" --fix "$PROJ"` (desde el toolkit). NUNCA hagas checkout de la rama vieja del yml sobre el clon. Si es `unbacked` o `server_status` marca host ajeno → derivar a `migrate-project` / revisión manual, sin auto.
-- **Sin toolkit, o el proyecto no está en `projects.yml`** → ignorá este paso y seguí con la sección 1.
+- **Sin toolkit, o el proyecto no está en `projects.yml`** → base = `main`/`master` y seguí con la sección 1.
 
-### 1. Verificar la rama actual
-
-Antes de cualquier operación de escritura (add, commit, etc.), ejecuta:
+### 1. Dónde estás parado determina qué hacés
 
 ```bash
-git rev-parse --abbrev-ref HEAD
+git rev-parse --show-toplevel
 ```
 
-- **Si ya estás en una rama feature** (cualquier rama que no sea `main`/`master`): **quedate ahí y commiteá**, sin importar si el cambio actual es de un feature distinto al que originó la rama. NO crees una rama nueva — pasá directo a la sección 8 (commit).
-- **Si estás en `main`/`master`**: seguí la sección 2 antes de commitear.
+- **Bajo `~/webapps/.wt/<repo>/<slug>`** → estás en un worktree de sesión. Si la rama es TUYA (la creaste vos en esta sesión): commiteá (sección 8). Si es de otra sesión: no toques nada — creá el tuyo (sección 2).
+- **En el clon principal (`~/webapps/<repo>`)** → **acá no se edita ni se commitea**. El checkout del clon principal es el del servicio/deploy y NO SE TOCA: ni `git checkout`, ni resets, ni borrar `node_modules`, ni stashes ajenos. Creá tu worktree (sección 2) y trabajá allá. (Excepción de sólo-lectura: `git status/log/diff/fetch` están bien en cualquier lado.)
 
-### 2. Si estás en `main` o `master`: primero buscá una rama abierta para reutilizar
+### 2. Arrancando trabajo nuevo: SIEMPRE tu propia rama + worktree
 
-**Antes de siquiera pensar en crear una rama**, buscá si ya hay una rama feature con PR abierto (o trabajo en curso) para este proyecto y reutilizala. Preferí los PRs abiertos — son literalmente "la rama abierta para revisar los cambios":
-
-```bash
-git fetch --quiet --prune
-# Fuente preferida: PRs abiertos (rama + URL)
-gh pr list --state open --json headRefName,url -q '.[] | "\(.headRefName)\t\(.url)"' 2>/dev/null
-# Fallback si gh no está disponible: ramas remotas que no son main/master/release-*/HEAD
-git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
-```
-
-- **Si hay UNA rama abierta** (PR abierto o trabajo en curso): `git checkout <rama-existente>`, `git pull --rebase` si está atrás del remote, y **commiteá ahí — aunque tu cambio sea de otra naturaleza que el trabajo previo de esa rama**. No crees rama nueva. **No pidas permiso para el checkout**, sólo comunicalo: "Hay rama feature activa `<X>`, voy a commitear ahí."
-- **Si hay VARIAS ramas abiertas**: preguntá al usuario en cuál commitear (no asumas).
-- **Si NO hay ninguna rama abierta** (todas mergeadas/cerradas, o son ramas históricas abandonadas): recién ahí creá una rama nueva según el formato de la sección 3.
+No busques ramas abiertas para reutilizar — **cada sesión corta la suya** desde la BASE de la sección 0 (comandos exactos en la sección 5). Una rama de otra sesión nunca se reutiliza, ni "para un cambio chico"; la única excepción es un pedido explícito del operador. Si tu sesión YA tiene su rama/worktree de un turno anterior, seguí usándolos (tu trabajo en curso se acumula en TU rama).
 
 ### 3. Formato obligatorio del nombre de rama
 
@@ -109,16 +97,27 @@ git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space
 ### 5. Comandos exactos a ejecutar
 
 ```bash
-# 1. Obtener la fecha del día (no asumirla)
+# 1. Fecha del día (no asumirla) + identidad del repo y la base (sección 0)
 TODAY=$(date +%d%m%Y)
+REPO=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
+BASE=<base de integración de la sección 0>       # release si pr_state=single; main/master si no
+SLUG=<descripcion-corta>
 
-# 2. Crear y moverse a la nueva rama
-git checkout -b <prefijo>/${TODAY}-<descripcion-corta>
+# 2. Crear TU rama en TU worktree (desde el clon principal ~/webapps/<repo>)
+git fetch origin "$BASE" --quiet
+git worktree add "$HOME/webapps/.wt/${REPO}/${SLUG}" -b <prefijo>/${TODAY}-${SLUG} "origin/${BASE}"
+cd "$HOME/webapps/.wt/${REPO}/${SLUG}"
 
-# 3. Recién entonces hacer add y commit
+# 3. Guard: confirmar que estás bajo .wt/ ANTES de escribir
+git rev-parse --show-toplevel   # debe caer bajo ~/webapps/.wt/ — si no, frená
+
+# 4. Recién entonces hacer add y commit
 git add <archivos>
 git commit -m "<mensaje siguiendo conventional commits>"
 ```
+
+- `npm ci` / instalar dependencias **dentro del worktree** sólo si tu tarea necesita frontend (build/tests). Jamás toques el `node_modules`, los refs o los stashes de otro tree.
+- Al terminar la sesión, `/all-in-base` verifica el aterrizaje y retira el worktree; si quedó huérfano: `git worktree remove ~/webapps/.wt/<repo>/<slug>` (desde el clon principal) — nunca con `--force` si está sucio.
 
 ### 6. Inferencia del prefijo
 
@@ -135,9 +134,11 @@ Si hay ambigüedad, pregunta al usuario una sola vez antes de crear la rama.
 
 ### 7. Excepciones
 
-- Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git pull`, `git fetch`) están permitidas en `main`/`master`.
+- Operaciones de solo lectura (`git status`, `git log`, `git diff`, `git fetch`) están permitidas en cualquier lado, incluido el clon principal.
 - Si el usuario explícitamente pide quedarse en `main` para revisar algo sin commitear, respeta esa intención.
-- Si ya estás en una rama feature válida (no `main`/`master`), **nunca** crees una rama paralela para un cambio "distinto" — seguí commiteando en la rama actual. Cada cambio es un commit más, no una rama más. **Convención por defecto: 1 rama / 1 PR feature activo por proyecto a la vez.**
+- Dentro de TU rama de sesión, los cambios de tu tarea se acumulan como commits sucesivos — no abras una segunda rama por "sub-cambio" de la MISMA tarea. Trabajo NUEVO no relacionado en la misma sesión: preguntale al operador si va como commit en tu rama o como rama de sesión nueva.
+- **Convención: 1 sesión = 1 rama = 1 worktree = 1 PR; N PRs de sesión abiertos en paralelo son estado normal.** El límite duro es de RELEASES: máximo 1 PR de release (base=default) por repo, identificado por `branch_working` en projects.yml.
+- Sincronizar tu rama: `/git-sync` — una rama pusheada con PR se sincroniza contra su propio upstream y absorbe la base movida con `git merge origin/<base>`, **nunca** con rebase (el force push está denegado en el fleet).
 
 ### 8. Mensajes de commit
 
@@ -149,13 +150,19 @@ fix: correct typo in deployment README
 refactor: extract user validation into service
 ```
 
-### 9. Reporte final: URL del PR
+### 9. PR al primer push (con dueño declarado) + reporte de la URL
 
-Después de cada `git push` que cree una rama nueva en el remote, **siempre** termina tu respuesta dando al usuario la URL "Create a pull request" que GitHub imprime en el output del push.
+En el **primer `git push -u origin <rama>`** de tu rama de sesión, abrí el PR ahí mismo — no lo dejes para después: el PR es lo que le da a tu rama dueño visible, intención declarada y CI corriendo desde temprano.
 
-- Formato: `https://github.com/<owner>/<repo>/pull/new/<branch>`.
-- Inclúyela como una de las **últimas líneas** del cierre de turno, etiquetada como `PR URL: <url>`.
-- Si la rama ya existía y tiene un PR abierto, reporta la URL del PR existente (usa `gh pr view --json url -q .url` si la necesitas).
+```bash
+git push -u origin <rama>
+gh pr create --base "<BASE de la sección 0>" --fill \
+  --body "$(printf 'Sesión: %s\nIntención: %s\n\n%s' '<nombre de tu sesión (el título que le dio el operador), o el slug de la rama si no lo conocés>' '<1 línea: qué entrega esta rama>' '<resumen breve de los cambios>')"
+```
+
+- Las líneas `Sesión:` y `Intención:` del body son **contrato**: `/merge-queue` las usa para saber a quién delegarle conflictos y fixes. No las omitas.
+- Termina tu respuesta con la URL, etiquetada `PR URL: <url>` (si `gh` no está disponible, la URL "Create a pull request" que imprime el push, y decí que el PR quedó pendiente de abrir).
+- Pushes posteriores de la misma rama: reporta la URL del PR existente (`gh pr view --json url -q .url`).
 - Si por excepción se commiteó directo a `main`/`master` (sólo posible en proyectos sin esta regla), declara explícitamente: "PR URL: n/a (push directo a `main`)".
 - Si hubo cambios en varios proyectos en el mismo turno, entrega una **lista** con un `PR URL:` por proyecto.
 <!-- git-branch-protocol:end -->
@@ -167,7 +174,7 @@ Cuando termines de implementar un cambio que afecte un **flujo de usuario en el 
 - Crear o editar un formulario (agregar/quitar campos)
 - Nueva ruta, página o vista accesible al usuario
 - Cambios en flujos de autenticación, checkout, onboarding, búsqueda, perfil
-- Modificaciones a `docs/USER_FLOW_MAP.md` o `frontend/e2e/flow-definitions.json`
+- Modificaciones al registro de flows E2E (`frontend/e2e/flow-definitions.json`, o los shards por-flow + docs derivados en repos con `flow_definitions_dir`)
 
 …debes invocar la skill `e2e-user-flows-check` como **paso final** antes de reportar la implementación como completa. Esa skill audita la cobertura E2E del flujo modificado y reporta brechas/riesgos.
 
@@ -180,9 +187,9 @@ Cuando termines de implementar un cambio que afecte un **flujo de usuario en el 
 
 ## Ecosistemas IA paralelos
 
-Este proyecto tiene tres ecosistemas activos en paralelo: Claude Code (este
-archivo + `.claude/`), Codex (`AGENTS.md` + `.agents/skills/` + `.codex/config.toml`)
-y Windsurf (`.windsurf/rules/` + `.windsurf/workflows/`). Los tres comparten el
+Este proyecto tiene dos ecosistemas activos en paralelo: Claude Code (este
+archivo + `.claude/`) y Codex (`AGENTS.md` + `.agents/skills/` + `.codex/config.toml`).
+Ambos comparten el
 mismo cuerpo de instrucciones general; el frontmatter y la estructura cambian
 por ecosistema. La fuente de verdad es `vps-ops-toolkit/workflows/`.
 

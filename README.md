@@ -645,7 +645,7 @@ Project documentation lives in the `docs/` directory:
 | `docs/GLOBAL_RULES_GUIDELINES.md` | Global development rules and guidelines |
 | `docs/CODEX_METHODOLOGY_GUIDE.md` | Codex skills usage, invocation model, and daily routine |
 | `docs/CODEX_SETUP.md` | Codex setup, configuration, and skill validation |
-| `docs/CODEX_MIGRATION_MAP.md` | Mapping from legacy Claude/Windsurf assets to Codex skills |
+| `docs/CODEX_MIGRATION_MAP.md` | Mapping from Claude assets to Codex skills |
 
 ## AI Development Tools
 
@@ -655,7 +655,6 @@ This project uses three AI coding assistants that coexist without interfering:
 |---|---|---|
 | **OpenAI Codex** | `.codex/config.toml` | `.agents/skills/` (16 skills, invoke with `/skill-name`) |
 | **Claude Code** | `.claude/settings.json`, `CLAUDE.md` | `.claude/skills/` (16 skills, invoke with `/skill-name`) |
-| **Windsurf** | `.windsurf/rules/`, `.windsurf/workflows/` | 13 rules + 14 workflows |
 
 ### Codex skills quick reference
 
