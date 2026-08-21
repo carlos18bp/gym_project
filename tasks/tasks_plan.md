@@ -20,7 +20,7 @@
 | 14 | Automated Backups (daily, retention, manual trigger) | ✅ Complete | Huey periodic task |
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
-| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store. Backend: 120 tests passing. Frontend: 53 unit tests passing. E2E: 8 spec files with data-testid selectors. UI/UX redesign applied. Fake data command idempotent. |
+| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete — sync hardened 2026-08-21 | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store, 1 sync-polling composable. Optional-token 401/403 fallback, shared manual/scheduled lock, lawyer-like manual authorization, and authoritative `SyncLog` UI state. Live staging recovery processed 20,129 records successfully. |
 | 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 7 frontend views (incl. ServicesHub.vue), 1 store, 1 dashboard component, sidebar/router integration, backend tests passing. Sprint Abril 2026: 11 mejoras (admin icon preview, validación, errores, help_text UX, multi-file UI, PDF rediseño, tabs navigation, header corporativo, emails sin emojis, estado destacado, adjuntos automáticos) |
 
 ---
@@ -97,7 +97,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (207 files / 2287 test cases — verified 2026-07-24)
+### Frontend Unit Tests (208 files / 2296 test cases — updated 2026-08-21)
 
 | Directory | Purpose |
 |-----------|---------|

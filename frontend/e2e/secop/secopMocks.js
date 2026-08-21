@@ -180,6 +180,7 @@ export async function installSecopApiMocks(page, overrides = {}) {
   const userId = overrides.userId || 9901;
   const processes = overrides.processes || MOCK_PROCESSES;
   const classified = processes.filter((p) => p.my_classification !== null);
+  let syncTriggered = false;
 
   // Allow callers to override the user object (e.g. to test basic-user restrictions)
   const defaultUser = {
@@ -372,6 +373,7 @@ export async function installSecopApiMocks(page, overrides = {}) {
 
     // ── Sync ──
     if (apiPath === "secop/sync/trigger/") {
+      syncTriggered = true;
       return {
         status: 200,
         contentType: "application/json",
@@ -379,10 +381,23 @@ export async function installSecopApiMocks(page, overrides = {}) {
       };
     }
     if (apiPath === "secop/sync/") {
+      const completedStatus = {
+        ...MOCK_SYNC_STATUS,
+        last_success: {
+          ...MOCK_SYNC_STATUS.last_success,
+          id: 2,
+          finished_at: new Date().toISOString(),
+          records_processed: 180,
+        },
+        recent: [{ id: 2, status: "SUCCESS", finished_at: new Date().toISOString() }],
+        total_processes: 180,
+      };
       return {
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(MOCK_SYNC_STATUS),
+        body: JSON.stringify(
+          overrides.syncStatus || (syncTriggered ? completedStatus : MOCK_SYNC_STATUS)
+        ),
       };
     }
 

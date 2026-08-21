@@ -48,4 +48,32 @@ test.describe("SECOP Portal & Sync Status Flow", () => {
     await expect(page.getByTestId("sync-status-text")).toHaveText("150 procesos");
     await expect(page.getByTestId("sync-status")).toContainText("hace 6h");
   });
+
+  test("sync status exposes a safe failure indicator", {
+    tag: ['@flow:secop-sync-status', '@module:secop', '@priority:P3', '@role:lawyer', '@outcome:failure'],
+  }, async ({ page }) => {
+    // quality: allow-no-interaction (failure visibility is a server-driven display outcome)
+    const lastSuccess = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
+    await page.route("**/api/secop/sync/", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          last_success: { id: 1, status: "SUCCESS", finished_at: lastSuccess },
+          recent: [{
+            id: 2,
+            status: "FAILED",
+            error_message: "403 Client Error: private diagnostic",
+          }],
+          total_processes: 150,
+        }),
+      });
+    });
+
+    await page.goto("/secop");
+
+    await expect(page.getByTestId("sync-status-text")).toHaveText("Error de sincronización");
+    await expect(page.getByTestId("sync-status")).toContainText("último éxito hace 3d");
+    await expect(page.getByTestId("sync-status")).not.toContainText("private diagnostic");
+  });
 });

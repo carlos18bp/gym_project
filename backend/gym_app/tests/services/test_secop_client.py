@@ -108,6 +108,81 @@ class TestSECOPClientQuery:
 class TestSECOPClientRequest:
     """Tests for HTTP request handling."""
 
+    @pytest.mark.parametrize('status_code', [401, 403])
+    @patch('gym_app.services.secop_client.requests.get')
+    def test_auth_rejection_falls_back_to_public_access(
+        self, mock_get, status_code, client
+    ):
+        """Verify a rejected app token is retried without credentials."""
+        rejected = MagicMock()
+        rejected.raise_for_status.side_effect = requests.HTTPError(
+            response=MagicMock(status_code=status_code)
+        )
+        accepted = MagicMock()
+        accepted.raise_for_status.return_value = None
+        mock_get.side_effect = [rejected, accepted]
+
+        result = client._make_request('https://test.url')
+
+        assert result is accepted
+        rejected.raise_for_status.assert_called_once_with()
+        accepted.raise_for_status.assert_called_once_with()
+        assert mock_get.call_count == 2
+        assert mock_get.call_args_list[0].kwargs['headers']['X-App-Token'] == 'test-token-123'
+        assert 'X-App-Token' not in mock_get.call_args_list[1].kwargs['headers']
+
+    @patch('gym_app.services.secop_client.requests.get')
+    def test_public_fallback_failure_is_propagated(self, mock_get, client):
+        """Verify an anonymous fallback failure reaches the caller."""
+        rejected = MagicMock()
+        rejected.raise_for_status.side_effect = requests.HTTPError(
+            response=MagicMock(status_code=403)
+        )
+        public_error = requests.RequestException('Public access unavailable')
+        mock_get.side_effect = [rejected, public_error]
+
+        with pytest.raises(requests.RequestException, match='Public access unavailable'):
+            client._make_request('https://test.url')
+
+        rejected.raise_for_status.assert_called_once_with()
+        assert mock_get.call_count == 2
+
+    @patch('gym_app.services.secop_client.requests.get')
+    def test_auth_rejection_without_token_does_not_fallback(
+        self, mock_get, client_no_token
+    ):
+        """Verify anonymous authentication errors are raised immediately."""
+        rejected = MagicMock()
+        rejected.raise_for_status.side_effect = requests.HTTPError(
+            response=MagicMock(status_code=403)
+        )
+        mock_get.return_value = rejected
+
+        with pytest.raises(requests.HTTPError):
+            client_no_token._make_request('https://test.url')
+
+        rejected.raise_for_status.assert_called_once_with()
+        mock_get.assert_called_once()
+
+    @patch('gym_app.services.secop_client.requests.get')
+    def test_public_fallback_persists_for_later_requests(self, mock_get, client):
+        """Verify later pages keep using anonymous access after fallback."""
+        rejected = MagicMock()
+        rejected.raise_for_status.side_effect = requests.HTTPError(
+            response=MagicMock(status_code=403)
+        )
+        accepted = MagicMock()
+        accepted.raise_for_status.return_value = None
+        mock_get.side_effect = [rejected, accepted, accepted]
+
+        client._make_request('https://test.url?page=1')
+        client._make_request('https://test.url?page=2')
+
+        rejected.raise_for_status.assert_called_once_with()
+        assert accepted.raise_for_status.call_count == 2
+        assert mock_get.call_count == 3
+        assert 'X-App-Token' not in mock_get.call_args_list[2].kwargs['headers']
+
     # quality: disable network_dependency (testing retry logic with mocked requests.get boundary)
     @patch('gym_app.services.secop_client.requests.get')
     def test_make_request_retries_on_failure(self, mock_get, client):

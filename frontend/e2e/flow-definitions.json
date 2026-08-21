@@ -1,6 +1,6 @@
 {
-  "version": "1.12.0",
-  "lastUpdated": "2026-07-27",
+  "version": "1.12.1",
+  "lastUpdated": "2026-08-21",
   "flows": {
     "admin-data-reassignment": {
       "name": "Reasignación de datos de abogado (admin)",
@@ -1678,7 +1678,8 @@
       "name": "Browse SECOP processes",
       "module": "secop",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "basic"
       ],
       "priority": "P2",
       "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
@@ -1814,19 +1815,21 @@
       ],
       "priority": "P3",
       "description": "View the last synchronization time and status indicator in the header",
-      "expectedSpecs": 1,
+      "expectedSpecs": 2,
       "outcomes": [
-        "display"
+        "display",
+        "failure"
       ]
     },
     "secop-trigger-sync": {
-      "name": "Admin triggers manual sync",
+      "name": "Lawyer-like user triggers manual sync",
       "module": "secop",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "admin"
       ],
       "priority": "P4",
-      "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
+      "description": "A lawyer, admin, staff user, or superuser triggers a manual synchronization with SECOP API via the sync button in the header; other roles can view status but do not see the trigger",
       "expectedSpecs": 1,
       "outcomes": [
         "success"

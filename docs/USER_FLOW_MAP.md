@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** July 7, 2026
-**Versión:** 1.11.0
+**Fecha:** August 21, 2026
+**Versión:** 1.12.1
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -1346,19 +1346,21 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 **Pasos:**
 1. Navigate to `/secop`
 2. View sync status indicator in the header bar
-3. Indicator shows last successful sync time
+3. The indicator shows the authoritative latest attempt: in progress, success freshness, or failure
+4. **Failure:** a failed attempt shows a safe message and the relative time of the last success without exposing diagnostics
 
 ---
 
-### secop-trigger-sync: Admin triggers manual sync
+### secop-trigger-sync: Lawyer-like user triggers manual sync
 - **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button in the header
+- **Descripción:** Lawyer/admin/staff/superuser triggers a manual synchronization with SECOP API via the sync button in the header; other roles still see status but not the trigger
 
 **Pasos:**
 1. Navigate to `/secop`
 2. Click "Sincronizar" button in the sync status bar
 3. Button disables and shows spinner while syncing
-4. Sync runs asynchronously in background
+4. The page polls the server-side sync history while Huey runs asynchronously
+5. A successful newer SyncLog refreshes the opportunity count and re-enables the button
 
 ---
 
@@ -1763,7 +1765,9 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ## Flujos — SECOP (Contratación Estatal)
 
-> Módulo exclusivo para **Lawyer**. Permite navegar, filtrar, clasificar y monitorear procesos de contratación pública del portal SECOP.
+> El módulo es completo para usuarios lawyer-like. Los usuarios Basic pueden
+> consultar el listado y el estado de sincronización, pero ven bloqueados los
+> filtros/alertas premium y no reciben el control de sincronización manual.
 
 > **Nota de reconciliación (2026-07-24):** las definiciones detalladas de los 17 flujos SECOP
 > (con **Pasos** y **Ramificaciones**) viven de forma canónica en la sección **Flujos — Lawyer**,
@@ -1772,29 +1776,29 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 > abreviadas; se consolidó para evitar definiciones divergentes. La tabla resume el inventario y su
 > estado según `scripts/flow_coverage_audit.py`.
 
-| Flow id | Prioridad | Estado (audit 2026-07-24) |
+| Flow id | Prioridad | Estado (audit 2026-08-21) |
 |---------|-----------|---------------------------|
 | `secop-list-browse` | P2 | ✅ covered |
 | `secop-process-detail` | P2 | ✅ covered |
 | `secop-classify-process` | P2 | ✅ covered |
-| `secop-create-alert` | P2 | 🟠 junk-only |
+| `secop-create-alert` | P2 | ✅ covered |
 | `secop-manage-alerts` | P3 | ✅ covered |
 | `secop-export-excel` | P3 | ✅ covered |
 | `secop-add-notes` | P3 | ✅ covered |
-| `secop-save-view` | P3 | 🟠 junk-only |
-| `secop-apply-saved-view` | P3 | 🟠 junk-only |
+| `secop-save-view` | P3 | ✅ covered |
+| `secop-apply-saved-view` | P3 | ✅ covered |
 | `secop-view-in-portal` | P3 | ✅ covered |
-| `secop-sync-status` | P3 | 🟠 junk-only |
+| `secop-sync-status` | P3 | ✅ covered (display + failure) |
 | `secop-trigger-sync` | P4 | ✅ covered |
 | `secop-filter-classifications` | P3 | ✅ covered |
-| `secop-saved-view-favorites` | P3 | 🟠 junk-only |
-| `secop-keyword-tags` | P3 | 🟠 junk-only |
+| `secop-saved-view-favorites` | P3 | ✅ covered |
+| `secop-keyword-tags` | P3 | ✅ covered |
 | `secop-edit-saved-view` | P3 | ✅ covered |
-| `secop-list-error-retry` | P4 | ✅ covered |
+| `secop-list-error-retry` | P4 | ⚠️ partial (failure ✅ · display ❌) |
 
-> 🟠 `junk-only` = existen tests etiquetados `@flow:<id>` pero **ninguno ejercita el flujo**
-> (descalificados por `no_user_interaction` / `flow_tag_mismatch`): reportan verde pero no cubren.
-> Reescribir esos specs es prioritario frente a cualquier flujo `missing`.
+> El audit 2026-08-21 confirma 16 flujos SECOP cubiertos y 1 parcial. La única brecha
+> del módulo es el outcome `display` de `secop-list-error-retry`; su recuperación por
+> interacción sí está cubierta.
 
 ---
 
@@ -2206,6 +2210,20 @@ requisitos no revisados.
 
 ---
 
-**Documento generado:** July 22, 2026
-**Versión:** 1.12.0
-**Estado:** 164 flujos declarados (≡ `flow-definitions.json`). Cobertura por `scripts/flow_coverage_audit.py` (2026-07-24): **140 covered · 20 junk-only · 4 missing**. Ver "Reconciliación mapa ↔ flow-definitions.json — 2026-07-24". Nota: el conteo previo "164/164 cubiertos" reflejaba el reporter antiguo (verde con un solo test tagged), no el audit por-outcome.
+## Actualización de cobertura — 2026-08-21
+
+La auditoría actual revisó 205 specs y 650 tests contra los 164 flujos:
+128 `covered`, 32 `partial`, 0 `junk-only`, 1 `missing` (`docs-summary`) y
+3 `exempt`. Ya declaran outcomes 161/164 flujos. En SECOP,
+`secop-sync-status` cubre `display` + `failure` y `secop-trigger-sync` cubre
+`success`; ambos tests ejecutan la interacción real. La única brecha SECOP es
+el outcome `display` de `secop-list-error-retry` (el outcome `failure` está
+cubierto).
+
+Los módulos `directory`, `notifications`, `schedule` y `user-guide` aún no
+declaran outcomes `error`/`failure`; corresponden al backlog general y no al
+flujo SECOP modificado en esta sesión.
+
+**Documento actualizado:** August 21, 2026
+**Versión:** 1.12.1
+**Estado:** 164 flujos declarados (≡ `flow-definitions.json`); los dos flujos SECOP modificados están cubiertos por outcome.
