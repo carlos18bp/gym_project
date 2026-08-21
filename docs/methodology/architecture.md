@@ -9,7 +9,7 @@ flowchart TB
         Views["45 View Pages"]
         Components["115 Components"]
         Stores["46 Pinia Stores"]
-        Composables["15 Composables"]
+        Composables["16 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
@@ -68,8 +68,8 @@ flowchart LR
 
     subgraph Test["Testing"]
         Pytest["pytest\n101 test files"]
-        Jest["Jest\n207 test files"]
-        PW["Playwright\n204 E2E specs"]
+        Jest["Jest\n208 test files"]
+        PW["Playwright\n205 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -335,8 +335,8 @@ flowchart TD
     end
 
     subgraph SECOP["gym_app/secop_tasks.py"]
-        S1["sync_secop_daily\n(daily @ 6AM, locked)"]
-        S2["sync_secop_data\n(on-demand, retries=3)"]
+        S1["sync_secop_daily\n(daily @ 6AM)"]
+        S2["sync_secop_data\n(manual/scheduled, retries=3, locked)"]
         S3["evaluate_secop_alerts\n(after sync, delayed 5s)"]
         S4["send_secop_daily_summaries\n(daily @ 7AM)"]
         S5["send_secop_weekly_summaries\n(Monday @ 7AM)"]
@@ -353,6 +353,15 @@ flowchart TD
     S3 -->|"sends email"| SMTP2["Gmail SMTP"]
     S4 -->|"sends email"| SMTP2
 ```
+
+The lock is attached to `sync_secop_data`, the real worker task, so both the
+periodic wrapper and manual endpoint use the same concurrency guard. The
+Socrata client sends `SECOP_APP_TOKEN` only when configured; a 401/403 disables
+that header for the rest of the client run and retries the public dataset once
+anonymously. `SyncLog` is the source of truth consumed by
+`useSecopSyncPolling`: the SECOP page polls while work is active, refreshes
+processes and filters only after a newer successful log, and shows safe failure
+copy without exposing backend diagnostics.
 
 ---
 

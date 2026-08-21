@@ -183,6 +183,14 @@
 - **Resolution** (commit `17491a6`): `SyncStatus.vue` now declares and emits `trigger-sync`; the disabled window is kept intentionally as a re-trigger cooldown. Unit + E2E specs updated to assert the emit and the scheduled sync.
 - **Affected files**: `frontend/src/components/secop/SyncStatus.vue`, `frontend/test/components/secop/SyncStatus.test.js`, `frontend/e2e/secop/secop-admin-sync-flow.spec.js`
 
+### [RESOLVED-023] SECOP staging sync failed repeatedly with a rejected optional app token
+- **Context** (2026-08-21): staging had no successful live SECOP synchronization since 2026-08-11. Both scheduled and manual Huey attempts reached the official `p6dx-8zbt` dataset but returned 403, while the identical public query succeeded without credentials.
+- **Root Cause**: the configured optional `SECOP_APP_TOKEN` had become invalid. The client treated every authentication rejection as terminal, and the UI used a fixed 180-second spinner instead of following `SyncLog`, so operators could not see the real outcome.
+- **Operational recovery**: blanked the invalid staging token, restarted `gym-staging-huey`, and queued the normal incremental task. `SyncLog` 619 completed successfully: 20,129 processed, 17,115 created, 3,014 updated, and 1,143 stale processes closed.
+- **Resolution**: settings and `.env.example` now default to the verified `p6dx-8zbt` dataset with blank optional credentials; `SECOPClient` retries a token-authenticated 401/403 once without the token and stays anonymous for later pages; the real `sync_secop_data` task owns the shared lock; the manual endpoint uses the common lawyer-like predicate; and `useSecopSyncPolling` renders authoritative in-progress/success/failure state and refreshes SECOP data after success.
+- **Security**: the fallback warning never logs the token, and frontend failure text does not expose `SyncLog.error_message`.
+- **Affected files**: `backend/gym_project/settings.py`, `backend/.env.example`, `backend/gym_app/services/secop_client.py`, `backend/gym_app/secop_tasks.py`, `backend/gym_app/views/secop.py`, `frontend/src/composables/useSecopSyncPolling.js`, `frontend/src/components/secop/SyncStatus.vue`, `frontend/src/views/secop/SecopList.vue`
+
 ### [RESOLVED-022] Signature "clear" button had no accessible name (dead test locator)
 - **Context** (surfaced 2026-07-23 in the same audit): the signature "clear" control had no accessible name, so its E2E test locator never matched and the assertion was silently dead — a real a11y gap.
 - **Resolution** (commit `1092803`): added accessible names to the clear/upload controls in the electronic-signature components; the E2E spec now matches a real, named element.

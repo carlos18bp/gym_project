@@ -1,5 +1,4 @@
 import { mount } from "@vue/test-utils";
-import { nextTick } from "vue";
 
 import SyncStatus from "@/components/secop/SyncStatus.vue";
 
@@ -85,6 +84,21 @@ describe("SyncStatus.vue", () => {
     expect(btn.attributes("disabled")).toBeUndefined();
   });
 
+  test("hides sync trigger for users without permission", () => {
+    const wrapper = mount(SyncStatus, {
+      props: {
+        syncStatus: {
+          last_success: { finished_at: TWO_HOURS_AGO },
+          total_processes: 100,
+        },
+        canTrigger: false,
+      },
+    });
+
+    expect(wrapper.find("[data-testid='sync-trigger-btn']").exists()).toBe(false);
+    expect(wrapper.get("[data-testid='sync-status-text']").text()).toBe("100 procesos");
+  });
+
   test("emits trigger-sync when the button is clicked", async () => {
     // The manual trigger is a documented lawyer feature (user guide:
     // "el sync ... también puede dispararse manualmente"); the parent listens
@@ -104,37 +118,73 @@ describe("SyncStatus.vue", () => {
     expect(wrapper.emitted("trigger-sync")).toHaveLength(1);
   });
 
-  test("does not re-emit trigger-sync while a sync is already in flight", async () => {
+  test("does not emit trigger-sync while a sync is already in flight", async () => {
     const wrapper = mount(SyncStatus, {
       props: {
         syncStatus: {
           last_success: { finished_at: TWO_HOURS_AGO },
           total_processes: 100,
         },
+        syncing: true,
       },
     });
 
     const btn = wrapper.find("[data-testid='sync-trigger-btn']");
     await btn.trigger("click");
-    await btn.trigger("click");
 
-    expect(wrapper.emitted("trigger-sync")).toHaveLength(1);
+    expect(wrapper.emitted("trigger-sync")).toBeUndefined();
   });
 
-  test("disables button after click to prevent double-trigger", async () => {
+  test("disables button while the parent is polling", () => {
     const wrapper = mount(SyncStatus, {
       props: {
         syncStatus: {
           last_success: { finished_at: TWO_HOURS_AGO },
           total_processes: 100,
         },
+        syncing: true,
       },
     });
 
     const btn = wrapper.find("[data-testid='sync-trigger-btn']");
-    await btn.trigger("click");
-    await nextTick();
 
     expect(btn.element.disabled).toBe(true);
+  });
+
+  test("renders server in-progress state", () => {
+    const wrapper = mount(SyncStatus, {
+      props: {
+        syncStatus: {
+          last_success: { finished_at: TWO_HOURS_AGO },
+          recent: [{ id: 2, status: "IN_PROGRESS" }],
+          total_processes: 100,
+        },
+      },
+    });
+
+    expect(wrapper.get("[data-testid='sync-status-text']").text()).toBe("Sincronizando");
+    expect(wrapper.get("[data-testid='sync-status-dot']").classes()).toContain("bg-blue-400");
+    expect(wrapper.get("[data-testid='sync-trigger-btn']").element.disabled).toBe(true);
+  });
+
+  test("renders a safe failure state with the last success", () => {
+    const wrapper = mount(SyncStatus, {
+      props: {
+        syncStatus: {
+          last_success: { finished_at: TWO_HOURS_AGO },
+          recent: [{
+            id: 3,
+            status: "FAILED",
+            error_message: "403 Client Error: private diagnostic",
+          }],
+          total_processes: 100,
+        },
+      },
+    });
+
+    expect(wrapper.get("[data-testid='sync-status-text']").text()).toBe("Error de sincronización");
+    expect(wrapper.get("[data-testid='sync-status-dot']").classes()).toContain("bg-red-500");
+    expect(wrapper.get("[data-testid='sync-status']").attributes("title")).toContain("Último éxito");
+    expect(wrapper.text()).not.toContain("private diagnostic");
   });
 });

@@ -16,6 +16,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 | Paper-based document workflows | Dynamic document builder with template variables, permissions, and electronic signatures |
 | Fragmented client-lawyer communication | Centralized dashboard, legal/corporate request workflows, and organization posts |
 | No billing automation | Subscription plans with recurring payments via Wompi gateway and Huey scheduled tasks |
+| Manual discovery of public procurement opportunities | SECOP II synchronization, search, classification, alerts, saved views, and export |
 | Lack of access control | Role-based system (Client, Lawyer, Basic, Corporate Client) with fine-grained document permissions |
 | No offline access | PWA with service worker for offline readiness and installable app experience |
 
@@ -138,6 +139,13 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 - Search functionality within the guide
 - Quick links and example modals
 
+### 4.14 SECOP Public Procurement
+- Daily incremental synchronization from the public Socrata dataset on datos.gov.co
+- Search, filters, classifications, saved views, alert rules, and Excel export
+- Manual synchronization control visible only to lawyer-like users (lawyer, admin, staff, or superuser)
+- Authoritative synchronization status based on backend `SyncLog` records, including safe in-progress and failure states
+- Optional Socrata app token with automatic anonymous fallback when the public dataset rejects the configured token
+
 ---
 
 ## 5. Non-Functional Requirements
@@ -167,7 +175,7 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 9. **Idle logout**: Automatic session termination after inactivity period for security.
 10. **SECOP classifications**: Each user can have one classification per process (unique_together). Classifications are per-user but visible to the team.
 11. **SECOP alerts**: Evaluated against new processes after each sync. Frequency determines email delivery: immediate, daily summary, or weekly summary.
-12. **SECOP sync**: Daily incremental sync from Socrata API (datos.gov.co). Old closed processes without classifications are purged after 30 days.
+12. **SECOP sync**: Daily incremental sync from Socrata API (datos.gov.co). Scheduled and manual executions share a task lock, so they cannot run concurrently. A rejected optional app token falls back once to anonymous access because the dataset is public. The UI polls `SyncLog` and never invents completion locally. Old closed processes without classifications are purged after 30 days.
 
 ---
 

@@ -17,6 +17,7 @@ from gym_app.serializers.secop import (
     ProcessClassificationSerializer, SECOPAlertSerializer,
     SyncLogSerializer, SavedViewSerializer
 )
+from gym_app.utils.auth_utils import is_gym_staff
 
 logger = logging.getLogger(__name__)
 
@@ -593,11 +594,11 @@ def secop_sync_status(request):
 @permission_classes([IsAuthenticated])
 def secop_trigger_sync(request):
     """
-    Trigger a manual SECOP sync. Restricted to lawyers.
+    Trigger a manual SECOP sync. Restricted to lawyer-like users.
     """
-    if request.user.role != 'lawyer':
+    if not is_gym_staff(request.user):
         return Response(
-            {'detail': 'Only lawyers can trigger sync.'},
+            {'detail': 'Only lawyers and administrators can trigger sync.'},
             status=status.HTTP_403_FORBIDDEN
         )
 

@@ -28,19 +28,26 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 32 |
 | Backend serializer files | 13 |
 | Backend URL patterns | 205 |
-| Backend test files | 101 (3176 test functions, 582 `Test*` classes, 16 parametrize uses) |
+| Backend test files | 101 (3182 test functions, 582 `Test*` classes, 18 parametrize uses) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 115 |
 | Frontend view pages | 45 |
 | Frontend Pinia store files | 46 |
-| Frontend composables | 15 |
-| Frontend unit test files | 207 (2287 test cases) |
-| Frontend E2E spec files | 204 (633 test cases) |
-| Frontend E2E flows (flow-definitions.json) | 164 (v1.12.0) |
+| Frontend composables | 16 |
+| Frontend unit test files | 208 (2296 test cases) |
+| Frontend E2E spec files | 205 (650 test cases) |
+| Frontend E2E flows (flow-definitions.json) | 164 (v1.12.1) |
 
 ---
 
 ## 2. Recent Focus Areas
+
+- **SECOP staging sync recovery + hardening (2026-08-21, complete)**:
+  - **Incident/recovery**: staging had no successful live sync since 2026-08-11 because Socrata rejected the optional `SECOP_APP_TOKEN` with 403, although the public query worked anonymously. The invalid staging token was blanked, `gym-staging-huey` restarted, and the normal incremental task queued.
+  - **Verified live result**: `SyncLog` 619 finished `SUCCESS` at 18:53:23 UTC — 20,129 processed, 17,115 created, 3,014 updated, 1,143 stale closed; 15,992 active opportunities remained and the newest source update was 2026-08-19. Alert evaluation created 827 notification rows.
+  - **Backend hardening**: token-authenticated 401/403 responses retry once anonymously without logging the credential; the real `sync_secop_data` task owns the lock shared by scheduled/manual entry points; manual triggering now uses `is_gym_staff` for lawyer/admin/staff/superuser consistency.
+  - **Frontend hardening**: `useSecopSyncPolling` follows `SyncLog` every 5 seconds (bounded to 5 minutes), resumes an existing run, prevents duplicate local triggers, refreshes processes/filters after a newer success, and leaves safe server-derived failure state visible inside SECOP. The former fixed 180-second spinner is removed.
+  - **Verification**: targeted Ruff, 39 backend cases, 17 Jest tests, Vite production build, and 5 Playwright SECOP tests passed. The immediate-alert email path logged an SMTP connection-close warning during the live evaluation; alert row creation completed and SMTP follow-up remains operationally separate.
 
 - **Report-only test-audit + methodology campaign (2026-07-24)**:
   - **Phase 1 — Memory Bank refresh (✅ this update)**: recounted all codebase/test metrics as of 2026-07-24 and recorded the new test-quality gate + CI regime (below). Phases 2–4 of the same run are report-only: fake-data refresh, USER_FLOW_MAP ↔ flow-definitions reconciliation, and a whole-corpus junk-test audit report. No test files or runtime touched in Phase 1.
@@ -272,8 +279,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 ## 5. Next Steps
 
 0. **Phased quality initiative IN PROGRESS (2026-07-16)** — running on `release-august-2026-c`: Memory Bank refresh (✅ this update) → new-feature-checklist audit → e2e-user-flows-check → fake-data-refresh (staging) → iterative backend/frontend-unit coverage to 100% → quality gate strict → iterative E2E flow coverage. Plan: `~/.claude/plans/ejecuta-en-un-plan-sequential-koala.md`.
-1. **SECOP Module** ✅ — Fully complete: implementation, bug fixes, UI/UX redesign, backend tests (120), frontend tests (53), E2E (22 tests across 8 specs), fake data validated, 12/12 flows registered in `flow-definitions.json` and `USER_FLOW_MAP.md` (all ✅)
-   - **Remaining**: Live data sync verification (`python manage.py sync_secop`) — requires SECOP API access
+1. **SECOP Module** ✅ — Fully complete: implementation, bug fixes, UI/UX redesign, backend tests, frontend tests, E2E, fake data, and live staging synchronization verified. The 2026-08-21 hardening adds optional-token fallback, shared task locking, authoritative status polling, and lawyer-like manual authorization.
    - **Fixed (2026-03-19)**: E2E `secop-alert-create-flow.spec.js` — 2 `data-testid` mismatches (`alert-form` → `alert-form-modal`, `alert-name-input` → `alert-name`)
 2. **Review and prioritize** the 12 planned features in `docs/next_requirements/`
 3. **Address tech debt** — Clean up backup files, modularize large files

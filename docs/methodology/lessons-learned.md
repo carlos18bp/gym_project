@@ -94,6 +94,13 @@
 - Complex external integrations use a `services/` sub-package
 - SECOP has three services: `secop_client.py` (API fetching), `secop_sync_service.py` (sync logic), `secop_alert_service.py` (alert matching)
 
+### SECOP Public API Authentication Must Degrade Safely
+- `SECOP_APP_TOKEN` is an optional rate-limit credential, not a requirement for the public dataset
+- If Socrata rejects a configured token with 401/403, retry once without `X-App-Token` and keep subsequent pages anonymous for that client run
+- Never log the token or pass raw backend diagnostics to the frontend; expose a safe failed state and retain the last successful timestamp
+- Put the concurrency lock on `sync_secop_data`, not only on its periodic wrapper, so scheduled and manual entry points share the same guard
+- Treat `SyncLog` as the authoritative UI state; local timers can control polling cadence but must never claim that a sync completed
+
 ### Views Sub-Package for Complex Domains
 - Dynamic documents uses a `views/dynamic_documents/` sub-package to manage endpoint complexity
 

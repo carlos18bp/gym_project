@@ -130,8 +130,8 @@ All configuration via `python-decouple` reading from `backend/.env`. See `backen
 | `REDIS_URL` | `redis://localhost:6379/1` | Redis URL for Huey |
 | `BACKUP_STORAGE_PATH` | `/var/backups/gym_project` | Backup storage path |
 | `ENABLE_SILK` | `false` | Enable django-silk profiling |
-| `SECOP_DATASET_ID` | `bt96-ncis` | Socrata dataset ID for SECOP II |
-| `SECOP_APP_TOKEN` | (empty) | Optional Socrata app token for higher rate limits |
+| `SECOP_DATASET_ID` | `p6dx-8zbt` | Socrata dataset ID for SECOP II |
+| `SECOP_APP_TOKEN` | (empty) | Optional Socrata app token for higher rate limits; 401/403 responses retry once anonymously and keep the token out of logs |
 
 Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for client-side access.
 
@@ -151,7 +151,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **TailwindCSS + Flowbite** | Utility-first styling with pre-built component library |
 | **PWA via vite-plugin-pwa** | Offline-ready with minimal configuration; service worker auto-generation |
 | **Pre-commit + CI quality gate** | Automated test quality enforcement on every commit and PR |
-| **Socrata API (datos.gov.co)** | SECOP II public procurement data via `requests`; daily incremental sync; no SDK needed |
+| **Socrata API (datos.gov.co)** | SECOP II public procurement data via `requests`; daily incremental sync; optional app token with one-run anonymous fallback; no SDK needed |
 
 ---
 
@@ -163,10 +163,10 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **Domain-split Models** | Models organized by domain in separate files under `models/` |
 | **Modular Views** | Views split into sub-packages (`dynamic_documents/`, `layouts/`) |
 | **Pinia Modular Stores** | Stores organized by domain with sub-modules (e.g., `dynamic_document/` has state, getters, actions, index) |
-| **Composables** | Vue composables for cross-cutting concerns (idle logout, PWA install, search, recent views, email) |
+| **Composables** | Vue composables for cross-cutting concerns (idle logout, PWA install, search, recent views, email, SECOP sync polling) |
 | **Route Guards** | Auth check + role-based access control in Vue Router `beforeEach` |
 | **Lazy Route Loading** | All routes use dynamic `import()` with webpack chunk names |
-| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM), SECOP sync (daily 6AM), alert summaries (daily 7AM / weekly Monday 7AM), purge closed processes (daily 3:30AM) |
+| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM), SECOP sync (daily 6AM, shared lock with manual runs), alert summaries (daily 7AM / weekly Monday 7AM), purge closed processes (daily 3:30AM) |
 | **Serializer Validation** | DRF serializers handle all input validation |
 | **Email Templates** | MJML/HTML templates for transactional emails |
 
@@ -177,11 +177,11 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
 | Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 101 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 207 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 207) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 207) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 207) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 204 spec files | `frontend/e2e/` |
+| Frontend Stores | Jest + Vue Test Utils | 208 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 208) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 208) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 208) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 205 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -245,12 +245,12 @@ gym_project/
 │   │   ├── components/       # 115 Vue components
 │   │   ├── views/            # 45 page-level components
 │   │   ├── stores/           # 46 store files (domain directories + root files; excl. services/request_http.js helper — 47 raw)
-│   │   ├── composables/      # 15 composable files (incl. usePendingSignatures)
+│   │   ├── composables/      # 16 composable files (incl. usePendingSignatures and useSecopSyncPolling)
 │   │   ├── router/           # 1 file, 69 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 207 unit test files (11 subdirectories)
-│   ├── e2e/                  # 204 E2E spec files
+│   ├── test/                 # 208 unit test files (11 subdirectories)
+│   ├── e2e/                  # 205 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │

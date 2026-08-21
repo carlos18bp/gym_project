@@ -6,6 +6,8 @@ import pytest
 from django.utils import timezone
 from freezegun import freeze_time
 from gym_app.models import ProcessClassification, SECOPProcess, SyncLog, User
+from huey.api import TaskLockedException
+from huey.contrib.djhuey import lock_task
 
 FROZEN_NOW = '2026-03-19T20:00:00+00:00'
 
@@ -26,6 +28,18 @@ def lawyer():
 @pytest.mark.django_db
 class TestSyncSecopData:
     """Tests for sync_secop_data task."""
+
+    @patch('gym_app.services.secop_sync_service.SECOPSyncService.synchronize')
+    def test_sync_secop_data_rejects_overlapping_run(self, mock_synchronize):
+        """Verify manual and scheduled entries share the worker-task lock."""
+        from gym_app.secop_tasks import sync_secop_data
+
+        with lock_task('secop-sync-lock'):
+            with pytest.raises(TaskLockedException):
+                sync_secop_data.call_local()
+
+        mock_synchronize.assert_not_called()
+        assert SyncLog.objects.count() == 0
 
     @patch('gym_app.services.secop_sync_service.SECOPSyncService.synchronize')
     def test_sync_secop_data_creates_sync_log(self, mock_synchronize):
