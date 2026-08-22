@@ -1,5 +1,5 @@
 ---
-name: responsive-module
+name: responsive-pass
 description: "Mejora continua de responsividad de UN módulo (o una pestaña) de un proyecto del fleet, verificada por /qa. Usar cuando el operador dice 'mejorá la responsividad del módulo X', 'X se rompe en celular/tableta', 'pasada responsive de la pestaña Y', 'el panel no se ve bien en tablet vertical', 'hacé responsive el módulo X', 'revisá cómo queda X en 835/412'. Procedimiento fijo y comparable entre corridas: inventario (estático + en vivo a 412/835/1195/1440/2560, tableta vertical obligatoria) → contraste contra docs/RESPONSIVE_STANDARDS.md → hallazgos por tipo de elemento → propuesta → aplicación (--apply: rama de sesión + PR) → handoff a [[qa]] (flows declarados + guion brief-e2e por ancho) → registro en config/responsive-ledger/. Default diagnóstico. NO usar para escribir/correr tests ni validar un fix ([[qa]]); para ver, validar o debuggear cómo queda la UI a un ancho SIN corregir nada ([[playwright-validation]]); para rediseño visual o cambios funcionales (fuera de alcance: quedan como observaciones); para 'toda la app' de una vez (rechazado: propone el orden por módulo); para un bug funcional ([[debug]]). Sin estándar canónico no corrige (inventaría y propone definirlo); si sólo falta la copia del repo, contrasta contra el canónico del toolkit y pide el sync. Un módulo por corrida, siempre."
 argument-hint: "[proyecto] [--module=<id>[/<tab>]] [--apply] [--record-qa] [--uncovered=observe|conservative]"
 allowed-tools: Bash, Read, Edit, Write, Grep, Glob, AskUserQuestion
@@ -16,7 +16,7 @@ buena a sí misma no está verificando nada.
 
 **Declaración de alcance — se imprime SIEMPRE antes de la Fase 1:**
 
-> 🎯 responsive-module — `<proyecto>` → módulo `<id>` · modo `<diagnóstico|aplicar>` ·
+> 🎯 responsive-pass — `<proyecto>` → módulo `<id>` · modo `<diagnóstico|aplicar>` ·
 > anchos `compact` 412×915 · `portrait` 835×1194 (atención especial) · `landscape` 1195×835 ·
 > `desktop` 1440×900 · `wide` 2560×1440. Esta corrida trabaja UN módulo y NO barre la app;
 > el resto queda en el ledger (`N` pendientes; próximo sugerido: `<id>`).
@@ -28,8 +28,8 @@ Un pedido de "toda la app" se rechaza en esa misma línea y se responde con el o
 
 Gating ([[_output-protocol]] §4): (1) `--module=` explícito (con o sin `--apply`) → ejecutar
 directo, sin menú; (2) intención clara en la sesión ("el panel de contabilidad se rompe en
-tablet") → proponer en una línea `/responsive-module <proyecto> --module=<id>` y esperar
-confirmación, sin picker; (3) `/responsive-module` pelado o pedido difuso ("mejorá la
+tablet") → proponer en una línea `/responsive-pass <proyecto> --module=<id>` y esperar
+confirmación, sin picker; (3) `/responsive-pass` pelado o pedido difuso ("mejorá la
 responsividad") → UNA sola AskUserQuestion con Q1+Q2+Q3 fusionadas; (4) jamás en
 fleet/headless/cron — esta skill no tiene modo fleet: `--all-repos`/`--all-vps` son error
 duro; (5) máx 4 opciones por pregunta, lo que no entra se tipea en "Other" (el id del módulo)
@@ -49,17 +49,17 @@ duplicados; los `verified` vigentes no se ofrecen.
 
 | label | description | preview |
 |---|---|---|
-| `<next_suggested>` (Recommended) | próximo pendiente del ledger · `pending` · N flows · N rutas | `/responsive-module <proyecto> --module=<id>` |
-| `<módulo nombrado>` | lo que pidió el operador · estado `<status>` en el ledger | `/responsive-module <proyecto> --module=<id>` |
-| `<último tocado>` (retomar) | corrida `<fecha>` quedó en `<diagnosed\|applied>` · N pendientes | `/responsive-module <proyecto> --module=<id>` |
-| `<siguiente pending>` | siguiente en el orden del mapa | `/responsive-module <proyecto> --module=<id>` |
+| `<next_suggested>` (Recommended) | próximo pendiente del ledger · `pending` · N flows · N rutas | `/responsive-pass <proyecto> --module=<id>` |
+| `<módulo nombrado>` | lo que pidió el operador · estado `<status>` en el ledger | `/responsive-pass <proyecto> --module=<id>` |
+| `<último tocado>` (retomar) | corrida `<fecha>` quedó en `<diagnosed\|applied>` · N pendientes | `/responsive-pass <proyecto> --module=<id>` |
+| `<siguiente pending>` | siguiente en el orden del mapa | `/responsive-pass <proyecto> --module=<id>` |
 
 **Q2 — Modo** (`multiSelect: false`):
 
 | label | description | preview |
 |---|---|---|
-| Diagnóstico (Recommended) | inventario + contraste + propuesta + guion; no escribe en el proyecto; registra en el ledger del toolkit | `/responsive-module <proyecto> --module=<id>` |
-| Aplicar | además edita el módulo en rama de sesión + PR, declara flows en el registro y deja el handoff a /qa | `/responsive-module <proyecto> --module=<id> --apply` |
+| Diagnóstico (Recommended) | inventario + contraste + propuesta + guion; no escribe en el proyecto; registra en el ledger del toolkit | `/responsive-pass <proyecto> --module=<id>` |
+| Aplicar | además edita el módulo en rama de sesión + PR, declara flows en el registro y deja el handoff a /qa | `/responsive-pass <proyecto> --module=<id> --apply` |
 
 **Q3 — Caso no cubierto por el estándar** (`multiSelect: false`):
 
@@ -308,7 +308,7 @@ tiene selectores estables y no se pudieron agregar, y `HANDOFF: /qa <proyecto> -
 
 **5c. Puntero para `/qa`** (sólo `--apply`; toolkit): una línea en `watchlist` de
 `config/qa-memory/<codebase>.yml` — `"RESPONSIVE pending (<fecha>): flows [<ids>] declarados por
-responsive-module para <module>; guion en docs/audits/<reporte>"` (respetar el cap de 10; la
+responsive-pass para <module>; guion en docs/audits/<reporte>"` (respetar el cap de 10; la
 memoria sólo ADD work). `/qa` la lee en su Fase 0 y el Architect toma el guion como hipótesis
 a re-verificar. `--record-qa` la retira.
 
@@ -419,8 +419,8 @@ Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos (gatin
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
 | QA del módulo | /qa autoría + ejecución en vivo de los E<n>; commitea tests en su propia rama | `/qa <proyecto> --apply --layers=e2e` |
-| Aplicar la propuesta | edita el módulo en rama de sesión + PR, declara flows (sólo tras diagnóstico) | `/responsive-module <proyecto> --module=<id> --apply` |
-| Siguiente módulo | diagnóstico del próximo pendiente del ledger | `/responsive-module <proyecto> --module=<next_suggested>` |
+| Aplicar la propuesta | edita el módulo en rama de sesión + PR, declara flows (sólo tras diagnóstico) | `/responsive-pass <proyecto> --module=<id> --apply` |
+| Siguiente módulo | diagnóstico del próximo pendiente del ledger | `/responsive-pass <proyecto> --module=<next_suggested>` |
 | Reporte para el cliente | reporte no técnico de esta pasada | `/client-report responsividad de <module> en <proyecto>` |
 
 Nunca como fila: merge del PR (`/merge-when-green` va en Next steps), deploy, git destructivo
@@ -432,7 +432,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de esta skill (el
 sobre ESTA corrida; el de /qa es una fila aparte):
 
 ```markdown
-🟢 responsive-module OK — <proyecto> / <module> (<diagnóstico|aplicado>)
+🟢 responsive-pass OK — <proyecto> / <module> (<diagnóstico|aplicado>)
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
@@ -451,8 +451,8 @@ sobre ESTA corrida; el de /qa es una fila aparte):
 ## Next steps
 - `/qa <proyecto> --apply --layers=e2e` — guion en `docs/audits/<reporte>`; PR de QA apilado sobre `fix/…-responsive-<slug>`
 - (operador, dev) `cd ~/webapps/.wt/<repo>/responsive-<slug>/frontend && npm ci && npm run dev` — app con el fix para la validación en vivo de /qa
-- `/responsive-module <proyecto> --module=<id> --record-qa` — tras /qa: registra el veredicto medido en el ledger
-- `/responsive-module <proyecto> --module=<next_suggested>` — siguiente módulo
+- `/responsive-pass <proyecto> --module=<id> --record-qa` — tras /qa: registra el veredicto medido en el ledger
+- `/responsive-pass <proyecto> --module=<next_suggested>` — siguiente módulo
 - (tras QA) `/merge-when-green` — integrar el PR responsive (y el de QA) con CI verde
 ```
 

@@ -1,7 +1,7 @@
 interface:
-  display_name: "Responsive Module"
+  display_name: "Responsive Pass"
   short_description: "Mejora continua de responsividad de UN módulo (o una..."
-  default_prompt: "Use $responsive-module to handle this task with its documented workflow."
+  default_prompt: "Use $responsive-pass to handle this task with its documented workflow."
 
 policy:
   allow_implicit_invocation: true
