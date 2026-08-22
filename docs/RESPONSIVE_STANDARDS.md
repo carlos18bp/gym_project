@@ -6,7 +6,7 @@
 > Esta copia (`<proyecto>/docs/RESPONSIVE_STANDARDS.md`) la escribe
 > `scripts/maintenance/sync-test-quality-core.sh` y **se sobrescribe en cada sync**.
 > Lo que difiere por proyecto se declara en `.testquality.yml` con claves `responsive_*`
-> (§9) — nunca editando este archivo. Lo consume la skill `/responsive-module` (un
+> (§9) — nunca editando este archivo. Lo consume la skill `/responsive-pass` (un
 > módulo por corrida); la verificación la hace `/qa` bajo `TESTING_QUALITY_STANDARDS.md`.
 
 ---
@@ -264,13 +264,13 @@ Un **test conductual** en el **módulo dueño** que pasa el junk gate:
 - **Costo acotado:** un `describe` por ancho con hallazgo corregido, más `portrait` siempre
   (atención especial). Nunca "todos los specs × 5 anchos".
 
-Helper canónico (lo siembra `/responsive-module` en el primer `--apply` si falta; es propiedad
+Helper canónico (lo siembra `/responsive-pass` en el primer `--apply` si falta; es propiedad
 del proyecto y ningún sync lo pisa; si el proyecto ya expone viewports en código — projectapp
 `PANEL_VIEWPORTS` en `frontend/config/responsive.js` — el helper **re-exporta** desde ahí):
 
 ```ts
 // frontend/e2e/helpers/viewports.ts — anchos de referencia (RESPONSIVE_STANDARDS.md §2, standard_version 1.0.0)
-// Overrides: .testquality.yml → responsive_widths. Sembrado por /responsive-module; propiedad del proyecto.
+// Overrides: .testquality.yml → responsive_widths. Sembrado por /responsive-pass; propiedad del proyecto.
 export const VIEWPORTS = {
   compact:   { width: 412,  height: 915  }, // celular · < sm
   portrait:  { width: 835,  height: 1194 }, // tableta vertical · ≥ md (atención especial)
@@ -355,7 +355,7 @@ test.describe('Pedidos @ 412 (celular)', { tag: [...BACKOFFICE_ORDER_MANAGEMENT_
   ancho tiene superficie de error propia (toast bajo el bottom-nav, validación cortada).
 - **`expectedSpecs: 0` al declarar** = "declarado, pendiente de autoría": el CI del proyecto no lo
   exige referenciado y el audit lo juzga por `outcomes` → `missing` → entra en `missing_flows` de
-  `/qa`. `/responsive-module --record-qa` lo sube al número medido cuando el flow queda `covered`.
+  `/qa`. `/responsive-pass --record-qa` lo sube al número medido cuando el flow queda `covered`.
 - **Layout sharded** (`.testquality.yml → flow_definitions_dir`): shard
   `frontend/<e2e>/<dir>/<id>.json`, doc `docs/user-flows/<id>.md`, `_meta.json` (`version` patch +1,
   `lastUpdated`), y regenerar derivados con `python3 scripts/generate_flow_registry.py --repo-root .`
@@ -403,7 +403,7 @@ Sólo **claves planas** (el parser del core no soporta mappings anidados). Todo 
 omitir = defaults de este estándar. Precedencia: flag de la skill > `.testquality.yml` > estándar.
 
 ```yaml
-# --- Responsive (consumido por /responsive-module; el quality gate lo IGNORA) ---
+# --- Responsive (consumido por /responsive-pass; el quality gate lo IGNORA) ---
 # responsive_widths: ["compact=412x915", "portrait=835x1194", "landscape=1195x835", "desktop=1440x900", "wide=2560x1440"]
 # responsive_breakpoints: ["sm=640", "md=768", "lg=1024", "xl=1280", "2xl=1536"]   # px efectivos; custom: "panel-portrait=600", "tablet=900"
 # responsive_breakpoints_source: frontend/config/responsive.js                     # de dónde salen (tailwind.config.js, globals.css…)
