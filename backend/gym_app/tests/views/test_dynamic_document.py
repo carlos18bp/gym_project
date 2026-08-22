@@ -172,12 +172,14 @@ class TestDynamicDocumentViews:
             content="<p>x</p>",
             state="Draft",
             created_by=lawyer_1,
+            managed_by=lawyer_1,
         )
         doc2 = DynamicDocument.objects.create(
             title="L1 Published",
             content="<p>x</p>",
             state="Published",
             created_by=lawyer_1,
+            managed_by=lawyer_1,
         )
         # Documento de otro abogado que no debería aparecer
         _doc_other = DynamicDocument.objects.create(
@@ -185,6 +187,7 @@ class TestDynamicDocumentViews:
             content="<p>x</p>",
             state="Draft",
             created_by=lawyer_2,
+            managed_by=lawyer_2,
         )
 
         url = reverse('list_dynamic_documents')
@@ -1271,8 +1274,8 @@ class TestListDynDocEdges:
     def test_filter_by_lawyer_id(self, api, law):
         """Verify filter by lawyer id."""
         law2 = User.objects.create_user(email="law31b@t.com", password="pw", role="lawyer")
-        DynamicDocument.objects.create(title="Mine", content="<p>x</p>", state="Draft", created_by=law)
-        DynamicDocument.objects.create(title="Other", content="<p>x</p>", state="Draft", created_by=law2)
+        DynamicDocument.objects.create(title="Mine", content="<p>x</p>", state="Draft", created_by=law, managed_by=law)
+        DynamicDocument.objects.create(title="Other", content="<p>x</p>", state="Draft", created_by=law2, managed_by=law2)
         api.force_authenticate(user=law)
         resp = api.get(reverse("list_dynamic_documents"), {"lawyer_id": law.id})
         assert resp.status_code == 200

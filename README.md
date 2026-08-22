@@ -649,7 +649,7 @@ Project documentation lives in the `docs/` directory:
 
 ## AI Development Tools
 
-This project uses three AI coding assistants that coexist without interfering:
+This project uses two AI coding assistants that coexist without interfering:
 
 | Tool | Config | Skills/Workflows |
 |---|---|---|

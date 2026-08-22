@@ -39,6 +39,7 @@ class SECOPClient:
         self.base_url = config.get('BASE_URL', 'https://www.datos.gov.co/resource')
         self.dataset_id = config.get('DATASET_ID', 'p6dx-8zbt')
         self.app_token = config.get('APP_TOKEN', '')
+        self._send_app_token = bool(self.app_token)
         self.app_secret = config.get('APP_SECRET', '')
         self.page_size = config.get('PAGE_SIZE', 1000)
         self.retry_attempts = config.get('RETRY_ATTEMPTS', 3)
@@ -52,9 +53,31 @@ class SECOPClient:
     def _get_headers(self):
         """Build request headers."""
         headers = {'Accept': 'application/json'}
-        if self.app_token:
+        if self._send_app_token:
             headers['X-App-Token'] = self.app_token
         return headers
+
+    @staticmethod
+    def _status_code(error):
+        """Return the HTTP status attached to a request error, if present."""
+        response = getattr(error, 'response', None)
+        return response.status_code if response is not None else None
+
+    def _retry_without_token(self, url):
+        """Retry a rejected public-dataset request without the app token."""
+        self._send_app_token = False
+        logger.warning(
+            "SECOP app token was rejected; retrying the public dataset "
+            "without credentials"
+        )
+        response = requests.get(
+            url,
+            headers=self._get_headers(),
+            auth=self._get_auth(),
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response
 
     def _get_auth(self):
         """Return None — public Socrata datasets do not require Basic Auth.
@@ -133,11 +156,9 @@ class SECOPClient:
                     f"SECOP API request failed (attempt {attempt + 1}/"
                     f"{self.retry_attempts}): {e}"
                 )
-                if (
-                    hasattr(e, 'response')
-                    and e.response is not None
-                    and e.response.status_code in (401, 403)
-                ):
+                if self._status_code(e) in (401, 403):
+                    if self._send_app_token:
+                        return self._retry_without_token(url)
                     raise
                 if attempt < self.retry_attempts - 1:
                     sleep_time = self.retry_delay * (attempt + 1)

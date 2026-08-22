@@ -1,5 +1,5 @@
 <!-- fleet-base:begin v=1 -->
-# CLAUDE.md — G&M Consultores Jurídicos (`gym_project`)
+# CLAUDE.md — G&M Staging (`gym_project_staging`)
 
 Esta seccion es la **base comun del fleet** y se sincroniza desde
 `vps-ops-toolkit/workflows/.claude/base/CLAUDE.md.tmpl`. No editar manualmente:

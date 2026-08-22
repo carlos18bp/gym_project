@@ -8,7 +8,7 @@ const buildCheckoutEmail = (userId) => `checkout-user-${userId}@example.test`;
 /**
  * Mock installer for subscription checkout page.
  */
-async function installCheckoutMocks(page, { userId, planType = "basico" }) {
+async function installCheckoutMocks(page, { userId, planType = "basico", createSubscriptionStatus = 201 }) {
   const userEmail = buildCheckoutEmail(userId);
   const user = {
     id: userId,
@@ -41,6 +41,18 @@ async function installCheckoutMocks(page, { userId, planType = "basico" }) {
 
     // Create subscription (free plan)
     if (apiPath === "subscriptions/create/" && route.request().method() === "POST") {
+      if (createSubscriptionStatus >= 400) {
+        // No `.error` field: Checkout.vue's free-plan catch block reads
+        // error.response?.data?.error first and only falls back to its own
+        // generic message when that's absent — this fixture needs the
+        // fallback path, unlike checkout-payment-flow.spec.js's paid-plan
+        // failure test, which asserts the literal `.error` text instead.
+        return {
+          status: createSubscriptionStatus,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "Internal Server Error" }),
+        };
+      }
       return {
         status: 201,
         contentType: "application/json",
@@ -147,4 +159,31 @@ test("free plan checkout activates subscription successfully", { tag: ['@flow:su
 
   // Should redirect to dashboard
   await expect(page).toHaveURL(/dashboard/, { timeout: 15_000 });
+});
+
+test("free plan checkout shows an error and does not redirect when activation fails", { tag: ['@flow:subscriptions-checkout-free', '@module:subscriptions', '@priority:P1', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
+  const userId = 9103;
+  const userEmail = buildCheckoutEmail(userId);
+
+  await installCheckoutMocks(page, { userId, planType: "basico", createSubscriptionStatus: 500 });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "client", is_profile_completed: true, first_name: "Test", last_name: "User", email: userEmail },
+  });
+
+  await page.goto("/checkout/basico");
+
+  await expect(page.getByRole("button", { name: /Activar Plan Gratuito/i })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole("button", { name: /Activar Plan Gratuito/i }).click();
+
+  // Failure notification — the generic catch-block message, since the mock's
+  // error body has no `.error` field that the frontend would surface instead.
+  const errorDialog = page.locator('[class~="swal2-popup"]');
+  await expect(errorDialog).toBeVisible({ timeout: 15_000 });
+  await expect(errorDialog).toContainText("No se pudo activar tu suscripción. Por favor, intenta nuevamente.");
+  await page.locator('[class~="swal2-confirm"]').click();
+
+  // No redirect on failure — the buyer stays on the checkout to retry.
+  expect(page.url()).toContain("/checkout/basico");
 });

@@ -9,7 +9,7 @@ import { installSecopApiMocks } from "./secopMocks.js";
 
 test(
   "basic role sees SECOP with filters and alerts locked behind upgrade overlays",
-  { tag: ["@flow:secop-list-browse", "@module:secop", "@priority:P3", "@role:basic"] },
+  { tag: ["@flow:secop-list-browse", "@module:secop", "@priority:P2", "@role:basic", "@outcome:display"] },
   async ({ page }) => {
     await installSecopApiMocks(page, {
       userId: 9905,
@@ -23,6 +23,7 @@ test(
     await page.goto("/secop");
 
     await expect(page.getByTestId("secop-table")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("sync-trigger-btn")).toHaveCount(0);
 
     const filtersOverlay = page.getByTestId("filters-disabled-overlay");
     await expect(filtersOverlay).toBeVisible();

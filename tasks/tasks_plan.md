@@ -20,7 +20,7 @@
 | 14 | Automated Backups (daily, retention, manual trigger) | ✅ Complete | Huey periodic task |
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
-| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store. Backend: 120 tests passing. Frontend: 53 unit tests passing. E2E: 8 spec files with data-testid selectors. UI/UX redesign applied. Fake data command idempotent. |
+| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete — sync hardened 2026-08-21 | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store, 1 sync-polling composable. Optional-token 401/403 fallback, shared manual/scheduled lock, lawyer-like manual authorization, and authoritative `SyncLog` UI state. Live staging recovery processed 20,129 records successfully. |
 | 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 7 frontend views (incl. ServicesHub.vue), 1 store, 1 dashboard component, sidebar/router integration, backend tests passing. Sprint Abril 2026: 11 mejoras (admin icon preview, validación, errores, help_text UX, multi-file UI, PDF rediseño, tabs navigation, header corporativo, emails sin emojis, estado destacado, adjuntos automáticos) |
 
 ---
@@ -29,10 +29,10 @@
 
 | # | Requirement | Plan Document | Status |
 |---|------------|---------------|--------|
-| 1 | Process Reassignment | `Plan_01_reassignment.md` / `Requirement_01_reassignment.md` | 📋 Planned |
+| 1 | Process Reassignment | `Requirement_01_reassignment` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-07) | Módulo admin de reasignación de datos. Backend: `User.is_archived` + `archive()/unarchive()` (archive limpia `is_active` → simplejwt mata tokens vivos), bloqueo de login en los 3 métodos (sign_in/google/outlook), `Process.lawyer` CASCADE→PROTECT (migración 0069/0070), `DynamicDocument.managed_by` (SET_NULL, backfill=created_by; `lawyer_id` scope pasa a managed_by; `can_modify_minuta` extiende derechos al gestor; created_by inmutable). API `admin/reassignment/*` (summary + execute atómico con matriz de validación + archive/unarchive) gated por `is_platform_admin` (no incluye abogados); exclusión de archivados en 4 puntos de notificación. Frontend: getters lawyers/archivedLawyers/allLawyers (+ exclusión de archivados en selectores existentes), store `admin_reassignment`, selector de abogado en ProcessForm (default = usuario logueado; quita hardcodes), vista `DataReassignment.vue` (preview + select-all + no-elegibles con motivo + archivar + restaurar), ruta requiresAdmin + item SlideBar + quick action + `LawyerMetricsWidget`. Tests: 82 pytest F1 + 74 F2 + 16 F3 + ~22 Jest + 3 E2E (`admin-data-reassignment` P1, flow-definitions v1.11.0). Fake data: 1 abogado archivado seeded; migraciones aplicadas y backfill verificado (1190 docs managed_by=created_by). Decisiones del usuario: excluir también estado Vencido; minutas SÍ se transfieren. |
 | 2 | Minutas (Meeting Minutes) | `Plan_02_minutas.md` / `Requirement_02_minutas.md` | 📋 Planned |
 | 3 | Document Preview | `Plan_03_preview.md` / `Requirement_03_preview.md` | 📋 Planned |
-| 4 | Guided Tour | `Plan_04_guided_tour.md` / `Requirement_04_guided_tour.md` | 📋 Planned |
+| 4 | Guided Tour | `Requirement_04_guided_tour` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-06) | `TourProgress` model (`unique_together user+module`, 30-day staleness on backend, migration `0067`), `GET /api/tour-progress/?module=` + `POST /api/tour-progress/complete/` (JWT, user-scoped), driver.js ^1.6 tour: `useGuidedTour` composable + `shared/tours/` registry (lawyer 10 / client 7 steps, conditional pending-signatures closer, Spanish copy, brand-styled `tour.css`), `data-tour` attrs + "?" help button + `InfoTooltip.vue` in `Dashboard.vue`, auto-start on first visit / SweetAlert2 re-offer after 30 days / manual relaunch. Tests: 17 pytest + 28 Jest (composable, steps, InfoTooltip) + 6-test E2E spec. Flow `docs-guided-tour` (P2). User guide section `guided-tour`. Extensible to other modules via `tourRegistry`. |
 | 5 | Notification Center | `Plan_05_notification_center.md` / `Requirement_05_notification_center.md` | ✅ Complete | `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), categories with `process_alert`/`signature_*`, snooze + archive |
 | 6 | Legal Files Alerts | `Plan_06_legal_files_alerts.md` / `Requirement_06_legal_files_alerts.md` | ✅ Complete (audited 2026-04-28) | `signature_reminder_task.py` (Huey periodic, 14:00 UTC = 9 AM Colombia). Audit closed 7 spec gaps: removed email from `notify_signature_reopened` (in-app only per matrix), added 24h-cutoff exclusion to daily reminder queries, fixed N+1 in user fetch loop, added 8s pulse timeout in `SignaturesListTable`, added `sessionStorage` cleanup on logout, exported `PENDING_SIGNATURES_ALERTED_KEY` constant, **respected explicit `?tab=`/`?lawyerTab=` URL params over auto-redirect in `Dashboard.vue` (bug surfaced by E2E spec)**. 12 backend tests + 6 composable tests + 1 logout test + 3 E2E specs (5 tests) added. Flows registered: `legal-files-menu-pulse` (P1), `legal-files-auto-redirect` (P2), `legal-files-table-pulse` (P2). |
 | 7 | Process Alerts | `Plan_07_process_alerts.md` / `Requirement_07_process_alerts.md` | ✅ Complete (audited 2026-04-28) | `StageAlert` (OneToOne with `Stage`), `process_alert_tasks.py` Huey task at 14:00 UTC, 3-day & 1-day reminders, configurable recipients (`notify_clients`); 25 backend tests + 3 E2E specs |
@@ -40,7 +40,7 @@
 | 8b | Minutas — Visibilidad compartida entre abogados (enhancement) | `Requirement_minutas_shared_visibility` | ✅ Complete (Release Agosto 2026, commit `d595ae0`) | Removed per-creator filter so all lawyers see/manage every minuta (Draft/Published). Serializer `created_by_name` (`select_related`, no N+1), "Creado por" column, "Todas / Solo mías" toggle (reuses backend `lawyer_id`), creator-name search; `allMinutas` getter replaces orphaned `getDocumentsByLawyerId`. Backend serializer/view tests + store/component unit tests. Flow `minutas-shared-visibility` (P2). |
 | 9 | Marketplace | `Plan_09_marketplace.md` / `Requirement_09_marketplace.md` | 📋 Planned |
 | 10 | Optional Signature | `Plan_10_firma_opcional.md` / `Requirement_10_firma_opcional.md` | 📋 Planned |
-| 11 | Contract Execution | `Plan_11_contract_execution.md` / `Requirement_11_contract_execution.md` | 📋 Planned |
+| 11 | Contract Execution | `Requirement_11_contract_execution` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-07) | `DocumentPaymentRecord` (1 fila por doc+cuota, lazy — slots `pending` sintetizados; estados uploaded/accepted/rejected; re-upload sobre el MISMO registro conservando `rejection_reason` como historial; signal post_delete limpia archivos), summary type `payment_installments` ("Forma de pago (N cuotas)", parser estricto compartido modelo/serializer), migración `0068`. API: 5 endpoints `dynamic-documents/<pk>/payment-records/*` (shape único con `can_upload/can_review/next_uploadable` — el FE nunca calcula reglas; secuencial autoritativo con 409; archivos PDF/JPG/PNG/DOCX ≤20MB; download anti-IDOR). `payment_notification_service` (email+in-app, skip auto-notificación). FE: store `paymentRecords`, opción en DocumentVariablesConfig (auto number), fila en DocumentSummaryModal (`formatInstallments`), menú "Subir/Ver Cuentas de Cobro" en 3 configs, `PaymentRecordsModal` (progreso, contabilidad, panel aceptar/rechazar con motivo obligatorio) + `UploadPaymentRecordModal` (drag&drop). Tests: 22 modelo + 24 vistas + 3 serializer (pytest) + ~55 Jest + 5 E2E (`docs-contract-execution` P1, flow-definitions v1.10.0). Fake data: doc con progreso 1/3 + doc fresco; verificado ciclo delete/create en staging. Gotcha: emitir eventos ANTES de `showNotification` (SweetAlert resuelve al cerrar). |
 | 12 | In-Place Formalize | `Plan_12_in_place_formalize.md` / `Requirement_12_in_place_formalize.md` | ✅ Complete |
 
 ---
@@ -58,7 +58,26 @@
 
 ## 4. Testing Status
 
-### Backend Tests (95 files / 3032 tests — verified 2026-07-16)
+### Test Quality Gate & CI Regime (adopted 2026-07-23/24)
+
+The canonical test-quality core was adopted (`7c3af01`) with a per-project `.testquality.yml`:
+thresholds `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`,
+`max_timeout_ms 100`, and `banned_tokens: batch/coverage/cov/deep`. Junk detectors classify
+weak assertions, missing user interaction, global-state leaks, flow-tag mismatches, etc.
+
+- **Grandfathered debt**: `.junk-baseline.json` holds **553** pre-existing findings
+  (frontend-unit **382**, frontend-e2e **171**, backend **0**). CI blocks any NEW junk while the
+  baseline stays warning-only and may only shrink (`7395579`).
+- **Testing skills** realigned to the new gate (`ed9eb07`); **merge-when-green** now guards
+  release branches (`ac17e4f`).
+- **Current gate score: 98** with **557 warnings** — weak_assertion 371, flow_tag_mismatch 81,
+  no_user_interaction 73, global_state_leak 60, no_data_assertion 14, duplicate_coverage 14,
+  too_many_assertions 4.
+
+### Backend Tests (101 files / 3176 test functions, 582 `Test*` classes — verified 2026-07-24)
+
+> Markers actually applied: `django_db` 995, `edge` 151, `contract` 64, `integration` 60.
+> Only 16 `parametrize` uses across the suite. `rest` is declared in `pytest.ini` but used **0** times.
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
@@ -78,7 +97,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (194 files — verified 2026-07-16)
+### Frontend Unit Tests (208 files / 2296 test cases — updated 2026-08-21)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -94,7 +113,9 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (198 spec files — verified 2026-07-16) — **150 flows registered, 150/150 covered (100%)**
+### Frontend E2E Tests (204 spec files / 633 test cases — verified 2026-07-24) — **164 flows registered in flow-definitions.json (v1.12.0)**
+
+> **Flow-map drift (Phase 3 of the 2026-07-24 campaign reconciles it):** USER_FLOW_MAP.md lists **168** flows, flow-definitions.json registers **164**, and the coverage snapshots report **150–153** — the three sources have drifted apart.
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)

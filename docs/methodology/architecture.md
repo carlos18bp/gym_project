@@ -9,7 +9,7 @@ flowchart TB
         Views["45 View Pages"]
         Components["115 Components"]
         Stores["46 Pinia Stores"]
-        Composables["15 Composables"]
+        Composables["16 Composables"]
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
@@ -68,8 +68,8 @@ flowchart LR
 
     subgraph Test["Testing"]
         Pytest["pytest\n101 test files"]
-        Jest["Jest\n207 test files"]
-        PW["Playwright\n204 E2E specs"]
+        Jest["Jest\n208 test files"]
+        PW["Playwright\n205 E2E specs"]
         QG["Quality Gate\nscripts/test_quality_gate.py"]
     end
 
@@ -201,16 +201,17 @@ erDiagram
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
-| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (admin/client/lawyer/corporate_client/basic, default='basic'; 5 roles total, 4 client-facing), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
+| `User` | email, first_name, last_name, contact, birthday, identification, document_type (NIT/CC/NUIP/EIN), role (admin/client/lawyer/corporate_client/basic, default='basic'; 5 roles total, 4 client-facing), photo_profile, letterhead_image, letterhead_word_template, is_gym_lawyer, is_profile_completed, is_archived (archive() clears is_active → kills live JWTs; login blocked on all 3 auth methods), created_at | Custom `UserManager`; USERNAME_FIELD='email'; no username/groups/user_permissions |
 | `ActivityFeed` | action_type (create/edit/finish/delete/update/download/other), description, created_at | FK → User; max 20 per user (auto-cleanup on save) |
 | `UserSignature` | signature_image, method (upload/draw), ip_address, created_at | OneToOne → User |
+| `TourProgress` | module_name (dynamic_documents), completed_at (STALE_AFTER_DAYS=30 → tour re-offered) | FK → User (CASCADE); one row per user/module |
 
 ### 5.2 Processes Domain (5 models)
 
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
 | `Case` | type | — (lookup table for case types) |
-| `Process` | authority, authority_email, plaintiff, defendant, ref, subcase, progress (0-100), created_at | FK → Case, FK → User (lawyer), M2M → User (clients), M2M → Stage, M2M → CaseFile |
+| `Process` | authority, authority_email, plaintiff, defendant, ref, subcase, progress (0-100), created_at | FK → Case, FK → User (lawyer, PROTECT — reassign via admin module before deleting a lawyer), M2M → User (clients), M2M → Stage, M2M → CaseFile |
 | `Stage` | status, date, created_at | No FK — linked via Process M2M |
 | `CaseFile` | file, created_at | No FK — linked via Process M2M; physical file deleted on model delete (signal) |
 | `RecentProcess` | last_viewed | FK → User, FK → Process; unique_together=[user, process] |
@@ -220,7 +221,7 @@ erDiagram
 | Model | Key Fields | Relationships |
 |-------|-----------|---------------|
 | `Tag` | name (unique), color_id | FK → User (created_by, SET_NULL) |
-| `DynamicDocument` | title, content, is_public, letterhead_image, letterhead_word_template | FK → User (created_by), M2M → Tag (tags) |
+| `DynamicDocument` | title, content, is_public, letterhead_image, letterhead_word_template | FK → User (created_by, immutable), FK → User (managed_by, SET_NULL — current manager; backfilled from created_by; lawyer scope + minuta rights follow this field), M2M → Tag (tags) |
 | `DocumentVariable` | name, type (input/text_area/number/date/email/select), value, summary_field (none/counterparty/object/value/term/subscription_date/start_date) | FK → DynamicDocument |
 | `DocumentSignature` | signed (bool), signed_at, rejected (bool), rejected_at | FK → DynamicDocument, FK → User (signer) |
 | `DocumentVisibilityPermission` | — | FK → DynamicDocument, FK → User |
@@ -228,6 +229,7 @@ erDiagram
 | `RecentDocument` | viewed_at | FK → User, FK → DynamicDocument |
 | `DocumentFolder` | name, color_id | FK → User (owner), M2M → DynamicDocument (documents) |
 | `DocumentRelationship` | (no extra fields) | FK → DynamicDocument (source_document), FK → DynamicDocument (target_document); bidirectional |
+| `DocumentPaymentRecord` | installment_number, file, original_name, amount, notes, status (uploaded/accepted/rejected), rejection_reason, uploaded_at | FK → DynamicDocument (document), FK → User (uploaded_by); cuenta de cobro per installment of a fully signed contract |
 
 ### 5.4 Organizations Domain (4 models)
 
@@ -333,8 +335,8 @@ flowchart TD
     end
 
     subgraph SECOP["gym_app/secop_tasks.py"]
-        S1["sync_secop_daily\n(daily @ 6AM, locked)"]
-        S2["sync_secop_data\n(on-demand, retries=3)"]
+        S1["sync_secop_daily\n(daily @ 6AM)"]
+        S2["sync_secop_data\n(manual/scheduled, retries=3, locked)"]
         S3["evaluate_secop_alerts\n(after sync, delayed 5s)"]
         S4["send_secop_daily_summaries\n(daily @ 7AM)"]
         S5["send_secop_weekly_summaries\n(Monday @ 7AM)"]
@@ -351,6 +353,15 @@ flowchart TD
     S3 -->|"sends email"| SMTP2["Gmail SMTP"]
     S4 -->|"sends email"| SMTP2
 ```
+
+The lock is attached to `sync_secop_data`, the real worker task, so both the
+periodic wrapper and manual endpoint use the same concurrency guard. The
+Socrata client sends `SECOP_APP_TOKEN` only when configured; a 401/403 disables
+that header for the rest of the client run and retries the public dataset once
+anonymously. `SyncLog` is the source of truth consumed by
+`useSecopSyncPolling`: the SECOP page polls while work is active, refreshes
+processes and filters only after a newer successful log, and shows safe failure
+copy without exposing backend diagnostics.
 
 ---
 

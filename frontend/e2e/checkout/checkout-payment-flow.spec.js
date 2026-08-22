@@ -224,6 +224,48 @@ test("paid checkout tokenizes card then posts subscription payload", { tag: ['@f
   });
 });
 
+test("paid checkout shows an error and does not redirect when subscription creation fails", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared', '@outcome:failure'] }, async ({ page }) => {
+  const user = buildMockUser({ id: 5404, role: "client" });
+
+  await installWompiExternalMocks(page, {
+    cardToken: "tok_card_checkout_e2e",
+    sessionId: "sess_checkout_e2e",
+  });
+  await installCheckoutMocks(page, { user, createSubscriptionStatus: 500 });
+  await setAuthLocalStorage(page, buildAuthPayload(user));
+
+  await page.goto("/checkout/cliente");
+
+  await page.getByPlaceholder("Como aparece en la tarjeta").fill("E2E Holder");
+  await page.getByPlaceholder("0000 0000 0000 0000").fill("4242 4242 4242 4242");
+  await page.getByPlaceholder("MM").fill("12");
+  await page.getByPlaceholder("AA").fill("30");
+  await page.getByPlaceholder("CVC").fill("123");
+
+  await page.getByRole("button", { name: "Guardar método de pago" }).click();
+
+  const tokenizationDialog = page.locator('[role="dialog"], [role="alertdialog"]');
+  await expect(tokenizationDialog).toBeVisible({ timeout: 15_000 });
+  await expect(tokenizationDialog).toContainText("Método de pago agregado");
+  await tokenizationDialog.getByRole("button", { name: /ok|aceptar/i }).click();
+
+  await expect(page.getByText("Método de pago configurado")).toBeVisible();
+
+  const subscribeButton = page.getByRole("button", { name: "Confirmar Suscripción" });
+  await expect(subscribeButton).toBeEnabled();
+  await subscribeButton.click();
+
+  // The backend rejection surfaces the server's own error message, read
+  // directly from error.response.data.error — not a generic fallback.
+  const errorDialog = page.locator('[role="dialog"], [role="alertdialog"]');
+  await expect(errorDialog).toBeVisible({ timeout: 15_000 });
+  await expect(errorDialog).toContainText("subscription_create_failed");
+  await errorDialog.getByRole("button", { name: /ok|aceptar/i }).click();
+
+  // No redirect on failure — the buyer stays on the paid checkout to retry.
+  expect(page.url()).toContain("/checkout/cliente");
+});
+
 test("paid checkout shows incomplete-card warning on empty tokenize submit", { tag: ['@flow:subscriptions-checkout-paid', '@module:subscriptions', '@priority:P1', '@role:shared'] }, async ({ page }) => {
   const user = buildMockUser({ id: 5402, role: "client" });
 

@@ -256,7 +256,7 @@ HUEY = RedisHuey(
 # SECOP (Public Procurement) integration
 # ---------------------------------------------------------------------------
 SECOP_CONFIG = {
-    'DATASET_ID': config('SECOP_DATASET_ID', default='bt96-ncis'),
+    'DATASET_ID': config('SECOP_DATASET_ID', default='p6dx-8zbt'),
     'BASE_URL': 'https://www.datos.gov.co/resource',
     'APP_TOKEN': config('SECOP_APP_TOKEN', default=''),
     'APP_SECRET': config('SECOP_APP_SECRET', default=''),
@@ -297,7 +297,8 @@ if ENABLE_SILK:
 
     SILKY_PERMISSIONS = silk_permissions
 
-    SILKY_MAX_RECORDED_REQUESTS = 10000
+    SILKY_MAX_RECORDED_REQUESTS = config(
+        'SILKY_MAX_RECORDED_REQUESTS', default=2000, cast=int)
     SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
 
     SILKY_IGNORE_PATHS = [

@@ -86,7 +86,11 @@ test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-stat
     await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeHidden();
   });
 
-  test("folders tab shows empty state when no folders", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
+  // Catches: an empty Carpetas tab that renders a blank/broken screen (or
+  // silently shows nothing) instead of the real "No tienes carpetas aún"
+  // empty-state copy — previously this test only asserted the tab heading,
+  // identical to the folders-with-data case, so a regression here never failed.
+  test("folders tab shows empty state when no folders", { tag: ['@flow:docs-empty-states', '@module:documents', '@priority:P4', '@role:shared', '@outcome:display'] }, async ({ page }) => {
     const userId = 5003;
 
     await installDynamicDocumentApiMocks(page, {
@@ -106,6 +110,9 @@ test.describe("document dashboard: empty states", { tag: ['@flow:docs-empty-stat
     await page.waitForLoadState("networkidle");
 
     await page.getByRole("button", { name: "Carpetas" }).click();
-    await expect(page.getByRole("heading", { name: "Mis Carpetas" })).toBeVisible();
+
+    // Pin the actual empty-state copy (FoldersTable.vue), not just the tab heading
+    await expect(page.getByRole("heading", { name: "No tienes carpetas aún" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Crea tu primera carpeta para organizar tus documentos")).toBeVisible();
   });
 });
