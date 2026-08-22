@@ -645,7 +645,7 @@ Project documentation lives in the `docs/` directory:
 | `docs/GLOBAL_RULES_GUIDELINES.md` | Global development rules and guidelines |
 | `docs/CODEX_METHODOLOGY_GUIDE.md` | Codex skills usage, invocation model, and daily routine |
 | `docs/CODEX_SETUP.md` | Codex setup, configuration, and skill validation |
-| `docs/CODEX_MIGRATION_MAP.md` | Mapping from legacy Claude/Windsurf assets to Codex skills |
+| `docs/CODEX_MIGRATION_MAP.md` | Mapping from Claude assets to Codex skills |
 
 ## AI Development Tools
 

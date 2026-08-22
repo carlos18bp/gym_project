@@ -10,7 +10,7 @@ When sources disagree, apply this order:
 2. `docs/CODEX_METHODOLOGY_GUIDE.md` (this document)
 3. `docs/CODEX_SETUP.md` (runtime setup and installation)
 4. `.agents/skills/*/SKILL.md` (workflow-specific behavior)
-5. Legacy reference (`.claude/`) for historical traceability only
+5. Claude guidance (`.claude/`) and Codex guidance (`.agents/`)
 
 Legacy assets are not normative for day-to-day Codex operation.
 
@@ -149,6 +149,6 @@ Global user config (`~/.codex/config.toml`) sets the same model/reasoning and ma
 
 ## 9) Legacy Compatibility Policy
 
-- `.claude/` remains in the repository as the active Claude Code compatibility surface.
+- `.claude/` remains active for Claude Code; Codex uses `.agents/` and `AGENTS.md`.
 - New Codex operational changes are implemented in Codex assets (`AGENTS.md`, `.agents/skills`, Codex docs).
 - `~/.codex/skills` is not the canonical location for repository-managed skills in this project.

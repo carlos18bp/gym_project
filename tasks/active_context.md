@@ -258,7 +258,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Decision | Status | Context |
 |----------|--------|---------|
 | 12 planned features in `docs/next_requirements/` | 6 complete (#4 Guided Tour, #5 Notification Center, #6 Legal Files Alerts, #7 Process Alerts, #11 Contract Execution, #12 In-Place Formalize; #8 Outlook Auth also shipped in Release Agosto 2026) | Remaining: Reassignment, minutas, preview, marketplace, optional signature |
-| Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up and adapted for Windsurf |
+| Memory Bank methodology | ✅ Complete | Persistent documentation for AI context fully set up for Claude Code and Codex |
 | Large file modularization | Under consideration | `user_guide.js` (143KB), `reports.py` (74KB) could be split |
 
 ---
