@@ -150,7 +150,7 @@ bash $HOME/webapps/vps-ops-toolkit/scripts/diagnostics/quick-status.sh
    o arrastraría cambios locales):
 ```bash
 cd "$PROJECT_DIR" && git status
-git diff --quiet && git diff --cached --quiet || { echo "❌ tree sucio — commitear/stashear antes de deployar"; exit 1; }
+git diff --quiet && git diff --cached --quiet || { echo "❌ tree sucio en el clon de deploy — anomalía: reportá al operador; no commitees ni stashees acá"; exit 1; }
 ```
 
 3. Branch existe en remote:
@@ -162,10 +162,24 @@ cd "$PROJECT_DIR" && git fetch origin && git branch -r | grep -E " origin/$BRANC
 
 ## Phase 2 — Pull & build
 
-4. Checkout y pull:
+4. Checkout y pull. Usa el prefijo `FLEET_ALLOW_MAIN_CLONE_WRITE=1` en cada
+   subcomando que toca el clon: es la escapatoria documentada del guard del
+   clon principal — el deploy mueve legítimamente el checkout de servicio, que
+   es justo lo que el guard protege de una sesión cualquiera. Pull-only si ya
+   estás en `$BRANCH` (no hace falta el checkout):
 ```bash
-cd "$PROJECT_DIR" && git fetch origin && git checkout "$BRANCH" && git pull origin "$BRANCH"
+cd "$PROJECT_DIR" && git fetch origin
+if [ "$(git rev-parse --abbrev-ref HEAD)" = "$BRANCH" ]; then
+    FLEET_ALLOW_MAIN_CLONE_WRITE=1 git pull --ff-only origin "$BRANCH"
+else
+    FLEET_ALLOW_MAIN_CLONE_WRITE=1 git checkout "$BRANCH" \
+        && FLEET_ALLOW_MAIN_CLONE_WRITE=1 git pull --ff-only origin "$BRANCH"
+fi
 ```
+   Si `--ff-only` falla (el clon de deploy divergió del remoto), **no** hagas
+   `git reset --hard` ni ningún otro intento de forzarlo: reportá al operador
+   — es el checkout del servicio, y puede tener cambios que el operador dejó
+   ahí a propósito.
 
 5. Backend deps + migrations:
 ```bash

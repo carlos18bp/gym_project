@@ -88,7 +88,7 @@ scope_override() {
 # Modo default: ✎ = muta de entrada. Todo lo demás deriva a ✓ (check/read-only).
 mode_override() {
   case "$1" in
-    git-commit|git-sync|merge-when-green|all-projects|integrate-new-project|deploy-and-check|dev-up|dev-down|tailscale-connect|client-report|migrate-project) echo "✎" ;;
+    git-commit|git-sync|merge-when-green|pr-green|merge-queue|all-projects|integrate-new-project|deploy-and-check|dev-up|dev-down|tailscale-connect|client-report|migrate-project) echo "✎" ;;
     *) echo "✓" ;;
   esac
 }
@@ -177,7 +177,7 @@ Con los datos crudos de Phase 1 (y Phase 2 si `--all`), Claude arma la salida:
    agrupá por propósito). Buckets canónicos — **un bucket vacío NO se imprime**
    (cubren tanto repos de proyecto como el toolkit):
    - **QA & tests** (qa, test-audit, test-quality-gate, coverage ×3, e2e-user-flows-check, fix-broken-tests, new-feature-checklist, playwright-validation, fake-data-refresh)
-   - **Git & fleet** (git-sync, git-commit, git-status-report, merge-when-green, all-projects, full-audit, deploy-and-check)
+   - **Git & fleet** (git-sync, git-commit, git-status-report, merge-when-green, pr-green, merge-queue, all-in-base, all-projects, full-audit, deploy-and-check)
    - **Bootstrap & conectividad** (init-fleet, bootstrap-ssh-fleet, bootstrap-tailscale-fleet, tailscale-connect, sync-ai-ecosystems)
    - **Servidores & incidentes** (server-diagnostic, incident, migrate-project, integrate-new-project)
    - **Entorno & dev local** (dev-up, dev-down, methodology-setup)

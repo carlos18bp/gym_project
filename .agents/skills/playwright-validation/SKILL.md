@@ -30,7 +30,7 @@ Disparadores típicos en lenguaje del usuario:
 - "repara los tests rotos de `<proyecto>`"
 - "inspecciona la consola / network requests de `<dominio>`"
 - "prueba responsive: mobile / tablet / desktop"
-- "valida el menú móvil en 375px"
+- "valida el menú móvil en 412px"
 
 Si la solicitud encaja en cualquiera de estos, ejecutar el flujo de pre-flight checks (§2) **antes** de tocar `browser_*`.
 
@@ -164,7 +164,7 @@ Pasar a Playwright MCP `--output-dir=${ARTIFACTS_DIR}` cuando se invoque.
 | Snapshot/observación | `browser_snapshot` (a11y tree, **default — preferir éste**), `browser_take_screenshot` (evidencia visual) | Identificar selectores reales del DOM, capturas |
 | Inspección | `browser_console_messages`, `browser_network_request`, `browser_network_requests` (con opciones `responseBody`, `responseHeaders` para payloads), `browser_evaluate` (acepta expresiones planas, no solo function bodies — desde MCP 0.0.71), `browser_run_code_unsafe` (renombrado de `browser_run_code` en 0.0.72; **prohibido en production**) | Logs de consola, requests con bodies, ejecutar JS |
 | Espera | `browser_wait_for` | Esperar selector/texto/timeout |
-| Viewport / responsive | `browser_resize` | Presets: **375x812 (mobile)**, **768x1024 (tablet)**, **1440x900 (desktop)** |
+| Viewport / responsive | `browser_resize` | Presets (matriz del fleet, `RESPONSIVE_STANDARDS.md` §2): **412x915 (compact · celular)**, **835x1194 (portrait · tableta vertical)**, **1195x835 (landscape · tableta horizontal)**, **1440x900 (desktop · portátil)**, **2560x1440 (wide · monitor)**. Alias legacy: `mobile`=compact, `tablet`=portrait |
 | Multi-tab | `browser_tabs` (action: `list` / `open` / `switch` / `close`) | Trabajar con varias pestañas |
 | Storage (cap `storage`) | `browser_storage_state`, `browser_set_storage_state`, `browser_cookie_*`, `browser_localstorage_*`, `browser_sessionstorage_*` | Sesiones reutilizables, manipular cookies |
 | Network avanzado (cap `network`) | `browser_route`, `browser_unroute`, `browser_network_state_set` | **Prohibido en production** (intercept/mutate requests) |
@@ -305,7 +305,7 @@ PROJ=azurita
 
 Acciones MCP:
 
-1. `browser_resize` → 375x812 (mobile)
+1. `browser_resize` → 412x915 (compact)
 2. `browser_navigate` → `https://azurita.projectapp.co`
 3. `browser_set_storage_state` → admin.json
 4. `browser_snapshot` → identificar botón hamburger
@@ -329,7 +329,7 @@ PROJ=mimittos_project
 Acciones MCP (todas read-only):
 
 1. counts-before.txt (snapshot de modelos)
-2. `browser_resize` → 375x812
+2. `browser_resize` → 412x915
 3. `browser_navigate` → `https://mimittos.com`
 4. `browser_snapshot` → identificar botón
 5. `browser_click` sobre "Agregar al carrito" — **permitido**: el click no muta DB en frontend (solo cambia estado del cart en localStorage del cliente, que es state efímero); pero **no** seguir hasta "Pagar" / "Confirmar pedido".
