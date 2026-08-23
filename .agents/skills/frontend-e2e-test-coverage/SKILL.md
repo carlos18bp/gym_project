@@ -186,6 +186,17 @@ reintenta solo. Para estados async sin locator, `expect.poll`. Ver
 `allow-duplicate` — como `// quality: allow-… (razón)` DENTRO del bloque del
 test, razón obligatoria.
 
+### Specs acotados a un ancho
+
+Un comportamiento que sólo existe (o sólo se rompe) a un ancho se testea en el
+módulo dueño con `test.use(viewportUse('<alias>'))` a nivel `describe`, anchos
+importados del helper `frontend/e2e/helpers/viewports.{ts,js}` (nunca
+`setViewportSize` con números sueltos), interacción real a ese ancho y
+`// quality: allow-duplicate (per-viewport contract: <flow> @ <px>)` cuando el
+cuerpo repite el de otro ancho. Matriz, invariantes y snippet canónico:
+`docs/RESPONSIVE_STANDARDS.md` §5; los flows responsivos los declara
+$responsive-pass (`expectedSpecs: 0` hasta que el spec exista).
+
 ## Execution rules
 
 1. Run only the specs you touched: `cd frontend && npx playwright test e2e/path/to/spec.spec.ts`

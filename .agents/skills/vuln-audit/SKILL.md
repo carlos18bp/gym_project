@@ -32,8 +32,8 @@ Replicar de forma automática el flujo manual de auditoría que vive en `audit-r
 
 ## Constraints (no negociables)
 - **Default read-only.** Sin `--apply`, la skill NO modifica nada: ni `package.json`/`package-lock.json`, ni `requirements.txt`, ni `audit-report.md`, ni commits, ni ramas. Solo snapshots a `/tmp` y el plan en la respuesta.
-- **Branching (solo `--apply`):** sigue el `git-branch-protocol` del `CLAUDE.md` base del proyecto. Si la rama actual es `main`/`master`, busca rama feature activa y haz checkout; si no hay ninguna, crea `chore/<DDMMYYYY>-vuln-audit` (prefijo `chore` porque son dep bumps). Si ya estás en rama feature válida, continúa ahí. Detalle operativo en la Fase 0.
-- **No `git push`.** Los 1–3 commits quedan locales; el operador empuja cuando decida y reporta el `PR URL` siguiendo la sección 9 del `git-branch-protocol`.
+- **Branching (solo `--apply`):** sigue el protocolo por sesión: worktree propio bajo `~/webapps/.wt/<repo>/` (slug `vuln-audit`) con rama `chore/<DDMMYYYY>-vuln-audit` cortada de la BASE que resuelve la coordenada (`resolved_branch` si hay release activa vía `pr_state=single`; si no, la default del repo — **nunca** la default a secas ignorando la coordenada) vía `session-worktree.sh create chore vuln-audit`; nunca checkout de ramas ajenas ni rama nueva en el clon principal. Si la sesión YA tiene su worktree/rama de un turno anterior, se reutiliza. Detalle operativo en la Fase 0.
+- **Push + PR al primer push** (tmpl §9, con `Sesión:`/`Intención:` en el body); la skill PARA con el PR abierto — el merge es del operador/`$merge-queue`, nunca de esta skill.
 - **Working tree debe estar limpio** antes de aplicar (`git status` sin cambios). Si no lo está, abortar el `--apply`; la auditoría read-only puede correr igual (no toca el tree).
 - **Solo patch + minor** dentro del major actual. **Nunca** `npm audit fix --force`, **nunca** un bump que cruce major (incluye `0.x → 0.y` con `y > x`).
 - **Respetar pins** del proyecto (`requirements.txt` con `<X.Y` o `>=A,<B`; constraints documentados en `CLAUDE.md`/`AGENTS.md`).
@@ -73,20 +73,40 @@ tras un `--apply` (ver `## Acciones disponibles`).
 
 ## Detección de entorno (Fase 0)
 0. Parsear `$ARGUMENTS`: superficie (vacío/`backend`/`frontend`) y `APPLY=true` si trae `--apply`. Sin `--apply` la corrida es **solo auditoría**: los pasos marcados "(solo `--apply`)" en todas las fases se saltan.
-1. (solo `--apply`) `git status --porcelain` → si imprime cualquier línea, abortar con: "Working tree no está limpio. Commitea o stashea antes de correr vuln-audit --apply."
-2. (solo `--apply`) **Aplicar `git-branch-protocol` del `CLAUDE.md` base** (resolver rama de trabajo antes de cualquier commit):
-   - `CURRENT=$(git rev-parse --abbrev-ref HEAD)`.
-   - Guardar `WORK_BRANCH_CREATED=false` (se pondrá `true` si la skill crea rama nueva).
-   - Si `CURRENT` ∈ {`main`, `master`}:
-     - `git fetch --quiet --prune`.
-     - Listar feature branches remotas:
-       ```bash
-       git branch -r | grep -vE 'origin/(HEAD|main|master|release-)' | sed 's@^[[:space:]]*origin/@@' | sort -u
-       ```
-     - Si hay **una sola** → `git checkout <esa>` y `git pull --rebase origin <esa>`. Comunicar al usuario: "Hay rama feature activa `<X>`, voy a commitear ahí."
-     - Si hay **varias** → preguntar al usuario en cuál commitear; no asumir.
-     - Si hay **cero** → `TODAY=$(date +%d%m%Y); git checkout -b chore/${TODAY}-vuln-audit` y marcar `WORK_BRANCH_CREATED=true`.
-   - Si `CURRENT` ya es una rama feature válida (no `main`/`master`): continuar ahí sin tocar la rama.
+1. (solo `--apply`) Guard de worktree (protocolo por sesión): `git rev-parse
+   --show-toplevel` debe caer bajo `~/webapps/.wt/`. Si cae en el clon principal,
+   creá tu worktree de sesión ANTES de seguir — nunca busques una rama feature
+   activa para hacerle checkout, ni crees una rama nueva en el clon principal:
+   ```bash
+   # pre-entry: corre en el clon principal, antes de EnterWorktree
+   OUT="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh" \
+          create chore vuln-audit)"
+   echo "$OUT"   # PREFERIDO: imprime worktree=/branch=/base=/pr_base= — la BASE que
+                 # resuelve es la de la coordenada (release activa o default), nunca
+                 # la default a secas
+   WT="$(sed -n 's/^worktree=//p' <<<"$OUT")"
+   ```
+   Entrá al worktree (Claude: `EnterWorktree path=$WT`; Codex: `cd "$WT"`) y confirmá
+   `git rev-parse --show-toplevel` bajo `~/webapps/.wt/` antes de seguir. Si la sesión
+   YA tiene su worktree/rama de un turno anterior, reutilizalo — no crees uno nuevo.
+   Manual (sin el helper — evitar salvo emergencia; **nunca** derivar la BASE con
+   `git remote show origin` a secas, que da siempre la default e ignora una release
+   activa — mismo bug que el CRITICAL de la Fase 3):
+   ```bash
+   # pre-entry: corre en el clon principal, antes de EnterWorktree
+   SLUG="vuln-audit"
+   REPO="$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")"
+   BASE="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh" \
+           --check "$REPO" 2>/dev/null \
+           | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')"
+   [ -z "$BASE" ] && BASE="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
+   WT="$HOME/webapps/.wt/$REPO/$SLUG"
+   git fetch origin "$BASE" --quiet
+   git worktree add "$WT" -b "chore/$(date +%d%m%Y)-$SLUG" "origin/$BASE"
+   ```
+2. (solo `--apply`) `git status --porcelain` **ya dentro del worktree** → si imprime
+   cualquier línea, abortar con: "Working tree no está limpio. Commitea antes de correr
+   vuln-audit --apply (nunca stash en un clon principal del fleet)."
 3. Detectar superficies:
    - Frontend: `[ -f frontend/package.json ]`.
    - Backend: `[ -f backend/requirements.txt ]`.
@@ -101,7 +121,10 @@ tras un `--apply` (ver `## Acciones disponibles`).
    - Pin policies adicionales (ej. "cryptography pinned <44.0").
    - Slice de test mínimo recomendado.
    - Cualquier comando custom (ej. `source .venv/bin/activate && cd backend && pytest …`).
-9. Definir `PROJ = $(basename $(pwd))` para nombrar archivos en `/tmp`.
+9. `<proyecto>` (el nombre con el que se bautizan los archivos de `/tmp`) es el
+   `project=` que imprimió `session-worktree.sh status`, y se escribe **literal**
+   en cada comando: `${PROJ}` es expansión de parámetros —rechazo medido de Gate A
+   dentro de un worktree— y además una variable que no sobrevive entre bloques.
 
 ## Fase 1 — Frontend
 Ejecutar solo si la superficie ∈ {ambas, `frontend`} y `frontend/package.json` existe.
@@ -110,8 +133,8 @@ Los pasos 1–2 son la auditoría (siempre); del 3 en adelante es la aplicación
 1. **Snapshot inicial:**
    ```bash
    cd frontend
-   npm audit --json > /tmp/${PROJ}-npm-audit.json || true
-   npm outdated --json > /tmp/${PROJ}-npm-outdated.json || true
+   npm audit --json > /tmp/<proyecto>-npm-audit.json || true
+   npm outdated --json > /tmp/<proyecto>-npm-outdated.json || true
    ```
    `npm outdated` retorna exit 1 cuando hay outdated; eso es esperado, no es error.
 
@@ -173,8 +196,8 @@ Los pasos 1–4 son la auditoría (siempre); del 5 en adelante es la aplicación
 3. **Snapshot inicial:**
    ```bash
    cd backend
-   pip-audit --format json > /tmp/${PROJ}-pip-audit.json
-   pip list --outdated --format json > /tmp/${PROJ}-pip-outdated.json
+   pip-audit --format json > /tmp/<proyecto>-pip-audit.json
+   pip list --outdated --format json > /tmp/<proyecto>-pip-outdated.json
    ```
 
 4. **Construir el plan:**
@@ -191,7 +214,7 @@ Los pasos 1–4 son la auditoría (siempre); del 5 en adelante es la aplicación
 5. (solo `--apply`) **Aplicar:** editar `requirements.txt` con las nuevas versiones (mantener el operador del pin: si era `==`, sigue `==<nuevo>`; si era rango, ajustar el floor sin tocar el techo). Luego:
    ```bash
    pip install -r requirements.txt
-   pip-audit --format json > /tmp/${PROJ}-pip-audit-final.json || true
+   pip-audit --format json > /tmp/<proyecto>-pip-audit-final.json || true
    ```
 
 6. (solo `--apply`) **Verificar (regla "minimal CLAUDE.md"):**
@@ -325,11 +348,36 @@ Se ejecuta siempre que hubo `--apply` (incluso si una fase no produjo updates: e
    git commit -m "docs: vulnerability audit report (<YYYY-MM-DD>)"
    ```
 
-3. **Resultado final esperado:**
-   - 1 a 3 commits nuevos en la rama de trabajo (la actual si era feature, o `chore/<DDMMYYYY>-vuln-audit` recién creada en Fase 0).
+3. **Push + PR al primer push** (protocolo por sesión, tmpl §9). Las variables de la
+   Fase 0 no persisten entre bloques bash (sólo el cwd), y dentro del worktree Claude
+   rechaza el comando compuesto: se relee el registro. **La BASE del PR es la de la
+   COORDENADA, nunca la default a secas**: un PR con `base=default` en un repo con
+   release activa es por definición un candidato a release, y flipearía `pr_state` a
+   `ambiguous` en el próximo `resolve-work-coordinate.sh` — receta canónica, la misma
+   de $pr-green Phase 2 / tmpl §0:
+   ```bash
+   bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh status
+   ```
+   De ahí salen `branch` y `base` (ese `base` YA es el de la coordenada: la release
+   activa cuando la hay, la default sólo si no la hay). Se escriben **literales** —
+   post-`EnterWorktree` no hay `$(...)` que los reconstruya:
+   ```bash
+   git push -u origin <branch literal>
+   ```
+   ```bash
+   gh pr create --base <base literal> --fill --body "Sesión: <sesión>
+   Intención: bumps patch+minor de dependencias
+
+   <resumen de los commits>"
+   ```
+   Imprimí `PR URL: <url>` y **PARÁ** ahí — el merge es del operador o de
+   `$merge-queue`, nunca de esta skill.
+
+4. **Resultado final esperado:**
+   - 1 a 3 commits nuevos en TU rama de sesión (worktree), `chore/<DDMMYYYY>-vuln-audit`.
    - Working tree limpio.
    - `audit-report.md` actualizado.
-   - **Sin `git push`** (queda al operador, según el `git-branch-protocol`).
+   - Rama pusheada + PR abierto (arriba); sin merge.
 
 ## Idempotencia
 - Corrida default: siempre re-escanea y re-muestra el plan; como no escribe nada, repetirla es gratis.
@@ -355,10 +403,10 @@ $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Aplicar patch+minor del plan (commits separados) (Recommended) | aplica los bumps del plan respetando pins, verifica (build / check / collect-only) y deja 1–3 commits locales — sin push | `$vuln-audit --apply` |
+| Aplicar patch+minor del plan (commits separados) (Recommended) | aplica los bumps del plan respetando pins, verifica (build / check / collect-only) y deja 1–3 commits en tu worktree + PR abierto, sin merge | `$vuln-audit --apply` |
 | Sólo backend / sólo frontend | re-corre la auditoría acotada a una superficie | `$vuln-audit backend` · `$vuln-audit frontend` |
 | Evaluar los majors saltados (plan detallado por paquete) | analiza breaking changes, esfuerzo y orden sugerido de cada major — no aplica nada | análisis en la respuesta (read-only) |
-| Push + PR de los commits | sólo tras un `--apply`: empuja la rama y abre el PR | `git push -u origin <rama> && gh pr create` |
+| Ver el PR en el browser | sólo tras un `--apply` (push + PR ya corrieron en la Fase 3) | `gh pr view <n> --web` |
 
 ## Output final
 
@@ -392,7 +440,8 @@ de Fase 3 (que es el cuerpo del reporte):
 | Frontend — patch+minor | ✅ | N bumps aplicados, sin --force, sin ERESOLVE |
 | Backend — pip-audit | ✅ | N vulns: <antes> → <después>, pins respetados |
 | Backend — patch+minor | ✅ | N bumps aplicados, check + collect-only OK |
-| audit-report.md | ✅ | reporte generado, 1–3 commits locales |
+| audit-report.md | ✅ | reporte generado, 1–3 commits en el worktree |
+| PR | ✅ | #<n> — <url>, sin merge |
 ```
 
 Si una superficie no aplicó (sin `package.json` o sin `requirements.txt`,

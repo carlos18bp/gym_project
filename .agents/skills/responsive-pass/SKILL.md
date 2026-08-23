@@ -104,12 +104,17 @@ orden, nunca un multiSelect de módulos). `--record-qa` se tipea: es un modo pos
 
 ## Fase 0 — Preflight (una llamada; los valores viajan en el contexto, nunca se re-ejecuta)
 
+`<proyecto>` es el argumento de la skill; si no vino, sale del `project=` de
+`bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh status` (o del
+nombre del clon). Va **literal** en las dos llamadas — post-`EnterWorktree` Claude
+rechaza `$(...)` y se caería el bloque entero (convención: `git-branch-protocol` §1):
+
 ```bash
-OPS="$HOME/webapps/vps-ops-toolkit"
-PROJ="${ARG_PROYECTO:-$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")}"
-bash "$OPS/scripts/qa/qa-agent.sh" --preflight "$PROJ"
+bash ~/webapps/vps-ops-toolkit/scripts/qa/qa-agent.sh --preflight <proyecto>
 #   → projdir · registry · production · staging · layers · app_reachable · resolved_branch · host_status · pr_state
-bash "$OPS/scripts/responsive/responsive-ledger.sh" --show "$PROJ" ${MODULE:+--module="$MODULE"}
+```
+```bash
+bash ~/webapps/vps-ops-toolkit/scripts/responsive/responsive-ledger.sh --show <proyecto> --module=<module-id>
 #   → codebase · ledger · standard (ok|stale|absent|no-canonical) · standard_version · lineage ·
 #     responsive_cfg · widths · breakpoints · project_doc · viewport_helper · module_source ·
 #     modules=[id:status,…] · next_suggested · ledger_orphans ·
@@ -235,12 +240,21 @@ CLAUDE.md del proyecto (`git-branch-protocol`); si la sesión YA tiene su worktr
 reutiliza:
 
 ```bash
+# pre-entry: corre en el clon principal, antes de EnterWorktree
 TODAY=$(date +%d%m%Y); REPO="$PROJ"; SLUG="<module-slug>"      # admin/accounting → admin-accounting
 BASE="<resolved_branch si pr_state=single; main/master si no>"
 cd "$HOME/webapps/$REPO" && git fetch origin "$BASE" --quiet
 git worktree add "$HOME/webapps/.wt/$REPO/responsive-$SLUG" -b "fix/${TODAY}-responsive-${SLUG}" "origin/$BASE"
 cd "$HOME/webapps/.wt/$REPO/responsive-$SLUG" && git rev-parse --show-toplevel   # debe caer bajo ~/webapps/.wt/
 ```
+
+Claude Code: `EnterWorktree path=$HOME/webapps/.wt/$REPO/responsive-$SLUG` (aprobación
+la primera vez — la ruta cae fuera de `.claude/worktrees/`); Codex: el `cd` de arriba
+basta, todo comando posterior corre con ese workdir. Preferido en vez de los dos `git`
+de arriba: `bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh"
+create fix "responsive-$SLUG"` — resuelve la base, crea el worktree y enlaza los `.env`
+gitignoreados desde el clon principal (hace falta si la corrida necesita levantar la app
+para el inventario en vivo).
 
 Edición: sólo los `file:line` de la propuesta; sin dependencias nuevas; sin tocar `*store*`,
 `composables/use*Api*`, `api/`, `router`, `middleware`, `server/`, `backend/`. Si falta el
@@ -256,12 +270,28 @@ server sirve el clon principal o staging, no este tree.
 
 Después la Fase 5a (flows) en el mismo tree, y UN solo commit:
 
+Ya estás DENTRO del worktree, así que va un comando simple por llamada y con la rama
+y la base **literales** (las imprimió `session-worktree.sh create`/`status`):
+
 ```bash
 git add <archivos del módulo> <helper> <.testquality.yml> <shards/docs de flows regenerados>
-git commit -m "fix(responsive): <module> — <qué arregla, ≤60 chars>"
-git push -u origin "fix/${TODAY}-responsive-${SLUG}"
-gh pr create --base "$BASE" --title "fix(responsive): <module>" --body "$(printf 'Sesión: %s\nIntención: responsive %s — %s hallazgos corregidos\n\n%s' '<sesión>' '<module>' '<N>' '<R-… → archivo, por línea>')"
 ```
+```bash
+git commit -m "fix(responsive): <module> — <qué arregla, ≤60 chars>"
+```
+```bash
+git push -u origin fix/<DDMMYYYY>-responsive-<slug>
+```
+```bash
+gh pr create --base <BASE literal> --title "fix(responsive): <module>" --body "Sesión: <sesión>
+Intención: responsive <module> — <N> hallazgos corregidos
+
+<R-… → archivo, por línea>"
+```
+
+El body es texto literal entre comillas dobles con saltos de línea reales — **nunca**
+`--body "$(printf …)"`: la sustitución de comando muere en el gate de forma y se cae
+el `gh pr create` entero.
 
 `PR URL:` va al reporte. Sin merge.
 
@@ -329,7 +359,7 @@ validan en el siguiente `$qa --apply` — estado previsto por `$qa`, no un error
 2. **Ledger** (schema y reglas: `config/responsive-ledger/README.md`):
 
 ```bash
-bash "$OPS/scripts/responsive/responsive-ledger.sh" --record "$PROJ" <<'EOF'
+bash ~/webapps/vps-ops-toolkit/scripts/responsive/responsive-ledger.sh --record <proyecto> <<'EOF'
 module: <id>
 status: <diagnosed|applied|qa-pending|blocked>     # pending si no hubo estándar
 report: docs/audits/<YYYY-MM-DD>-<proyecto>-responsive-<slug>.md
@@ -337,12 +367,26 @@ branch: fix/<DDMMYYYY>-responsive-<slug>           # sólo --apply
 pr: <url>                                          # sólo --apply
 flows_declared: [<ids>]                            # sólo --apply
 open_findings:
-  - {id: R-<module>-03, tipo: TAB, widths: [portrait], why_pending: "exige ocultar columna → funcional"}
+  - id: R-<module>-03
+    tipo: TAB
+    widths: [portrait]
+    why_pending: "exige ocultar columna → funcional"
 observations:
   - "Header desborda en compact → módulo layout"
 EOF
-git -C "$OPS" add "config/responsive-ledger/<codebase>.yml" "docs/audits/<reporte>.md" ${WATCHLIST:+config/qa-memory/<codebase>.yml}
-git -C "$OPS" commit -m "docs(responsive): record <proyecto> <module> <status>"
+git -C ~/webapps/vps-ops-toolkit add config/responsive-ledger/<codebase>.yml docs/audits/<reporte>.md
+```
+
+**Si la Fase 5c escribió el watchlist** (`config/qa-memory/<codebase>.yml`), entra en el
+MISMO commit — si no, queda sin stagear y ensuciando el clon principal del toolkit.
+Una llamada más (`git -C <toolkit>` está permitido desde un worktree de proyecto: es
+OTRO repo, no el clon compartido de este worktree):
+
+```bash
+git -C ~/webapps/vps-ops-toolkit add config/qa-memory/<codebase>.yml
+```
+```bash
+git -C ~/webapps/vps-ops-toolkit commit -m "docs(responsive): record <proyecto> <module> <status>"
 ```
 
 Commit propio en master del toolkit, nunca mezclado con el commit del proyecto; el push sigue
@@ -353,7 +397,7 @@ Playwright al cerrar.
 ## `--record-qa` — registrar el veredicto de $qa (modo posterior, se tipea)
 
 ```bash
-bash "$OPS/scripts/responsive/responsive-ledger.sh" --record-qa "$PROJ" --module=<id>
+bash ~/webapps/vps-ops-toolkit/scripts/responsive/responsive-ledger.sh --record-qa <proyecto> --module=<id>
 #   mide: flow_coverage_audit.py --json sobre flows_declared + último docs/audits/<fecha>-<proyecto>-qa.md
 #   posterior a la corrida → qa: {status, verdict, live_validation, flows, rejected_because}
 ```
@@ -393,7 +437,8 @@ rama de sesión del proyecto, nunca en el clon principal) y commit del toolkit
 - "Uso 375 / 768 porque es lo que usa Playwright por default" → los anchos son los del estándar
   (412/835/1195/1440/2560); un ancho fuera de matriz exige `responsive_widths`.
 - "Pregunto el modo ahora y el módulo después" → una sola AskUserQuestion fusionada.
-- "El PR es chico, lo mergeo" → `$merge-when-green` después de $qa. Nunca acá.
+- "El PR es chico, lo mergeo" → nunca desde la sesión: el merge es de
+  `$merge-queue`/operador, después de $qa.
 - "Anoto un % de responsividad en el ledger" → estados y pendientes; sin métricas (el helper
   rechaza `score`/`coverage`).
 - "Cubro los huecos que las ramas hermanas no cubren" / "el jefe pidió el otro módulo" →
@@ -421,8 +466,8 @@ $output-protocol §4), UNA AskUserQuestion. `(Recommended)` va en la fila 1 tras
 | Siguiente módulo | diagnóstico del próximo pendiente del ledger | `$responsive-pass <proyecto> --module=<next_suggested>` |
 | Reporte para el cliente | reporte no técnico de esta pasada | `$client-report responsividad de <module> en <proyecto>` |
 
-Nunca como fila: merge del PR (`$merge-when-green` va en Next steps), deploy, git destructivo
-— blocklist §4.
+Nunca como fila: merge del PR (`$merge-queue`/operador va en Next steps; `$merge-when-green`
+es operator-only), deploy, git destructivo — blocklist §4.
 
 ## Output final
 
@@ -451,7 +496,8 @@ sobre ESTA corrida; el de $qa es una fila aparte):
 - (operador, dev) `cd ~/webapps/.wt/<repo>/responsive-<slug>/frontend && npm ci && npm run dev` — app con el fix para la validación en vivo de $qa
 - `$responsive-pass <proyecto> --module=<id> --record-qa` — tras $qa: registra el veredicto medido en el ledger
 - `$responsive-pass <proyecto> --module=<next_suggested>` — siguiente módulo
-- (tras QA) `$merge-when-green` — integrar el PR responsive (y el de QA) con CI verde
+- (operador, tras QA) `$merge-queue` — drenar el PR responsive (y el de QA); el worktree
+  se retira con `$all-in-base` cuando el PR esté mergeado
 ```
 
 Casos de veredicto:

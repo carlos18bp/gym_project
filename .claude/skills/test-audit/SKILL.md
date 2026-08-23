@@ -72,15 +72,19 @@ tuning de alcance y formato — se tipean cuando hacen falta, no van en el picke
 
 1. Confirm the repo root and read `.testquality.yml`. If absent, note it: the
    audit runs on canonical defaults and the paths may be wrong.
-2. `git status` must be clean, or the changes stashed, **before** any `--apply`.
-   Refuse to apply on a dirty tree — the cleanup must be revertible on its own.
+2. `git status` must be clean **in your session worktree** — commit first;
+   never stash in a fleet main clone (stash only in your own worktree and
+   only if the operator asks). Refuse to apply on a dirty tree — the cleanup
+   must be revertible on its own.
 3. Resolve the work coordinate before touching anything:
    `bash scripts/maintenance/resolve-work-coordinate.sh --check <project>`
    `resolved_branch` is the BASE of the work: staging projects and those with
    `vps_work` use the release branch as base, prod-direct repos use
    `main`/`master`. Either way the cleanup lands on its OWN session branch
-   (PR at first push targeting that base) — never as direct commits on the
-   release or another session's branch.
+   **in its own worktree** (create via `session-worktree.sh create <prefijo>
+   <slug>` / tmpl §5 + `EnterWorktree`/`cd` if missing) — PR at first push
+   targeting that base — never as direct commits on the release or another
+   session's branch, and never in the main clone.
 
 ## Phase 1 — Inventory
 
