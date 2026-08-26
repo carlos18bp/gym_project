@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Focused contract-execution walkthrough (2026-08-26, complete)**:
+  - Added `docs/reports/Guia_Prueba_Cuentas_De_Cobro_26082026.md`, a standalone Spanish walkthrough that leads with the four deterministic `[QA Cuentas de Cobro]` contracts and keeps the from-scratch setup as an optional path.
+  - Re-verified staging without mutations: `lawyer1@example.com` and `client1@example.com` are active with the documented test password; all four contracts remain fully signed and visible, with the expected empty, accepted, uploaded and rejected installment states. No fake-data refresh was needed.
+  - Published an identical draft to the Document Manager in `Requerimientos 2026` as document `161`; private client metadata contains only the approved WhatsApp message, with both email fields empty.
+
 - **Backend vulnerability remediation (2026-08-26, complete)**:
   - Upgraded `cryptography` 50.0.1, `lxml` 6.1.2, Pillow 12.3.0, `pypdf` 6.16.2, pytest 9.1.1, `sqlparse` 0.6.0, and WeasyPrint 69.0, with required companion pins CFFI 2.0.0 and cssselect2 0.8.0. Deprecated `PyPDF2` was removed and its consumers migrated.
   - Dynamic-document HTML now uses a deny-by-default WeasyPrint fetcher that permits inline data and approved local roots while blocking network URLs, remote file hosts, traversal and symlink escapes. The pypdf footer path now attaches pages before merging content, avoiding its pypdf 7 deprecation.
