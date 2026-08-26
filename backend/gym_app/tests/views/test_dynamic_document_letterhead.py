@@ -14,7 +14,6 @@ from gym_app.models import DynamicDocument
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -25,7 +24,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -36,7 +34,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Document."""
     return DynamicDocument.objects.create(
@@ -946,7 +943,6 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def b10_lawyer_user():
     """B10 lawyer user."""
     return User.objects.create_user(
@@ -956,7 +952,6 @@ def b10_lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b10_basic_user():
     """B10 basic user."""
     return User.objects.create_user(
@@ -965,7 +960,6 @@ def b10_basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b10_document(b10_lawyer_user):
     """B10 document."""
     return DynamicDocument.objects.create(
@@ -1202,13 +1196,11 @@ def b20_api():
     return APIClient()
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer."""
     return User.objects.create_user(email="law_b20@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
-@pytest.mark.django_db
 def b20_basic_user():
     """B20 basic user."""
     return User.objects.create_user(email="basic_b20@t.com", password="pw", role="basic", first_name="B", last_name="U")

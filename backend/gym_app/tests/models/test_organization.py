@@ -21,7 +21,6 @@ PAST_EXPIRY = datetime(2000, 1, 1, tzinfo=dt_timezone.utc)
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_client():
     """Corporate client."""
     return User.objects.create_user(
@@ -34,7 +33,6 @@ def corporate_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -47,7 +45,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -60,7 +57,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization(corporate_client):
     """Organization."""
     return Organization.objects.create(

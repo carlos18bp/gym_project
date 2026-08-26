@@ -7,27 +7,34 @@
 | Category | Technology | Version |
 |----------|-----------|---------|
 | Language | Python | 3.12 |
-| Framework | Django | 5.2.14 |
-| REST API | Django REST Framework | 3.17.1 |
+| Framework | Django | 5.2.17 |
+| REST API | Django REST Framework | 3.18.0 |
 | Authentication | SimpleJWT | 5.5.1 |
-| Task Queue | Huey | 2.5.2 |
-| Queue Backend | Redis | 5.2.1 |
+| Task Queue | Huey | 2.6.0 |
+| Queue Backend | Redis | 5.3.1 |
 | Database (dev) | SQLite | built-in |
-| Database (prod) | MySQL | mysqlclient 2.2.7 |
+| Database (prod) | MySQL | mysqlclient 2.2.8 |
 | Production Server | Gunicorn | 23.0.0 |
-| PDF Generation | WeasyPrint 63.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.25.3, reportlab 4.2.5 |
-| Document Processing | python-docx 1.1.2, PyPDF2 3.0.1, pypdf 5.3.0, openpyxl 3.1.5, XlsxWriter 3.2.0, pandas 2.2.2 |
-| Image Processing | Pillow 10.4.0, opencv-python-headless 4.11.0.86 |
-| Digital Signatures | pyHanko 0.25.3 |
-| QR Codes | qrcode 8.0 |
-| OAuth | google-auth 2.48.0 |
+| PDF Generation | WeasyPrint 69.0 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
+| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
+| Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
+| Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1 |
+| QR Codes | qrcode 8.2 |
+| OAuth | google-auth 2.57.0 |
 | File Validation | python-magic 0.4.27 |
 | Environment Config | python-decouple 3.8 |
-| Backups | django-dbbackup 4.2.1 |
-| Query Profiling | django-silk 5.3.2 |
-| Test Data | Faker 25.9.1 |
+| Backups | django-dbbackup 4.3.0 |
+| Query Profiling | django-silk 5.5.2 |
+| Test Data | Faker 25.9.2 |
 | Linting | Ruff |
-| Testing | pytest 8.3.5, pytest-django 4.12.0, pytest-cov 6.1.0, coverage 7.8.0 |
+| Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 6.3.0, coverage 7.15.4 |
+
+> **Backend dependency remediation (complete, 2026-08-26):** a clean Python
+> 3.12 environment with the pinned requirements and `pip==26.2.1` reports zero
+> known vulnerabilities. `PyPDF2` was removed, WeasyPrint resource fetching is
+> restricted, and the suite's inert fixture marks were migrated for pytest 9.
+> `svglib` remains at 1.5.1 because 1.6.0 adds an unavailable `pycairo` native
+> build dependency and does not remediate any reported advisory.
 
 ### Frontend
 
@@ -79,7 +86,8 @@ sudo apt install libpangocairo-1.0-0 libpangoft2-1.0-0 libffi-dev libcairo2
 ```bash
 python3 -m venv backend/venv
 source backend/venv/bin/activate
-pip install -r backend/requirements.txt
+python -m pip install --upgrade pip==26.2.1
+python -m pip install -r backend/requirements.txt
 python backend/manage.py migrate
 python backend/manage.py createsuperuser
 python backend/manage.py create_fake_data   # seed test data

@@ -25,7 +25,6 @@ FROZEN_NOW = '2026-03-19T20:00:00+00:00'
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer user for SECOP tests."""
     return User.objects.create_user(
@@ -38,7 +37,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def second_lawyer():
     """Second lawyer user for uniqueness tests."""
     return User.objects.create_user(
@@ -51,7 +49,6 @@ def second_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def secop_process():
     """Open SECOP process with future closing date."""
     return SECOPProcess.objects.create(
@@ -71,7 +68,6 @@ def secop_process():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def closed_process():
     """Create closed SECOP process with past closing date."""
     return SECOPProcess.objects.create(

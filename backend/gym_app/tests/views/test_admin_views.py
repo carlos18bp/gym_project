@@ -56,7 +56,6 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -66,7 +65,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -76,7 +74,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corp_user():
     """Corp user."""
     return User.objects.create_user(

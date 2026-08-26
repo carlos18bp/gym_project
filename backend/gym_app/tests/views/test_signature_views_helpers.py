@@ -17,7 +17,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -186,19 +185,16 @@ from gym_app.views.dynamic_documents import signature_views  # noqa: F811
 User = get_user_model()
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer."""
     return User.objects.create_user(email="law_b21@t.com", password="pw", role="lawyer", first_name="L", last_name="W")
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(email="cli_b21@t.com", password="pw", role="client", first_name="C", last_name="L")
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc(lawyer):
     """Doc."""
     return DynamicDocument.objects.create(title="DocB21", content="<p>hi</p>", state="Draft", created_by=lawyer)
@@ -402,7 +398,6 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():  # noqa: F811
     """Lawyer user."""
     return User.objects.create_user(
@@ -415,7 +410,6 @@ def lawyer_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(

@@ -13,7 +13,7 @@ flowchart TB
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
-    subgraph Server["Backend (Django 5.2.14)"]
+    subgraph Server["Backend (Django 5.2.17)"]
         DRF["Django REST Framework\n~205 API endpoints"]
         Models["56 Models\n(15 model files)"]
         Serializers["13 Serializer files"]
@@ -124,6 +124,15 @@ sequenceDiagram
     D->>E: External API call (Wompi/SMTP)
     E-->>D: Response
 ```
+
+### 3.1 Dynamic-document PDF resource boundary
+
+Security remediation completed on 2026-08-26 after `pip-audit` reported 85
+vulnerability records across nine packages. User-authored HTML now reaches a
+deny-by-default WeasyPrint 69 fetcher: it keeps inline `data:` assets and
+approved local project files, rejects network URLs, remote `file://` hosts and
+resolved path/symlink escapes, and routes all PDF reading/writing through
+`pypdf` 6. The deprecated `PyPDF2` distribution is no longer installed.
 
 ---
 
@@ -476,7 +485,7 @@ flowchart TD
 flowchart TD
     subgraph Production
         Gunicorn["Gunicorn\n(WSGI server)"]
-        Django["Django 5.2.14"]
+        Django["Django 5.2.17"]
         MySQL["MySQL"]
         RedisQ["Redis\n(Huey broker)"]
         HueyW["Huey Worker\n(consumer)"]
