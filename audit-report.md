@@ -1,18 +1,20 @@
 # Vulnerability Audit & Dependency Update Report
 
-**Branch:** `chore/26082026-vuln-audit`  
-**Date:** 2026-08-26  
-**Base:** `release-september-2026-c` @ `d3fdca6`  
-**Scope:** patch + minor updates only (no major version bumps)
+- **Audit branch:** `chore/26082026-vuln-audit`
+- **Remediation branch:** `chore/26082026-backend-vuln-remediation`
+- **Date:** 2026-08-26
+- **Audit base:** `release-september-2026-c` @ `d3fdca6`
+- **Remediation base:** `release-september-2026-c` @ `145720e`
+- **Scope:** phase 1 patch/minor updates; phase 2 compatibility-tested security-major remediation
 
 ## Summary
 
 | Surface | Vulns (initial) | Outdated (initial) | Vulns (final) |
 |---|---:|---:|---:|
 | Frontend | 13 (0 critical / 12 high / 0 moderate / 1 low) | 24 rows | 0 |
-| Backend | 109 across 13 packages | 64 installed packages (56 declared) | 85 across 9 packages |
+| Backend | 109 across 13 packages | 64 installed packages (56 declared) | 0 |
 
-The frontend audit is clean. The backend audit removed 24 vulnerability records and four vulnerable packages from the result. The 85 remaining records require major upgrades, migration away from a deprecated package, or an update to the environment's `pip` tooling; none can be resolved within this audit's patch/minor contract.
+The frontend audit is clean. Phase 1 removed 24 backend vulnerability records and left 85 that were outside its patch/minor contract. Phase 2 resolved those records with compatibility-tested major upgrades, migration away from `PyPDF2`, application-level WeasyPrint hardening, pytest 9 cleanup, and a separately bootstrapped `pip` update.
 
 ---
 
@@ -200,4 +202,41 @@ Source: `/tmp/gym_project_staging-pip-outdated.json`
 - `pytest --collect-only -q`: 3,181 tests collected, 0 collection errors.
 - Slice: `pytest gym_app/tests/views/test_health.py -q`: 11 passed.
 - Non-blocking warnings: marks applied to fixtures will be unsupported in pytest 9, and `PyPDF2` is deprecated in favor of `pypdf`.
+- No migrations or database-writing management commands were run.
+
+## Backend Security-Major Remediation (phase 2)
+
+| Package | Previous | Remediated | Notes |
+|---|---:|---:|---|
+| `cffi` | 1.17.1 | 2.0.0 | Required by cryptography 50 |
+| `cryptography` | 44.0.3 | 50.0.1 | Fixed security line |
+| `cssselect2` | 0.7.0 | 0.8.0 | Required by WeasyPrint 69 |
+| `lxml` | 5.4.0 | 6.1.2 | Fixed XXE line |
+| `pillow` | 10.4.0 | 12.3.0 | Fixed image-processing line |
+| `pypdf` | 5.9.0 | 6.16.2 | Fixed PDF-processing line |
+| `PyPDF2` | 3.0.1 | removed | Imports migrated to `pypdf` |
+| `pytest` | 8.4.2 | 9.1.1 | Fixed test-tooling line |
+| `sqlparse` | 0.5.5 | 0.6.0 | Fixed parser line |
+| `weasyprint` | 63.1 | 69.0 | Fixed SSRF/security line |
+| `pip` | 24.0 | 26.2.1 | Bootstrap tooling; intentionally not in app requirements |
+
+Application compatibility changes:
+
+- Added a deny-by-default WeasyPrint URL fetcher for user-authored dynamic-document HTML. It allows `data:` assets and resolved files under the render/media/static roots; HTTP(S), remote file hosts, traversal and symlink escapes are blocked before resource opening.
+- Migrated PDF readers/writers and their tests from `PyPDF2` to `pypdf`. Footer pages are attached to `PdfWriter` before `merge_page`, eliminating the pypdf 7 deprecation.
+- Removed 170 fixture-level `@pytest.mark.django_db` decorators from 36 test files. Pytest documents that these marks never affected fixtures; pytest 9 now rejects them during collection.
+- Kept `svglib==1.5.1`: 1.6.0 adds `rlpycairo`/`pycairo`, which requires Cairo development headers unavailable on the current host, and the bump does not fix an audited vulnerability.
+- Documented `python -m pip install --upgrade pip==26.2.1` as a separate bootstrap step before installing application requirements.
+
+### Phase 2 Verification
+
+- Fresh Python 3.12 virtualenv + full `requirements.txt` installation: success.
+- `python -m pip check`: no broken requirements.
+- `pip-audit --path <isolated-site-packages>`: **no known vulnerabilities found**.
+- `python manage.py check`: no issues (0 silenced).
+- WeasyPrint resource-boundary and render tests: 7 passed.
+- pypdf combine/footer tests with deprecations treated as errors: 2 passed.
+- Representative pytest 9/Pillow/xhtml2pdf model, serializer, service, task and view slice: 7 passed.
+- Cryptography RSA sign/verify + pyHanko import smoke: passed.
+- Targeted Ruff: passed; test quality gate: 100/100 with 0 errors and 0 warnings.
 - No migrations or database-writing management commands were run.

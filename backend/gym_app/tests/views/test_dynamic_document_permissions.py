@@ -13,7 +13,6 @@ from gym_app.models import (
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -24,7 +23,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -37,7 +35,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Document."""
     return DynamicDocument.objects.create(
@@ -446,7 +443,6 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():  # noqa: F811
     """Lawyer user."""
     return User.objects.create_user(
@@ -456,7 +452,6 @@ def lawyer_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():  # noqa: F811
     """Client user."""
     return User.objects.create_user(
@@ -466,7 +461,6 @@ def client_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):  # noqa: F811
     """Document."""
     return DynamicDocument.objects.create(
@@ -950,7 +944,6 @@ User = get_user_model()
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():  # noqa: F811
     """Lawyer user."""
     return User.objects.create_user(
@@ -960,7 +953,6 @@ def lawyer_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():  # noqa: F811
     """Client user."""
     return User.objects.create_user(
@@ -970,7 +962,6 @@ def client_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -979,7 +970,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):  # noqa: F811
     """Document."""
     return DynamicDocument.objects.create(
@@ -992,21 +982,18 @@ def document(lawyer_user):  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def req_type():
     """Req type."""
     return LegalRequestType.objects.create(name="Civil B7")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def discipline():
     """Discipline."""
     return LegalDiscipline.objects.create(name="Penal B7")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_request(client_user, req_type, discipline):
     """Legal request."""
     return LegalRequest.objects.create(

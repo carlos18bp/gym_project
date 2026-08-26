@@ -33,7 +33,6 @@ factory = RequestFactory()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_client():
     """Corporate client."""
     return User.objects.create_user(
@@ -46,7 +45,6 @@ def corporate_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def normal_client():
     """Create a normal client."""
     return User.objects.create_user(
@@ -59,7 +57,6 @@ def normal_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization(corporate_client):
     """Organization."""
     return Organization.objects.create(
@@ -70,14 +67,12 @@ def organization(corporate_client):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def request_type():
     """Request type."""
     return CorporateRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_request(organization, normal_client, corporate_client, request_type):
     """Corporate request."""
     OrganizationMembership.objects.create(

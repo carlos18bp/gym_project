@@ -828,7 +828,6 @@ def api():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer."""
     return User.objects.create_user(
@@ -838,7 +837,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc(lawyer):
     """Doc."""
     return DynamicDocument.objects.create(
@@ -848,7 +846,6 @@ def doc(lawyer):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc_with_var(doc):
     """Doc with var."""
     DocumentVariable.objects.create(document=doc, name_en="var1", value="World")
@@ -1021,7 +1018,6 @@ def api():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():  # noqa: F811
     """Lawyer."""
     return User.objects.create_user(
@@ -1031,7 +1027,6 @@ def lawyer():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc(lawyer):  # noqa: F811
     """Doc."""
     return DynamicDocument.objects.create(
@@ -1376,7 +1371,6 @@ and get_letterhead_for_document helper.
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -1389,7 +1383,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -1400,7 +1393,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Document."""
     return DynamicDocument.objects.create(

@@ -1090,7 +1090,6 @@ User = get_user_model()  # noqa: F811
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def b12_lawyer_user():
     """B12 lawyer user."""
     return User.objects.create_user(
@@ -1100,7 +1099,6 @@ def b12_lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_client_user():
     """B12 client user."""
     return User.objects.create_user(
@@ -1110,7 +1108,6 @@ def b12_client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_corp_user():
     """B12 corp user."""
     return User.objects.create_user(
@@ -1120,21 +1117,18 @@ def b12_corp_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_legal_request_type():
     """B12 legal request type."""
     return LegalRequestType.objects.create(name="Consulta General")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_legal_discipline():
     """B12 legal discipline."""
     return LegalDiscipline.objects.create(name="Civil")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_legal_req(b12_client_user, b12_legal_request_type, b12_legal_discipline):
     """B12 legal req."""
     return LegalRequest.objects.create(
@@ -1147,7 +1141,6 @@ def b12_legal_req(b12_client_user, b12_legal_request_type, b12_legal_discipline)
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_organization(b12_corp_user):
     """B12 organization."""
     return Organization.objects.create(
@@ -1159,7 +1152,6 @@ def b12_organization(b12_corp_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def b12_membership(b12_organization, b12_client_user):
     """B12 membership."""
     return OrganizationMembership.objects.create(

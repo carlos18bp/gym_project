@@ -105,7 +105,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 |----------|-----------|
 | Framework | Django 5.0.6, Django REST Framework 3.15.2 |
 | Authentication | SimpleJWT, Google OAuth (google-auth) |
-| Task queue | Huey 2.5.2 + Redis |
+| Task queue | Huey 2.6.0 + Redis 5.3.1 |
 | Database | SQLite (development) |
 | PDF generation | xhtml2pdf, PyMuPDF, reportlab |
 | Document processing | python-docx, PyPDF2, pypdf, openpyxl, XlsxWriter, pandas |
@@ -238,7 +238,8 @@ Create and activate a virtual environment, then install dependencies:
 ```bash
 python3 -m venv backend/venv
 source backend/venv/bin/activate
-pip install -r backend/requirements.txt
+python -m pip install --upgrade pip==26.2.1
+python -m pip install -r backend/requirements.txt
 ```
 
 Run migrations and create a superuser:

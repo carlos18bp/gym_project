@@ -8,7 +8,6 @@ from gym_app.models import LegalUpdate
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def user():
     """User."""
     return User.objects.create_user(
@@ -19,7 +18,6 @@ def user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_update_active():
     """Legal update active."""
     return LegalUpdate.objects.create(
@@ -32,7 +30,6 @@ def legal_update_active():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_update_inactive():
     """Legal update inactive."""
     return LegalUpdate.objects.create(

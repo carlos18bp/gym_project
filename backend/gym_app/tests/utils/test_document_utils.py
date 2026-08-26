@@ -2,6 +2,8 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from gym_app.utils.documents import (
     _copy_field_to_snapshot,
     build_letterhead_layer_html,
@@ -390,8 +392,91 @@ class TestBuildPdfStylesheet:
         assert 'padding-top' not in build_pdf_stylesheet(self._FONT_PATHS, top_padding=None)
 
 
+class TestBuildPdfUrlFetcher:
+    """The dynamic-document renderer cannot fetch arbitrary resources."""
+
+    def test_allows_data_url(self):
+        """Allows inline data assets."""
+        from gym_app.utils.documents import build_pdf_url_fetcher
+
+        response = build_pdf_url_fetcher(base_url='.').fetch(
+            'data:text/plain;base64,SG9sYQ=='
+        )
+        try:
+            assert response.read() == b'Hola'
+        finally:
+            response.close()
+
+    def test_allows_file_inside_base(self, tmp_path):
+        """Allows a resolved file contained by the render base."""
+        from gym_app.utils.documents import build_pdf_url_fetcher
+
+        base_dir = tmp_path / 'approved'
+        base_dir.mkdir()
+        resource = base_dir / 'asset.txt'
+        resource.write_bytes(b'approved')
+
+        response = build_pdf_url_fetcher(base_url=base_dir).fetch(resource.as_uri())
+        try:
+            assert response.read() == b'approved'
+        finally:
+            response.close()
+
+    def test_rejects_file_outside_base(self, tmp_path):
+        """Rejects a local file outside approved roots."""
+        from gym_app.utils.documents import build_pdf_url_fetcher
+
+        base_dir = tmp_path / 'approved'
+        base_dir.mkdir()
+        resource = tmp_path / 'secret.txt'
+        resource.write_text('secret')
+
+        fetcher = build_pdf_url_fetcher(base_url=base_dir)
+        with pytest.raises(ValueError, match='outside approved roots'):
+            fetcher.fetch(resource.as_uri())
+
+    def test_rejects_symlink_escape(self, tmp_path):
+        """Rejects a symlink that resolves outside approved roots."""
+        from gym_app.utils.documents import build_pdf_url_fetcher
+
+        base_dir = tmp_path / 'approved'
+        base_dir.mkdir()
+        resource = tmp_path / 'secret.txt'
+        resource.write_text('secret')
+        symlink = base_dir / 'asset.txt'
+        symlink.symlink_to(resource)
+
+        fetcher = build_pdf_url_fetcher(base_url=base_dir)
+        with pytest.raises(ValueError, match='outside approved roots'):
+            fetcher.fetch(symlink.as_uri())
+
+    def test_rejects_network_url(self):
+        """Rejects network access before opening a resource."""
+        from gym_app.utils.documents import build_pdf_url_fetcher
+
+        fetcher = build_pdf_url_fetcher(base_url='.')
+        with pytest.raises(ValueError, match='scheme is not allowed'):
+            fetcher.fetch('https://127.0.0.1/internal')
+
+
 class TestRenderHtmlToPdf:
     """WeasyPrint render smoke test."""
+
+    @patch(
+        'urllib.request.OpenerDirector.open',
+        side_effect=AssertionError('network opener must not be called'),
+    )
+    def test_does_not_open_network_resources(self, mock_open):
+        """Uses the restricted fetcher during a real render."""
+        from gym_app.utils.documents import render_html_to_pdf
+
+        pdf = render_html_to_pdf(
+            '<html><body><img src="https://127.0.0.1/internal"></body></html>',
+            base_url='.',
+        )
+
+        assert pdf[:5] == b'%PDF-'
+        mock_open.assert_not_called()
 
     def test_renders_simple_html_to_pdf_bytes(self):
         """Renders simple html to pdf bytes."""

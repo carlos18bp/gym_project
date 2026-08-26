@@ -8,6 +8,10 @@ user typed content directly or pasted it from Word / Google Docs.
 import logging
 import os
 import re
+from pathlib import Path
+from urllib.parse import urlsplit
+from urllib.request import url2pathname
+
 from bs4 import BeautifulSoup
 from django.conf import settings
 from reportlab.pdfbase import pdfmetrics
@@ -451,6 +455,50 @@ def build_letterhead_layer_html(letterhead_image):
     )
 
 
+def build_pdf_url_fetcher(*, base_url):
+    """Return a WeasyPrint fetcher restricted to trusted local resources.
+
+    Dynamic-document HTML is authored by users, so allowing WeasyPrint's
+    default HTTP/file access would create an SSRF and local-file-read boundary.
+    Inline ``data:`` assets remain valid, while ``file:`` resources are limited
+    to the render base plus configured media/static roots. Resolving paths
+    before containment checks also blocks symlink and ``..`` escapes.
+    """
+    from weasyprint.urls import URLFetcher  # lazy: keep native PDF deps optional
+
+    roots = [Path(os.fspath(base_url)).resolve()]
+    for setting_name in ('MEDIA_ROOT', 'STATIC_ROOT'):
+        configured_root = getattr(settings, setting_name, None)
+        if configured_root:
+            roots.append(Path(configured_root).resolve())
+    allowed_roots = tuple(dict.fromkeys(roots))
+
+    class RestrictedPDFURLFetcher(URLFetcher):
+        def fetch(self, url, headers=None):
+            parsed_url = urlsplit(url)
+            scheme = parsed_url.scheme.lower()
+
+            if scheme == 'data':
+                return super().fetch(url, headers)
+            if scheme != 'file':
+                resource_scheme = scheme or 'relative'
+                raise ValueError(
+                    f'PDF resource scheme is not allowed: {resource_scheme}'
+                )
+            if parsed_url.netloc:
+                raise ValueError('PDF file resources cannot specify a host')
+
+            resource_path = Path(url2pathname(parsed_url.path)).resolve()
+            if not any(resource_path.is_relative_to(root) for root in allowed_roots):
+                raise ValueError('PDF file resource is outside approved roots')
+            return super().fetch(url, headers)
+
+    return RestrictedPDFURLFetcher(
+        allowed_protocols=('data', 'file'),
+        allow_redirects=False,
+    )
+
+
 def render_html_to_pdf(html_content, *, base_url):
     """Render ``html_content`` to PDF bytes using WeasyPrint.
 
@@ -461,11 +509,16 @@ def render_html_to_pdf(html_content, *, base_url):
     Imported lazily so a missing native dependency (Pango/Cairo/…) surfaces only
     when a PDF is actually requested, instead of taking down the whole views
     module at import time. ``base_url`` lets relative ``url(...)`` references in
-    the HTML/CSS resolve against the project directory.
+    the HTML/CSS resolve against the project directory. The custom fetcher
+    rejects network resources and local files outside approved project roots.
     """
     from weasyprint import HTML  # lazy: native libs only needed at render time
 
-    return HTML(string=html_content, base_url=str(base_url)).write_pdf()
+    return HTML(
+        string=html_content,
+        base_url=str(base_url),
+        url_fetcher=build_pdf_url_fetcher(base_url=base_url),
+    ).write_pdf()
 
 
 def render_document_pdf(*, title, body_html, letterhead_image=None, top_padding="1cm"):

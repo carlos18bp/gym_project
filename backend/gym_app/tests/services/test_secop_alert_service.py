@@ -15,7 +15,6 @@ from gym_app.services.secop_alert_service import AlertEvaluationService
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer user for alert service tests."""
     return User.objects.create_user(
@@ -28,7 +27,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def second_lawyer():
     """Second lawyer user for grouping tests."""
     return User.objects.create_user(
@@ -41,7 +39,6 @@ def second_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process():
     """SECOP process for alert evaluation."""
     return SECOPProcess.objects.create(
@@ -57,7 +54,6 @@ def process():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def second_process():
     """Second SECOP process for notification tests."""
     return SECOPProcess.objects.create(

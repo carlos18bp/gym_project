@@ -22,7 +22,6 @@ from gym_app.models import (
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer(api_client):
     """Create authenticated lawyer user."""
     user = User.objects.create_user(
@@ -38,7 +37,6 @@ def lawyer(api_client):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def other_lawyer():
     """Another lawyer user (not authenticated by default)."""
     return User.objects.create_user(
@@ -51,7 +49,6 @@ def other_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user (non-lawyer)."""
     return User.objects.create_user(
@@ -64,7 +61,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process_open():
     """Open SECOP process."""
     return SECOPProcess.objects.create(
@@ -86,7 +82,6 @@ def process_open():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process_closed():
     """Create closed SECOP process."""
     return SECOPProcess.objects.create(

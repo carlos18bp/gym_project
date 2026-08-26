@@ -13,7 +13,6 @@ FROZEN_NOW = '2026-03-19T20:00:00+00:00'
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer user for task tests."""
     return User.objects.create_user(

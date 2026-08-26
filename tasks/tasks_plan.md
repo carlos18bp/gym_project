@@ -54,6 +54,12 @@
 | 3 | `debug.log` is 6.7MB — gitignored (rotated `debug.log.N` files also ignored since `6cba400`), but no `RotatingFileHandler` found in repo settings; rotation config still pending | Low | Operations |
 | 5 | Pre-registered flow `minutas-columns` (P2, documents) corresponds to planned feature #2 Minutas — not yet implemented. Will get its spec when feature lands. | Low | Testing / Planned features |
 
+### Completed Maintenance
+
+| Date | Task | Result |
+|------|------|--------|
+| 2026-08-26 | Backend dependency vulnerability remediation | 85 audit records reduced to 0; security-major pins applied, `PyPDF2` removed, WeasyPrint resource fetching restricted, and pytest 9 fixture compatibility completed |
+
 ---
 
 ## 4. Testing Status

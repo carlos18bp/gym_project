@@ -42,6 +42,12 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Backend vulnerability remediation (2026-08-26, complete)**:
+  - Upgraded `cryptography` 50.0.1, `lxml` 6.1.2, Pillow 12.3.0, `pypdf` 6.16.2, pytest 9.1.1, `sqlparse` 0.6.0, and WeasyPrint 69.0, with required companion pins CFFI 2.0.0 and cssselect2 0.8.0. Deprecated `PyPDF2` was removed and its consumers migrated.
+  - Dynamic-document HTML now uses a deny-by-default WeasyPrint fetcher that permits inline data and approved local roots while blocking network URLs, remote file hosts, traversal and symlink escapes. The pypdf footer path now attaches pages before merging content, avoiding its pypdf 7 deprecation.
+  - Pytest 9 compatibility removed 170 fixture-level `django_db` marks across 36 files; official pytest behavior confirms those marks never affected fixture access. Verification: clean install, `pip check`, zero-vulnerability `pip-audit` with pip 26.2.1, Django check, 16 targeted backend cases, cryptographic sign/verify smoke, Ruff, and test quality gate 100/100.
+  - `svglib` stays at 1.5.1 because 1.6.0 introduces an unprovisioned `pycairo` native build dependency without reducing the vulnerability count.
+
 - **SECOP staging sync recovery + hardening (2026-08-21, complete)**:
   - **Incident/recovery**: staging had no successful live sync since 2026-08-11 because Socrata rejected the optional `SECOP_APP_TOKEN` with 403, although the public query worked anonymously. The invalid staging token was blanked, `gym-staging-huey` restarted, and the normal incremental task queued.
   - **Verified live result**: `SyncLog` 619 finished `SUCCESS` at 18:53:23 UTC — 20,129 processed, 17,115 created, 3,014 updated, 1,143 stale closed; 15,992 active opportunities remained and the newest source update was 2026-08-19. Alert evaluation created 827 notification rows.
@@ -267,10 +273,10 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Component | Detail |
 |-----------|--------|
-| Backend | Django 5.2.14 + DRF 3.17.1, SQLite (dev), Python 3.12 |
+| Backend | Django 5.2.17 + DRF 3.18.0, SQLite (dev), Python 3.12 |
 | Frontend | Vue 3.5 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
-| Task Queue | Huey 2.5.2 (immediate mode in dev, Redis in prod) |
-| Testing | pytest, Jest 29, Playwright |
+| Task Queue | Huey 2.6.0 (immediate mode in dev, Redis in prod) |
+| Testing | pytest 9.1.1, Jest 29, Playwright |
 | CI | GitHub Actions (test quality gate on PR/push) |
 | Pre-commit | Ruff lint + test quality gate |
 

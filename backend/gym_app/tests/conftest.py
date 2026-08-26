@@ -50,7 +50,6 @@ def rf():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer role user."""
     return User.objects.create_user(
@@ -64,7 +63,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client role user."""
     return User.objects.create_user(
@@ -77,7 +75,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create basic (free-tier) role user."""
     return User.objects.create_user(
@@ -90,7 +87,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_user():
     """Corporate-client role user."""
     return User.objects.create_user(
@@ -103,7 +99,6 @@ def corporate_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization(corporate_user):
     """Organization owned by corporate_user."""
     return Organization.objects.create(
@@ -115,14 +110,12 @@ def organization(corporate_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def case_type():
     """Create a Case (case type) instance."""
     return Case.objects.create(type="Civil")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Create a DynamicDocument in Draft state owned by lawyer_user."""
     return DynamicDocument.objects.create(

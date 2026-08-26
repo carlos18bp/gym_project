@@ -21,6 +21,11 @@
 
 ## Resolved Issues
 
+### [RESOLVED-024] Backend dependency audit reported 85 vulnerability records
+- **Context**: The 2026-08-26 backend audit found 85 records across `cryptography`, `lxml`, `pillow`, `pip`, `pypdf`, `PyPDF2`, `pytest`, `sqlparse`, and `weasyprint`. User-authored dynamic-document HTML also reached WeasyPrint's default resource fetcher.
+- **Resolution**: Upgraded the affected dependencies to fixed releases, removed `PyPDF2` and migrated imports to `pypdf`, introduced a deny-by-default WeasyPrint fetcher, and removed 170 inert `django_db` marks from fixtures for pytest 9 compatibility. Companion pins are `cffi==2.0.0` and `cssselect2==0.8.0`.
+- **Verification**: Fresh Python 3.12 environment installed cleanly; `pip check`, Django system check, targeted PDF/image/fixture tests, Ruff, and the test quality gate passed. `pip-audit` reported zero known vulnerabilities with separately bootstrapped `pip==26.2.1`.
+
 ### [RESOLVED-001] E2E bypassCaptcha relies on `window.__e2eCaptchaVerified` flag
 - **Context**: E2E tests needed to bypass Google reCAPTCHA during automated testing. Relying on Vue internals for captcha state was unreliable across versions.
 - **Resolution**: The `bypassCaptcha` helper sets `window.__e2eCaptchaVerified` flag via a `grecaptcha` stub. This is now the stable, version-independent approach.

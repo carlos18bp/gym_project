@@ -9,7 +9,6 @@ from gym_app.models import Organization, OrganizationMembership, OrganizationPos
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_client():
     """Corporate client."""
     return User.objects.create_user(
@@ -23,7 +22,6 @@ def corporate_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -36,7 +34,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -49,7 +46,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization(corporate_client):
     """Organization."""
     return Organization.objects.create(
@@ -60,7 +56,6 @@ def organization(corporate_client):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization_post(corporate_client, organization):
     """Organization post."""
     return OrganizationPost.objects.create(
@@ -536,22 +531,18 @@ from django.test import RequestFactory
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def _b17_lawyer_user():
     return User.objects.create_user(email="law_b17@t.com", password="pw", role="lawyer", first_name="L", last_name="Y")
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b17_client_user():
     return User.objects.create_user(email="cli_b17@t.com", password="pw", role="client", first_name="C", last_name="E")
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b17_corp_user():
     return User.objects.create_user(email="corp_b17@t.com", password="pw", role="corporate_client", first_name="Co", last_name="Cl")
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b17_organization(_b17_corp_user):
     return Organization.objects.create(title="OrgB17", corporate_client=_b17_corp_user, is_active=True)
 
@@ -754,7 +745,6 @@ class TestVerifyPasscode:
 # ======================================================================
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b14_corp_user():
     return User.objects.create_user(
         email="corp_b14@test.com", password="pw", role="corporate_client",
@@ -763,7 +753,6 @@ def _b14_corp_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b14_org(_b14_corp_user):
     return Organization.objects.create(
         title="Org B14", corporate_client=_b14_corp_user, is_active=True,
@@ -771,7 +760,6 @@ def _b14_org(_b14_corp_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b14_client():
     return User.objects.create_user(
         email="client_b14@test.com", password="pw", role="client",
@@ -780,7 +768,6 @@ def _b14_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def _b14_membership(_b14_org, _b14_client):
     return OrganizationMembership.objects.create(
         organization=_b14_org, user=_b14_client, role="MEMBER", is_active=True,
