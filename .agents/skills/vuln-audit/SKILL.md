@@ -11,7 +11,7 @@ description: "Audita vulnerabilidades y dependencias en backend (Python) y front
 | `$server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
 | `$vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm): default arma el plan sin tocar nada; los bumps se aplican con `--apply` | Por proyecto, mensual o ante CVE |
 
-No se orquestan entre sí (cada una es independiente); full-audit NO corre a las otras dos.
+Se orquestan en UNA sola dirección: `$deploy-and-check` (manual-only) corre el **motor** de `$server-diagnostic` al cierre de cada deploy (modo consumidor, read-only: sin email, sin histórico, `.md` aparte) y sugiere `$vuln-audit` cuando su sonda de dependencias lo amerita; `$full-audit` NO corre a las otras dos y **ninguna** skill auto-invoca `$deploy-and-check`.
 
 
 # vuln-audit — Vulnerability & Dependency Audit (multi-stack)
