@@ -1,9 +1,9 @@
 ---
 name: deploy-and-check
-description: "VPS-only — Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml."
+description: "VPS-only — Deploy a project (any environment). Defaults to current git branch; pass a branch name as argument to switch. Auto-discovers project metadata from projects.yml. Cierra con el estado del servidor (motor de server-diagnostic, read-only), la señal de dependencias y next steps."
 disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion
-argument-hint: "[branch-name (opcional — default: rama actual del repo)]"
+argument-hint: "[branch-name (opcional — default: rama actual del repo)] [--no-diagnostic] [--skip-deps]"
 ---
 
 ## Entorno requerido
@@ -42,8 +42,11 @@ Despliegue del proyecto actual (auto-detectado desde `pwd` + `~/webapps/vps-ops-
 > **⚠️ How to invoke**:
 > - Sin argumento: `/deploy-and-check` → despliega en la rama actual del repo.
 > - Con argumento: `/deploy-and-check release/may-2026` → hace checkout a esa rama y despliega.
+> - Opt-outs (se tipean a propósito, en cualquier orden): `--no-diagnostic` = no correr el
+>   motor del diagnóstico del servidor al cierre (paso 13); `--skip-deps` = no sondear
+>   npm/pip en post-deploy-check (paso 12).
 >
-> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided branch name (empty if omitted).
+> Claude Code will substitute `$ARGUMENTS` in all commands below with the provided arguments (empty if omitted).
 
 ---
 
@@ -66,7 +69,9 @@ aplica sólo cuando el operador la invoca por slash. Gating ([[_output-protocol]
 | Rama actual del clon (Recommended) | despliega la rama en que está parado el repo (`git rev-parse --abbrev-ref HEAD`, el default de Phase 0) | `/deploy-and-check` |
 | Otra rama | elegir Other y tipear el nombre — hace checkout a esa rama y despliega | `/deploy-and-check <rama>` |
 
-**Qué NO se pregunta:** nada oculto — el único argumento es la rama.
+**Qué NO se pregunta:** `--no-diagnostic` y `--skip-deps` — opt-outs de la observación
+post-deploy (el diagnóstico del servidor y la sonda de dependencias son read-only y corren
+por default); se tipean a propósito y no entran en el picker.
 
 ---
 
@@ -103,7 +108,18 @@ VENV_PATH=$(yml_get "$PROJECT_NAME" venv_path)
 [ -z "$VENV_PATH" ] && VENV_PATH="backend/venv/bin/python"
 [ -z "$FRONTEND_BUILD" ] && FRONTEND_BUILD="npm ci && npm run build"
 GIT_CURRENT_BRANCH=$(cd "$PROJECT_DIR" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
-BRANCH="${ARGUMENTS:-$GIT_CURRENT_BRANCH}"
+# $ARGUMENTS puede traer la rama y/o los opt-outs --no-diagnostic / --skip-deps, en
+# cualquier orden. Los flags NO son ramas: se filtran antes de resolver BRANCH. Los
+# pasos 12 y 13 los re-leen de $ARGUMENTS (el env no persiste entre pasos del skill).
+_ARGS="$ARGUMENTS"; BRANCH_ARG=""; FLAGS=""
+for _tok in $_ARGS; do
+  case "$_tok" in
+    --no-diagnostic|--skip-deps) FLAGS="${FLAGS:+$FLAGS }$_tok" ;;
+    --*) echo "❌ ERROR: flag desconocido: $_tok (válidos: --no-diagnostic, --skip-deps)"; exit 2 ;;
+    *) BRANCH_ARG="$_tok" ;;
+  esac
+done
+BRANCH="${BRANCH_ARG:-$GIT_CURRENT_BRANCH}"
 [ -n "$BRANCH" ] || { echo "❌ ERROR: no se pudo determinar la rama actual y no se especificó argumento"; exit 1; }
 
 # manage.py defaultea a *_dev (SQLite) en varios proyectos del fleet, así que
@@ -134,6 +150,7 @@ cat <<EOF
   HAS_FRONTEND:    $HAS_FRONTEND
   NODE_VERSION:    $NODE_VERSION
   BRANCH:          $BRANCH
+  FLAGS:           ${FLAGS:-<ninguno>}
 EOF
 ```
 
@@ -294,16 +311,50 @@ fi
 cd "$PROJECT_DIR" && git log --oneline -1
 ```
 
-12. Post-deploy check del repo ops:
+12. Post-deploy check del repo ops. Trae la sección `Dependencies (advisory)` — npm
+    audit de deps de prod, pip outdated y pip-audit si ya está en el venv; sólo
+    OK/WARN/SKIP, nunca FAIL, nunca instala nada — que cierra con la línea
+    `DEPS[<proyecto>]: …`, la señal de la fila **Dependencias** del bloque final:
 ```bash
-bash $HOME/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh "$PROJECT_NAME"
+_ARGS="$ARGUMENTS"; _PDC=""
+case " $_ARGS " in *" --skip-deps "*) _PDC="--skip-deps" ;; esac
+bash $HOME/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh $_PDC "$PROJECT_NAME"
 ```
+
+13. Estado del servidor — motor de [[server-diagnostic]] en modo consumidor (read-only):
+    las mismas 14 fases del diagnóstico semanal, sin email, sin registrar en el histórico
+    (lee el último semanal como «Anterior» ⇒ la Δ responde «¿este deploy empeoró algo?»)
+    y en un `.md` aparte (`reports/diagnostic-post-deploy-<alias>.md`) para no pisar el
+    semanal que vigila `server-alerts`. Sin restarts ni escrituras fuera de `reports/`.
+    Costo: ≈15–30 s en prod, 1–3 min en staging. Se SALTA (⏭️) con `--no-diagnostic` o si
+    el deploy dejó ❌ (servicio inactivo, health 5xx, post-deploy-check FAIL) — ahí lo que
+    sigue es Phase 5, no un diagnóstico.
+```bash
+OPS="$HOME/webapps/vps-ops-toolkit"; PROJECT_NAME=$(basename "$(pwd)"); _ARGS="$ARGUMENTS"
+case " $_ARGS " in
+  *" --no-diagnostic "*) echo "⏭️ diagnóstico del servidor omitido (--no-diagnostic)" ;;
+  *)
+    DIAG_LOG=$(mktemp); rc=0
+    SKIP_EMAIL=1 SKIP_HISTORY=1 DIAG_CONTEXT="post-deploy:${PROJECT_NAME}" \
+      timeout 600 bash "$OPS/scripts/diagnostics/server-diagnostic-report.sh" >"$DIAG_LOG" 2>&1 || rc=$?
+    DIAG_MD=$(awk '/Report saved to/ {print $NF}' "$DIAG_LOG" | tail -1)
+    if [ "$rc" -eq 0 ] && [ -s "$DIAG_MD" ]; then
+      bash "$OPS/scripts/diagnostics/diagnostic-brief.sh" --project="$PROJECT_NAME" "$DIAG_MD"
+    else
+      echo "⚠️ diagnóstico del servidor no disponible (exit $rc) — últimas líneas:"; tail -15 "$DIAG_LOG"
+    fi
+    rm -f "$DIAG_LOG" ;;
+esac
+```
+    Leer SÓLO el bloque del brief (heading `### Servidor — …`, su tabla y la línea
+    `BRIEF:`); no abrir el `.md` completo salvo que un next step lo pida. El exit del
+    brief (0 verde · 1 🟡/capacidad · 2 🔴/regresión · 3 ilegible) no afecta al deploy.
 
 ---
 
 ## Phase 5 — Troubleshooting
 
-13. Logs:
+14. Logs:
 ```bash
 sudo journalctl -u "$GUNICORN_SVC" --no-pager -n 50
 sudo journalctl -u "$HUEY_SVC" --no-pager -n 50
@@ -311,7 +362,7 @@ sudo tail -30 /var/log/nginx/error.log
 tail -50 "$PROJECT_DIR/backend/logs/django.log" 2>/dev/null || tail -50 "$PROJECT_DIR/backend/debug.log" 2>/dev/null
 ```
 
-14. Estado detallado:
+15. Estado detallado:
 ```bash
 sudo systemctl status "$GUNICORN_SVC" --no-pager -l
 sudo systemctl status "$HUEY_SVC" --no-pager -l
@@ -324,6 +375,12 @@ sudo systemctl status "$HUEY_SVC" --no-pager -l
 - Skill **genérico** — auto-resuelve servicios, dominios y rutas desde `~/webapps/vps-ops-toolkit/projects.yml`. Funciona para staging y producción.
 - Sin argumento despliega en la rama actual (`git rev-parse --abbrev-ref HEAD`). Con argumento hace checkout a la rama indicada.
 - Fuente canónica: `vps-ops-toolkit/workflows/.claude/deploy-and-check.md`. La versión en `.agents/skills/` es la copia generada para Codex.
+- El paso 13 consume el motor de `/server-diagnostic` en UNA sola dirección (deploy →
+  diagnóstico, read-only: `SKIP_EMAIL=1 SKIP_HISTORY=1 DIAG_CONTEXT=post-deploy:<proyecto>`).
+  La política manual-only de CLAUDE.md sigue intacta: nada auto-invoca a esta skill.
+  Artefacto: `reports/diagnostic-post-deploy-<alias>.md` (no pisa el semanal que vigila
+  server-alerts; no entra al histórico de tendencias). Opt-outs tipeados: `--no-diagnostic`,
+  `--skip-deps`.
 
 ---
 
@@ -337,14 +394,39 @@ Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
 | Re-correr sólo el check (Recommended) | read-only: re-valida servicios + health del proyecto sin redeployar | `bash ~/webapps/vps-ops-toolkit/scripts/deployment/post-deploy-check.sh <proyecto>` |
 | Ver logs del servicio | últimas 50 líneas del journal de gunicorn/huey (Phase 5) | `sudo journalctl -u <gunicorn_svc> --no-pager -n 50` |
 | Re-probar health endpoint | curl a /api/health/ del dominio (Phase 4, paso 10) | `curl -s https://<dominio>/api/health/` |
+| Ver diagnóstico completo del servidor | read-only: resumen ejecutivo + top acciones del .md que dejó el paso 13 | `sed -n '1,60p' ~/webapps/vps-ops-toolkit/reports/diagnostic-post-deploy-<alias>.md` |
 
 Blocklist §4: ningún restart de servicio se ofrece como fila — los restarts ya
 corrieron en Phase 3 y cualquier restart extra exige leer el journal antes.
 
+## Señales → próximos pasos
+
+Espejo compacto del mapa canónico de [[server-diagnostic]] («PRÓXIMOS PASOS — mapa
+señal → skill»; se mantienen a mano). Las señales salen de tres fuentes deterministas:
+las filas ❌ de la tabla del deploy, las líneas `[WARN]`/`DEPS[…]` de post-deploy-check y
+el brief del paso 13 (`BRIEF:` + filas del mini-bloque). `## Next steps` lista **máx 5
+bullets** en este orden de prioridad; lo que no entra se resume en UN bullet final
+`(+N observaciones en <report.md>)`. Cada bullet = comando exacto + dónde + quién. Nunca
+un restart sin leer el journal antes.
+
+| Prio | Señal (de dónde sale) | Next step (comando exacto) |
+|---|---|---|
+| 1 | ❌ en una fila del deploy | `sudo journalctl -u <svc> --no-pager -n 50` + `backend/logs/django.log` + `/var/log/nginx/error.log` (Phase 5) |
+| 2 | `⚠️ ↓n` en el brief (fase cayó ≥2 vs el semanal = `🔴 Regresión`) | `awk '/^## FASE <N>:/,/^---$/' <report.md>` — si la causó el deploy, corregir antes de seguir |
+| 3 | fase 🔴 (<7) en el brief | F6/F8 units failed o `active pero disabled` → `/incident` o `sudo systemctl enable <unit>` (journal antes) · F7 → `docs/backup-restore-runbook.md` · F13 SSL ≤14 d → `sudo certbot renew --dry-run` · F14 `branch:` drift → `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --fix <proyecto>` · otra → `/server-diagnostic --target=local` (drill-down con la guía) — operador, desde el toolkit |
+| 4 | `Capacidad ⚠️` en el brief o `Root disk usage` WARN/FAIL en post-deploy-check | `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/housekeeping.sh` (dry-run) → revisar → `--apply` |
+| 5 | `pip-audit: N vuln(s)` o `npm audit` con critical/high > 0 | `/vuln-audit` en `~/webapps/<proyecto>` (operador; report-first, `--apply` sólo patch+minor) |
+| 6 | `pip: … major atrás` / ≥10 outdated / npm sólo moderate | `/vuln-audit backend` o `/vuln-audit frontend` — plan sin aplicar; los majors se deciden a mano |
+| 7 | `pending migration(s)` en post-deploy-check (anomalía: el deploy ya migró) | `cd ~/webapps/<proyecto>/backend && DJANGO_SETTINGS_MODULE=<mod> <venv>/bin/python manage.py showmigrations --plan \| grep '\[ \]'` — reportar al operador, no migrar a ciegas |
+| 8 | `near limit` / `error(s) in last 5 min` en post-deploy-check | `sudo journalctl -u <svc> --since '5 min ago' -p err --no-pager` |
+| 9 | fases 🟡 (7–8) sin regresión | UN bullet: `sed -n '/TOP ACCIONES/,/^---$/p' <report.md>` — sin acción inmediata |
+
 ## Output final
 
-Reportar siguiendo [[_output-protocol]]. Plantilla específica de
-`/deploy-and-check`:
+Reportar siguiendo [[_output-protocol]]. El producto son **dos bloques cortos + ≤5
+bullets**: la tabla del deploy (idéntica a la de siempre) y el mini-bloque «Servidor».
+No pegar el output de post-deploy-check, ni el brief crudo, ni el `.md` — las filas
+resumen, los bullets apuntan. Plantilla (caso todo verde):
 
 ```markdown
 🟢 deploy-and-check OK — <proyecto> @ <rama>
@@ -352,23 +434,84 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de
 
 | Dimensión | Estado | Detalle |
 |---|---|---|
-| Entorno VPS | ✅ | hostname <srv>, no es dev-machine |
+| Entorno VPS | ✅ | hostname <alias>, no es dev-machine |
 | Phase 0 — Discovery | ✅ | projects.yml leído: <svc>, <dominio>, <env> |
 | Phase 1 — Pre-deploy | ✅ | quick-status OK, working tree clean, rama existe |
 | Phase 2 — Pull & build | ✅ | git pull, pip install, migrate, frontend build |
 | Phase 3 — Restart services | ✅ | gunicorn + huey + (frontend) reiniciados |
 | Phase 4 — Health endpoint | ✅ | curl /api/health/ → 200 OK |
-| Phase 4 — post-deploy-check | ✅ | post-deploy-check.sh PASS para <proyecto> |
+| Phase 4 — post-deploy-check | ✅ | PASS=<n> FAIL=0 WARN=0 SKIP=<n> |
+
+### Servidor — <alias> 🟢 9.9/10 — 14/14 fases 🟢, sin regresiones · deps OK
 ```
+
+Plantilla (caso con señales — la tabla del deploy es la misma de arriba):
+
+```markdown
+🟢 deploy-and-check OK — projectapp @ main
+
+| Dimensión | Estado | Detalle |
+|---|---|---|
+| (…las 7 filas del deploy…) |
+
+### Servidor — vps-projectapp-prod 🟡 9.2/10 (Δ vs 2026-08-23: sin regresiones)
+| Señal | Estado | Hallazgo |
+|---|---|---|
+| FASE 3 Gestión de Disco | 8/10 ↓1 | Disco 75%. node_modules en … (estático, removible). |
+| ℹ️ projectapp | ℹ️ | gunicorn active (176MB) · huey active (86MB) · SSL 31d · backup 10h |
+| Dependencias | ⚠️ | npm 0c/0h/0m (prod) · pip 16 outdated (5 major: Django 5.2.17→6.1) · pip-audit 0 |
+
+## Next steps
+- `/vuln-audit backend` (en `~/webapps/projectapp`, operador) — 16 pip outdated, 5 majors atrás
+- `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/housekeeping.sh` — FASE 3 Disco 8/10 (dry-run primero)
+```
+
+**Bloque «Servidor»** = el heading + la tabla que imprimió `diagnostic-brief.sh` (paso 13),
+pegados tal cual (ya cumplen el protocolo: ≤5 filas de fases, `Capacidad` sólo si ⚠️, fila
+ℹ️ del proyecto), más UNA fila `Dependencias` al final, derivada de la línea
+`DEPS[<proyecto>]:` de post-deploy-check:
+
+| Estado de `Dependencias` | Cuándo |
+|---|---|
+| ⏭️ | `--skip-deps` |
+| ⚠️ | la sección `Dependencies` dejó ≥1 `[WARN]` |
+| ℹ️ | sólo `[SKIP]` (no evaluado: sin red, sin lockfile, herramienta ausente) |
+| ✅ | todo `[OK]` |
+
+Detalle de la fila (≤80 chars): `npm <c>c/<h>h/<m>m (prod) · pip <n> outdated (<k> major:
+<pkg a→b>) · pip-audit <v>`.
+
+- Brief todo verde **y** `Dependencias` ✅ ⇒ el bloque es UNA línea (la del brief +
+  ` · deps OK`, más la línea ℹ️ del proyecto si la imprimió) sin tabla, y se conserva la
+  línea ✨ bajo el veredicto.
+- Hay filas ⇒ heading del brief + su tabla + la fila `Dependencias`; sin línea ✨.
+- Paso 13 saltado o fallido ⇒ `### Servidor — ⏭️ diagnóstico omitido (--no-diagnostic)` /
+  `### Servidor — ⚠️ diagnóstico no disponible (exit <n>)` + la fila `Dependencias` sola.
+
+**Fila `Phase 4 — post-deploy-check`:** ❌ si `FAIL>0`; ⚠️ si hay `[WARN]` fuera de la
+sección `Dependencies` (migraciones pendientes, staticfiles truncados, RAM `near limit`,
+errores en el journal, disco ≥70 %); ✅ si no. Los `[WARN]` de `Dependencies` NO degradan
+esta fila: van a la fila `Dependencias` del bloque «Servidor».
+
+**Veredicto (línea 1):** se deriva SÓLO de la tabla del deploy ([[_output-protocol]] §1:
+cero ⚠️/❌ → 🟢; ≥1 ⚠️ → 🟡; ≥1 ❌ → 🔴). El estado del servidor vive en el heading del
+bloque «Servidor» (🟢/🟡/🔴 X/10 del brief): un deploy sano con servidor con hallazgos
+cierra `🟢 deploy-and-check OK` + `### Servidor — … 🟡` — nunca degrada el deploy.
+
+**`## Next steps`:** bullets según `## Señales → próximos pasos` (máx 5, en ese orden).
+La sección se omite cuando no hay ninguna señal. La línea ✨ exige además brief verde +
+`Dependencias` ✅: con `--no-diagnostic`/`--skip-deps` hay dimensiones sin evaluar ⇒ ni ✨
+ni Next steps (el bloque «Servidor» ⏭️ ya lo dice).
 
 Si la verificación de entorno falla (corriendo en dev-machine), reportar
 🚫 con `## Next steps` indicando el SSH al VPS destino — **no es error**,
 es safety gate.
 
 Si gunicorn/huey no levanta, health 5xx, o post-deploy-check FAIL, reemplazar
-✅ por ❌, omitir la línea ✨ y agregar `## Next steps` con los `journalctl
--u <svc> -n 50` y los logs específicos (`backend/logs/django.log`,
-`/var/log/nginx/error.log`).
+✅ por ❌ en esa fila, omitir la línea ✨, saltar el paso 13 (⏭️) y agregar
+`## Next steps` con los bullets de prioridad 1 (`journalctl -u <svc> -n 50` y los
+logs específicos `backend/logs/django.log`, `/var/log/nginx/error.log`).
 
 **No duplicar contadores con el output del script bash:** el reporte de la
-skill va DESPUÉS de cualquier `print_summary` que emita post-deploy-check.sh.
+skill va DESPUÉS de cualquier `RESULTS:` que emita post-deploy-check.sh y del
+bloque del brief.
