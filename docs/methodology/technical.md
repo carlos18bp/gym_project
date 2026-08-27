@@ -26,6 +26,7 @@
 | In-process Caching | cachetools 7.1.7 |
 | HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
 | Encoding Utilities | chardet 7.6.0, webencodings 0.6.1 |
+| Document Styling | cssselect2 0.9.0, tinycss2 1.5.1, tinyhtml5 2.1.0 |
 | Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
 | Environment Config | python-decouple 3.8 |
@@ -70,6 +71,8 @@
 > PDF structure, metadata, link annotations and application rendering paths.
 > Pyphen 0.18.1 preserves the Spanish dictionary fallback, word splitting and
 > WeasyPrint's language-aware automatic hyphenation.
+> Cssselect2 0.9.0 preserves compound selector matching and the WeasyPrint and
+> svglib CSS-to-PDF rendering paths.
 
 ### Frontend
 

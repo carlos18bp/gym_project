@@ -490,3 +490,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Document-render slice: 2 passed; service/trámite PDF generation slice: 7
   passed using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — cssselect2 0.9.0 (2026-08-27)
+
+### Decision
+
+- Applied `cssselect2` 0.8.0 -> 0.9.0 in isolation; no other dependency pin
+  changed.
+- Preserved both direct consumers, WeasyPrint 69.0 and svglib 1.5.1, without
+  application, SVG or rendering code changes.
+- Current remaining direct outdated dependencies: 12 (11 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Compound selector matching, SVG CSS-to-PDF conversion and styled WeasyPrint
+  rendering passed with cssselect2 0.9.0.
+- Document-render slice: 2 passed; service/trámite PDF generation slice: 7
+  passed using isolated SQLite test databases.
+- No migration or staging database command ran.

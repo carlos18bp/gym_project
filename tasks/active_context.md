@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — cssselect2 (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `cssselect2` 0.8.0 to 0.9.0 for its direct consumers WeasyPrint and svglib.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; compound selectors, SVG CSS conversion and styled WeasyPrint output remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — pyphen (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pyphen` 0.17.2 to 0.18.1 for its direct consumer WeasyPrint 69.0.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Spanish dictionary fallback, splitting and automatic-hyphenation PDF rendering remained valid.

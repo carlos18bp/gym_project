@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — cssselect2 | `cssselect2` 0.8.0→0.9.0; clean resolution/audit, compound selector + WeasyPrint + svglib smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pyphen | `pyphen` 0.17.2→0.18.1; clean resolution/audit, Spanish fallback + splitting + WeasyPrint hyphenation smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pydyf | `pydyf` 0.11.0→0.12.1; clean resolution/audit, real PDF structure/metadata/link smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — cachetools | `cachetools` 5.5.2→7.1.7; clean resolution/audit, TTL + LRU + memoization smoke, 10 Google-login and 11 health tests passed |
