@@ -15,6 +15,7 @@
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.8 |
 | Production Server | Gunicorn | 23.0.0 |
+| Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | PDF Generation | WeasyPrint 69.0 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
@@ -57,6 +58,8 @@
 > preserves the HTML/CSS parsing consumers and both PDF rendering paths.
 > Uritools 6.1.3 preserves pyhanko-certvalidator's certificate URI name-tree
 > handling and the existing pyHanko/xhtml2pdf dependency paths.
+> Pycparser 3.0 preserves cffi declarations and the cryptography, WeasyPrint
+> and signature/PDF paths built on that native-interface chain.
 
 ### Frontend
 

@@ -369,3 +369,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Signature PDF slice: 4 passed; health slice: 11 passed using isolated SQLite
   test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — pycparser 3.0 (2026-08-27)
+
+### Decision
+
+- Applied `pycparser` 2.23 -> 3.0 in isolation; no other dependency pin
+  changed.
+- Preserved its cffi consumer and the cryptography, WeasyPrint and signature/PDF
+  dependency paths without application changes.
+- Current remaining direct outdated dependencies: 17 (16 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- C AST parsing, cffi declarations/dynamic calls and an Ed25519 sign/verify
+  round trip passed with pycparser 3.0.
+- Signature PDF slice: 4 passed; service/trámite PDF generation slice: 7 passed
+  using isolated SQLite test databases.
+- No migration or staging database command ran.

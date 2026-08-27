@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pycparser (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pycparser` 2.23 to 3.0 for its cffi consumer.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; C AST parsing, cffi calls and Ed25519 sign/verify remained valid.
+  - The 4 signature PDF and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — uritools (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `uritools` 4.0.3 to 6.1.3 for its pyhanko-certvalidator consumer.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; HTTPS/LDAP parsing and certificate URI name-tree behavior remained valid.
