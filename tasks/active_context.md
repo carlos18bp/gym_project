@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — chardet (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `chardet` 5.2.0 to 7.6.0; the repository has no direct imports or reverse package dependencies requiring migration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; UTF-8 and legacy-byte detection plus the CLI remained operational.
+  - The supported top-level `UniversalDetector` API and the 11 health tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — termcolor (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `termcolor` 2.5.0 to 3.3.0 for its direct consumer Fire 0.7.1.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; ANSI color, no-color and Fire dispatch behavior remained valid.

@@ -298,3 +298,26 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Django's management-command registry loaded normally; health slice: 11 passed
   using an isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — chardet 7.6.0 (2026-08-27)
+
+### Decision
+
+- Applied `chardet` 5.2.0 -> 7.6.0 in isolation; no other dependency pin
+  changed.
+- Confirmed the repository has no direct chardet imports or reverse package
+  dependencies, so no application API migration was required.
+- Current remaining direct outdated dependencies: 20 (19 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- UTF-8 and legacy-byte detection passed through `detect` and the supported
+  top-level `UniversalDetector` import; the chardet CLI loaded normally.
+- Health slice: 11 passed using an isolated SQLite test database.
+- No migration or staging database command ran.

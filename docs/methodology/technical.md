@@ -22,6 +22,7 @@
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
 | HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
+| Encoding Detection | chardet 7.6.0 |
 | Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
 | Environment Config | python-decouple 3.8 |
@@ -51,6 +52,8 @@
 > configuration. Packaging then advanced to 26.3 while preserving pytest's
 > requirement handling and Gunicorn's WSGI configuration validation. The Fire
 > command-line dependency chain also remains compatible with termcolor 3.3.0.
+> Chardet 7.6.0 then preserved the supported detection APIs and CLI; the
+> repository has no direct imports that require migration.
 
 ### Frontend
 

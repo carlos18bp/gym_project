@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — chardet | `chardet` 5.2.0→7.6.0; clean resolution/audit, supported detector API + CLI smoke, and 11 health tests passed; no direct consumers required migration |
 | 2026-08-27 | Gradual backend major upgrades — termcolor | `termcolor` 2.5.0→3.3.0; clean resolution/audit, ANSI/no-color + Fire dispatch smoke, command-registry load, and 11 health tests passed |
 | 2026-08-27 | Gradual backend major upgrades — packaging | `packaging` 24.2→26.3; clean resolution/audit, version and specifier smoke, Gunicorn WSGI config validation, and 11 health tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pytz | `pytz` 2025.2→2026.3.post1; pandas/Bogotá conversion smoke, dbbackup command discovery and 10 report-model tests passed with clean resolution and audit |
