@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pytz (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pytz` 2025.2 to 2026.3.post1 for the consumers pandas and django-dbbackup.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Bogotá UTC offsets remained `-05:00` through both pytz and pandas.
+  - The dbbackup management command loaded normally and 10 report-model tests passed under SQLite. No backup or database-writing command ran.
+
 - **Gradual backend major upgrades — tzdata (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `tzdata` 2025.3 to 2026.3, preserving it as the cross-platform IANA fallback consumed by pandas and Python's `zoneinfo`.
   - A clean Python 3.12 environment passed the cumulative install, `pip check`, Django check and zero-finding `pip-audit`; the packaged `America/Bogota` resource loaded successfully.

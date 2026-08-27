@@ -227,3 +227,26 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Report-model slice: 10 passed; process-alert task slice: 16 passed using an
   isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — pytz 2026.3.post1 (2026-08-27)
+
+### Decision
+
+- Applied `pytz` 2025.2 -> 2026.3.post1 in isolation; no other dependency pin
+  changed.
+- Preserved the existing pandas and django-dbbackup integrations without code or
+  configuration changes.
+- Current remaining direct outdated dependencies: 23 (22 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- pytz and pandas both preserved Bogotá's `-05:00` UTC offset.
+- `manage.py help dbbackup` loaded the command without executing a backup.
+- Report-model slice: 10 passed using an isolated SQLite test database.
+- No migration, backup or staging database command ran.

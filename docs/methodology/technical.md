@@ -22,7 +22,7 @@
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
 | HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
-| Time Zone Data | tzdata 2026.3, pytz 2025.2 |
+| Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
 | Environment Config | python-decouple 3.8 |
 | Backups | django-dbbackup 4.3.0 |
@@ -45,7 +45,8 @@
 > The sequential major-upgrade campaign then advanced certifi to 2026.7.22;
 > Requests continues to use its bundled CA path and the SECOP client contract is
 > unchanged. The next isolated step advanced the packaged IANA fallback database
-> to tzdata 2026.3 without changing Django's time-zone configuration.
+> to tzdata 2026.3 and pytz to 2026.3.post1 without changing Django's time-zone
+> configuration.
 
 ### Frontend
 
