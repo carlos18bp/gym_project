@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pandas (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from pandas 2.3.3 to 3.0.5 for the report-generation subsystem; no application code migration was required.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; text dtype, missing values, timezone removal, grouping and round-trip Excel output passed with both XlsxWriter and openpyxl.
+  - Ten report-function tests and 19 report-view tests passed under isolated SQLite (one pre-existing conditional skip and one deliberate deselection kept the batches within the 20-test limit). No migration or staging database command ran.
+
 - **Gradual backend major upgrades — Huey (2026-08-27, complete)**:
   - Upgraded the exact backend pin from Huey 2.6.0 to 3.3.4 while preserving all 14 registered project tasks, Django's `run_huey` consumer and the existing decorators, schedules and locks.
   - Materialized `REDIS_URL` once in Django settings so Huey and the health endpoint share the same configured source without depending on storage implementation attributes.

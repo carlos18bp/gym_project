@@ -18,7 +18,7 @@
 | Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
 | PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
-| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
+| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
 | Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
@@ -91,6 +91,9 @@
 > lock APIs used by the application. `REDIS_URL` is now materialized once in
 > Django settings and shared by Huey and the health endpoint instead of probing
 > storage implementation attributes.
+> Pandas 3.0.5 preserved the project's Excel report generation and parsing with
+> both XlsxWriter and openpyxl, including text, missing values, timezone removal
+> and grouped summaries; no report code migration was required.
 
 ### Frontend
 

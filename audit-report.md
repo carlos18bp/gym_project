@@ -646,3 +646,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   slices: 19 passed using isolated SQLite test databases.
 - No production/staging Redis connection, migration or staging database command
   ran.
+
+---
+
+## Major Follow-up — pandas 3.0.5 (2026-08-27)
+
+### Decision
+
+- Applied pandas 2.3.3 -> 3.0.5 in isolation; no other dependency pin changed.
+- Preserved the report subsystem's DataFrame transformations and Excel output
+  without application code changes.
+- Current remaining direct outdated dependencies: 6 (5 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- The new string dtype, missing values, timezone removal and grouped summaries
+  behaved as expected; real Excel round-trips passed through XlsxWriter and
+  openpyxl.
+- Report-function slice: 10 passed; report-view slice: 19 passed, 1 skipped
+  and 1 deliberately deselected to keep the batch at no more than 20 tests.
+- No migration or staging database command ran.
