@@ -321,3 +321,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   top-level `UniversalDetector` import; the chardet CLI loaded normally.
 - Health slice: 11 passed using an isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — webencodings 0.6.1 (2026-08-27)
+
+### Decision
+
+- Applied `webencodings` 0.5.1 -> 0.6.1 in isolation; no other dependency pin
+  changed.
+- Preserved its cssselect2, html5lib, tinycss2 and tinyhtml5 consumers and the
+  existing WeasyPrint/xhtml2pdf rendering paths without code changes.
+- Current remaining direct outdated dependencies: 19 (18 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Encoding alias/decode, HTML parsing, CSS parsing/selector and direct
+  WeasyPrint PDF-rendering smoke passed.
+- Document-render regression: 2 passed; service/trámite PDF slice: 13 passed
+  using an isolated SQLite test database.
+- No migration or staging database command ran.

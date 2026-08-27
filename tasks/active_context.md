@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — webencodings (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `webencodings` 0.5.1 to 0.6.1 for cssselect2, html5lib, tinycss2 and tinyhtml5.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; encoding aliases, HTML/CSS parsing and selector behavior remained valid.
+  - Direct WeasyPrint rendering, 2 document-render tests and 13 service/trámite PDF tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — chardet (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `chardet` 5.2.0 to 7.6.0; the repository has no direct imports or reverse package dependencies requiring migration.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; UTF-8 and legacy-byte detection plus the CLI remained operational.

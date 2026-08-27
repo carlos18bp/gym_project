@@ -74,7 +74,7 @@ tzlocal==5.4.4
 uritools==4.0.3
 urllib3==2.7.0
 weasyprint==69.0
-webencodings==0.5.1
+webencodings==0.6.1
 xhtml2pdf==0.2.17
 XlsxWriter==3.2.9
 zopfli==0.2.3.post1
