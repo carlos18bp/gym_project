@@ -809,3 +809,34 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   again passed `pip check`, the zero-finding audit and Django's system check.
 - No migration, deployed database query, application code, staging/production
   service or MySQL configuration was changed.
+
+---
+
+## Major Follow-up — svglib 2.2.0 (2026-08-27)
+
+### Decision
+
+- Applied svglib 1.5.1 -> 2.2.0 as the final isolated candidate.
+- The current package moved `rlpycairo` to the optional `bitmaps` extra, so the
+  default installation no longer requires pycairo. Its reportlab requirement
+  (`>=4.4.3`) is satisfied by the compatible 4.5.1 pin retained for xhtml2pdf.
+- Repository code has no direct svglib imports; xhtml2pdf is the installed
+  reverse consumer. No application migration was required.
+- Accounted for the intentional svglib 2.x physical-scale change from the old
+  one-user-unit/one-point behavior to the SVG standard of 96 CSS px = 72 pt.
+- Current remaining direct outdated dependencies: 2, both held (`reportlab`
+  and Django).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success without
+  pycairo or rlpycairo in the installed environment.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- A CSS-styled 96x48 px SVG converted to a 72x36 pt ReportLab drawing, retained
+  its text, rendered to a valid one-page PDF and parsed back with pypdf.
+- A base64 SVG embedded through xhtml2pdf rendered to a valid one-page PDF.
+- Service/trámite PDF slice: 13 passed; xhtml2pdf/current-color slice: 4 passed
+  (17 focused tests total).
+- No application migration, native package installation, database command,
+  staging/production service or external resource was touched.

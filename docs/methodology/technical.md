@@ -17,7 +17,7 @@
 | Production Server | Gunicorn | 26.2.0 |
 | Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
-| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
+| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 + svglib 2.2.0 (service/trámite PDFs + SVG conversion + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
 | Digital Signatures | pyHanko 0.36.2, pyhanko-certvalidator 0.31.4, cryptography 50.0.1, uritools 6.1.3 |
@@ -43,8 +43,8 @@
 > 3.12 environment with the pinned requirements and `pip==26.2.1` reports zero
 > known vulnerabilities. `PyPDF2` was removed, WeasyPrint resource fetching is
 > restricted, and the suite's inert fixture marks were migrated for pytest 9.
-> `svglib` remains at 1.5.1 because 1.6.0 adds an unavailable `pycairo` native
-> build dependency and does not remediate any reported advisory. The subsequent
+> The initial svglib 1.6.0 hold was later cleared by svglib 2.2.0, which moved
+> Cairo support to the optional `bitmaps` extra. The subsequent
 > `pytest-cov` 7.1.0 upgrade preserves the CI coverage totals and report formats;
 > its removed subprocess instrumentation does not affect this repository because
 > Python subprocesses do not execute covered `gym_app` code. The isolated Faker
@@ -111,6 +111,9 @@
 > application itself loaded and passed focused SQLite regressions under 6.1;
 > that exercise also identified the future Django 7 migration from legacy
 > `EMAIL_*` settings to `MAILERS`.
+> Svglib 2.2.0 now installs without Cairo and remains compatible with reportlab
+> 4.5.1. Its intentional SVG 2.x scale change (96 CSS px = 72 pt) was verified,
+> along with CSS/text conversion and SVG embedding through xhtml2pdf.
 
 ### Frontend
 

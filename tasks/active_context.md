@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — svglib (2026-08-27, complete)**:
+  - Upgraded svglib 1.5.1→2.2.0 after confirming that the current release moved `rlpycairo` to the optional `bitmaps` extra; the default installation no longer requires pycairo and resolves with reportlab 4.5.1.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; SVG/CSS conversion honored the 2.x 96 px→72 pt scale, produced a readable ReportLab PDF, and remained embeddable through xhtml2pdf.
+  - Thirteen service/trámite PDF tests and four xhtml2pdf/current-color tests passed under isolated SQLite. No application migration, native package installation, database command or staging/production service ran.
+
 - **Gradual backend major upgrades — Django 6.1 infrastructure hold (2026-08-27)**:
   - Installed Django 6.1 with the complete cumulative requirements; dependency resolution, `pip check`, Django's SQLite system check, `pip-audit`, 11 health tests and 3 email-path tests all passed.
   - Restored Django 5.2.17 because Django 6.1's MySQL backend requires MySQL 8.4+, while the active server on this host is MySQL 8.0.46 and CI exercises only SQLite. A green SQLite CI would therefore be insufficient deployment evidence.
