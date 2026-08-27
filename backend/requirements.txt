@@ -4,7 +4,7 @@ asn1crypto==1.5.1
 beautifulsoup4==4.15.0
 Brotli==1.2.0
 cachetools==5.5.2
-certifi==2024.12.14
+certifi==2026.7.22
 cffi==2.1.1
 chardet==5.2.0
 charset-normalizer==3.5.1

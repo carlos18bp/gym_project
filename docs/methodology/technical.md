@@ -21,6 +21,7 @@
 | Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
+| HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
 | File Validation | python-magic 0.4.27 |
 | Environment Config | python-decouple 3.8 |
 | Backups | django-dbbackup 4.3.0 |
@@ -40,6 +41,9 @@
 > Python subprocesses do not execute covered `gym_app` code. The isolated Faker
 > 40.37.0 upgrade preserves the provider APIs and `es_CO` locale used by the
 > fake-data management commands; no seeder implementation changes were needed.
+> The sequential major-upgrade campaign then advanced certifi to 2026.7.22;
+> Requests continues to use its bundled CA path and the SECOP client contract is
+> unchanged.
 
 ### Frontend
 

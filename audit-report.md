@@ -181,3 +181,26 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   on the 25.9.2 baseline and after the 40.37.0 upgrade.
 - `pip-audit`: no known vulnerabilities in the isolated venv.
 - No migration, fake-data refresh or database-writing management command ran.
+
+---
+
+## Major Follow-up — certifi 2026.7.22 (2026-08-27)
+
+### Decision
+
+- Applied `certifi` 2024.12.14 -> 2026.7.22 in isolation; no other dependency
+  pin changed.
+- Kept Requests and the SECOP client unchanged. Requests continues to resolve
+  the canonical certifi CA bundle.
+- Current remaining direct outdated dependencies: 25 (24 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements.
+- `python manage.py check`: no issues (0 silenced).
+- SSL/Requests smoke loaded 121 certificate authorities from the certifi path.
+- Health slice: 11 passed; SECOP client regression: 21 passed.
+- `pip-audit`: no known vulnerabilities in the isolated venv.
+- No migration or database-writing management command ran.

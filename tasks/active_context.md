@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — certifi (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `certifi` 2024.12.14 to 2026.7.22; no application code or Requests configuration changed.
+  - A clean Python 3.12 environment installed the cumulative requirements and passed `pip check`, Django's system check and a zero-finding `pip-audit`.
+  - The CA bundle loaded into an SSL context with 121 certificate authorities, Requests resolved the same bundle path, and the health plus SECOP client regression slices passed.
+
 - **Gradual backend major upgrades — Faker (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `Faker` 25.9.2 to 40.37.0 in isolation. Faker imports remain confined to fake-data management commands; application runtime behavior and seeder business rules are unchanged.
   - Reviewed the intervening major release notes against the project's provider surface. Python 3.12 remains supported, the temporary `date_time_between` boundary changes from Faker 34 were reverted in Faker 35, and the default plus `es_CO` providers used by the seeders remain available.
