@@ -25,15 +25,12 @@ _VARIABLE_PATTERN = re.compile(r'\{\{((?:[^}]|\}(?!\}))*)\}\}')
 _INLINE_TAG_PATTERN = re.compile(r'<[^>]*>')
 _MSO_STYLE_PATTERN = re.compile(r'mso-[^:;"\']*:[^;"\']*;?', re.IGNORECASE)
 
-# xhtml2pdf / reportlab cannot parse the CSS ``currentColor`` keyword: it hands
-# the token straight to ``reportlab.lib.colors.toColor`` which raises
-# ``ValueError: Invalid color value 'currentcolor'`` and aborts the whole PDF.
-# TinyMCE emits ``border: medium none currentcolor`` on every table it creates,
-# so any document with an editor-inserted table would 500 on PDF download.
-# Since those borders are ``none`` (invisible), rewriting the keyword to
-# ``transparent`` — a value reportlab accepts — preserves the rendering while
-# removing the crash. Browsers (editor/preview) and python-docx (Word) already
-# ignore/understand it, so this only affects the PDF path.
+# The former ReportLab-backed HTML renderer could not parse the CSS
+# ``currentColor`` keyword and aborted PDF generation. TinyMCE emits
+# ``border: medium none currentcolor`` on editor tables, so the shared export
+# sanitizer keeps rewriting that invisible border color to ``transparent``.
+# This conservative normalization is harmless for WeasyPrint and keeps the
+# Word and PDF export inputs deterministic.
 _CURRENTCOLOR_PATTERN = re.compile(r'\bcurrentcolor\b', re.IGNORECASE)
 
 # Block-level tags that may show up empty (``<p>&nbsp;</p>``, ``<div></div>``)
@@ -98,8 +95,8 @@ def _drop_office_namespace_tags(soup):
     """Remove ``<o:p>`` and friends — pure paste-from-Word artifacts.
 
     These Office XML namespace tags survive when content is pasted from Word
-    into TinyMCE and have no rendering meaning. Each one becomes a blank
-    line in xhtml2pdf, so we drop them unconditionally before collapse.
+    into TinyMCE and have no rendering meaning. Export renderers may treat each
+    one as a blank line, so we drop them unconditionally before collapse.
     """
     for tag_name in _OFFICE_NAMESPACED_TAGS:
         for element in list(soup.find_all(tag_name)):
@@ -110,10 +107,10 @@ def _collapse_empty_blocks(soup):
     """Collapse runs of consecutive empty ``<p>`` / ``<div>`` siblings to one.
 
     TinyMCE / Word paste output frequently contains long runs of
-    ``<p>&nbsp;</p>``, ``<p><br></p>`` or ``<div></div>`` blocks — each one
-    rendered as a full line in xhtml2pdf, which produces the multi-line
-    gaps between paragraphs reported by the client (R3 — espaciado gigante
-    entre párrafos en PDFs descargables).
+    ``<p>&nbsp;</p>``, ``<p><br></p>`` or ``<div></div>`` blocks — each one can
+    render as a full line, producing the multi-line gaps between paragraphs
+    reported by the client (R3 — espaciado gigante entre párrafos en PDFs
+    descargables).
 
     We keep AT MOST one empty block per gap so the visual spacing matches
     what the editor shows (one blank line between paragraphs is intentional
@@ -137,8 +134,8 @@ def _strip_excessive_inline_margins(soup):
     """Strip ``margin-*: Xpt`` declarations above the threshold from blocks.
 
     Word inline-styles paragraphs with margins of 30–100 pt that override
-    the global PDF stylesheet (``p { margin: 0 0 6pt 0 }``). xhtml2pdf
-    honours inline ``style=`` over ``<style>`` rules, so the global rule
+    the global PDF stylesheet (``p { margin: 0 0 6pt 0 }``). Inline
+    ``style=`` declarations override the shared stylesheet, so the global rule
     alone cannot fix the visible gap. This helper walks every ``<p>`` and
     ``<div>`` that has a ``style`` attribute, splits it into its individual
     declarations, and drops any ``margin*`` rule expressed in points whose
@@ -168,14 +165,12 @@ def _strip_excessive_inline_margins(soup):
 
 def _neutralize_unsupported_color_keywords(soup):
     """Replace the CSS ``currentColor`` keyword in inline styles with a value
-    xhtml2pdf/reportlab can parse.
+    that every export renderer can parse consistently.
 
-    reportlab's ``toColor`` raises ``ValueError`` on ``currentcolor``, which
-    aborts PDF generation entirely (HTTP 500). TinyMCE writes
-    ``border: medium none currentcolor`` on tables, so this crashes the PDF
-    export of any document containing an editor-created table. We rewrite the
-    keyword to ``transparent`` (accepted by reportlab); the affected borders
-    are ``none``, so this is visually a no-op.
+    The retired ReportLab-backed HTML path raised ``ValueError`` on
+    ``currentcolor``. We retain the normalization because TinyMCE writes the
+    keyword on invisible table borders and ``transparent`` is a visual no-op
+    with deterministic output across the PDF and Word pipelines.
     """
     for element in soup.find_all(style=True):
         style = element['style']
@@ -186,18 +181,17 @@ def _neutralize_unsupported_color_keywords(soup):
 def sanitize_soup_for_export(soup):
     """Mutate ``soup`` in place so exports (PDF and Word) render consistently.
 
-    xhtml2pdf ignores ``mso-*`` styles, stumbles on Word-inserted class names,
-    and loses cell alignment when it is only expressed via inline ``style``.
-    The Word (python-docx) path suffers from the same paste-from-Word noise
+    Export renderers ignore ``mso-*`` styles and Word-inserted class names can
+    interfere with normalization. The Word (python-docx) path suffers from the
+    same paste-from-Word noise
     (empty blocks, ``<o:p>`` tags, huge inline margins). This pass:
 
     * removes ``mso-*`` CSS declarations from inline ``style`` attributes
     * drops ``class`` attributes that start with ``Mso`` (MsoNormal, etc.)
     * promotes ``text-align`` from ``<td>/<th>`` inline styles to the legacy
-      ``align`` attribute, which xhtml2pdf honours reliably
+      ``align`` attribute for broad export compatibility
     * ensures ``<table>`` has sensible defaults (full width, collapsed borders)
-    * rewrites the CSS ``currentColor`` keyword (which reportlab cannot parse
-      and which crashes PDF generation) to ``transparent``
+    * rewrites the historical ``currentColor`` failure case to ``transparent``
     * drops ``<o:p>`` Office-namespace artefacts (always paste-from-Word)
     * strips inline ``margin-*: Xpt`` declarations above
       :data:`_EXCESSIVE_MARGIN_PT_THRESHOLD` so paste-from-Word margins
@@ -239,7 +233,7 @@ def sanitize_soup_for_export(soup):
         if style:
             table['style'] = style
 
-    # xhtml2pdf honours align="center" on cells more reliably than CSS.
+    # Preserve a legacy align attribute for broad export compatibility.
     for cell in soup.find_all(['td', 'th']):
         style = cell.get('style', '')
         if 'text-align' in style:
@@ -247,8 +241,7 @@ def sanitize_soup_for_export(soup):
             if match and not cell.get('align'):
                 cell['align'] = match.group(1).lower()
 
-    # xhtml2pdf inherits cell alignment to inner blocks only via the legacy
-    # align attribute, so promote text-align from <p>/<div> inside cells too.
+    # Promote text-align from inner blocks for exporters that use legacy align.
     for block in soup.select('td p, td div, th p, th div'):
         style = block.get('style', '')
         if 'text-align' in style and not block.get('align'):
@@ -256,8 +249,7 @@ def sanitize_soup_for_export(soup):
             if match:
                 block['align'] = match.group(1).lower()
 
-    # Rewrite the unparseable ``currentColor`` keyword before any PDF render so
-    # xhtml2pdf/reportlab doesn't abort with a ValueError on editor tables.
+    # Normalize the historical ``currentColor`` failure case before export.
     _neutralize_unsupported_color_keywords(soup)
 
     # Drop pure Word artefacts FIRST so the collapse step doesn't have to
@@ -504,7 +496,8 @@ def render_html_to_pdf(html_content, *, base_url):
 
     WeasyPrint is a browser-grade renderer (real CSS cascade + table layout), so
     the output matches the TinyMCE editor for both paragraph spacing and complex
-    Word-pasted tables — which xhtml2pdf could not lay out correctly.
+    Word-pasted tables — which the former HTML renderer could not lay out
+    correctly.
 
     Imported lazily so a missing native dependency (Pango/Cairo/…) surfaces only
     when a PDF is actually requested, instead of taking down the whole views

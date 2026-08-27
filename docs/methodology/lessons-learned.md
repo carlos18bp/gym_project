@@ -205,9 +205,10 @@
 - If every step genuinely needs captcha, migrate to reCAPTCHA v3 (score-based, multi-action)
 
 ### PDF Export: WeasyPrint + Shared Stylesheet Builder (2026-07-07)
-- Dynamic-document PDF exports render with **WeasyPrint** (not xhtml2pdf) so output matches the TinyMCE editor; editor-created tables must be normalized before rendering (xhtml2pdf 500'd on them)
+- All HTML-to-PDF exports render with **WeasyPrint** so output matches the TinyMCE editor; editor-created tables must still be normalized before rendering because their paste-from-Word markup is noisy
 - The PDF stylesheet/HTML builder lives ONCE in `backend/gym_app/utils/documents.py` — never re-inline styles in `document_views.py` or `signature_views.py`; both consume the shared builder
-- xhtml2pdf is still used for service/trámite PDFs (`services/service_tramite_pdf.py`) — don't remove it from requirements
+- Service/trámite PDFs reuse the same restricted `render_html_to_pdf` boundary as dynamic documents; xhtml2pdf has been removed. ReportLab remains a direct dependency for canvas/signature/watermark and SVG-backed PDF paths.
+- A framework upgrade that raises the production database minimum needs a real database-version CI gate. SQLite success alone is not deployment evidence; Django 6.1 is exercised on MySQL 8.4 in CI, and the live MySQL 8.0.46 host must be upgraded before this release deploys.
 
 ### Dependency Security Upgrades Need Full-Graph Resolution (2026-08-26)
 - Major security bumps must be resolved against the complete pinned requirements file, not package-by-package: `cryptography` 50 requires CFFI 2 and WeasyPrint 69 requires cssselect2 0.8.

@@ -58,10 +58,11 @@
 
 | Date | Task | Result |
 |------|------|--------|
-| 2026-08-27 | Backend developer-tooling refresh | pre-commit 3.7.1->4.6.2, Ruff 0.6.8->0.16.4 and pip-audit 2.10.1 pinned in dev tooling; clean full environment now reports only the two intentional Django/ReportLab holds, with config/lint/check/collection/19 focused tests green |
+| 2026-08-27 | Final backend major resolution | Django 5.2.17→6.1 + `MAILERS`, ReportLab 4.5.1→5.0.1, service/trámite PDF migration to restricted WeasyPrint, xhtml2pdf removal and real MySQL 8.4 CI gate; clean full environment has zero outdated packages; live MySQL 8.0.46 must be upgraded before deploy |
+| 2026-08-27 | Backend developer-tooling refresh | pre-commit 3.7.1->4.6.2, Ruff 0.6.8->0.16.4 and pip-audit 2.10.1 pinned in dev tooling; clean full environment reduced outdated packages from ten to two temporary Django/ReportLab holds, later cleared by the final major resolution |
 | 2026-08-27 | Gradual backend major upgrades — svglib | svglib 1.5.1→2.2.0; Cairo is now optional, clean audit/checks passed, SVG/CSS 96 px→72 pt conversion + ReportLab/xhtml2pdf output and 17 focused PDF tests remained healthy |
-| 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ⏸ Held at 5.2.17: code/check/audit + 14 focused SQLite tests pass on 6.1, but the active MySQL 8.0.46 server is below Django 6.1's MySQL 8.4 minimum; future work also migrates `EMAIL_*` to `MAILERS` |
-| 2026-08-27 | Gradual backend major upgrades — reportlab standalone | ⏸ Held at 4.5.1: xhtml2pdf 0.2.17 requires `reportlab>=4.0.4,<5`; clean resolver rejected 5.0.1 and the restored cumulative environment remains healthy with zero known vulnerabilities |
+| 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ✅ Resolved: Django 6.1 pinned, email configuration moved to `MAILERS`, and CI now exercises migrations/checks/health on MySQL 8.4; deploy remains gated on upgrading the live MySQL 8.0.46 host |
+| 2026-08-27 | Gradual backend major upgrades — ReportLab 5 | ✅ Resolved: service/trámite HTML-to-PDF moved to WeasyPrint, xhtml2pdf removed and ReportLab 5.0.1 pinned with direct/rendered-PDF regressions green |
 | 2026-08-27 | Gradual backend major upgrades — pyHanko validation stack | pyHanko 0.25.3→0.36.2 + `pyhanko-certvalidator` 0.26.8→0.31.4 as a resolver-required unit; clean audit, real xhtml2pdf output, offline RSA chain validation and 21 focused tests passed |
 | 2026-08-27 | Gradual backend major upgrades — OpenCV headless | `opencv-python-headless` 4.14.0.94→5.0.0.93; clean resolution/audit, NumPy-backed image operation smoke and 11 health tests passed; no direct repository imports found |
 | 2026-08-27 | Gradual backend major upgrades — pandas | pandas 2.3.3→3.0.5; clean resolution/audit, dual-engine Excel round-trip, string/missing/date/grouping smoke, 10 report-function and 19 report-view tests passed |

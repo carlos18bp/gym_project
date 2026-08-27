@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from gym_app.utils.documents import (
     _copy_field_to_snapshot,
     build_letterhead_layer_html,
@@ -67,7 +66,7 @@ class TestNormalizeFragmentedVariables:
 
 
 class TestSanitizeSoupForPdf:
-    """Tests for Word markup sanitization for xhtml2pdf."""
+    """Tests for shared Word and PDF export normalization."""
 
     def test_removes_mso_styles(self):
         """Removes mso styles."""
@@ -288,9 +287,9 @@ class TestSanitizeSoupForPdf:
 
 
 class TestNeutralizeCurrentColor:
-    """The CSS ``currentColor`` keyword crashes xhtml2pdf/reportlab; the.
+    """Normalize ``currentColor`` for consistent PDF and Word exports.
 
-    sanitizer must rewrite it to a value reportlab can parse.
+    The sanitizer rewrites it before either export pipeline consumes the HTML.
     """
 
     def test_neutralizes_currentcolor_in_table_border(self):
@@ -322,21 +321,20 @@ class TestNeutralizeCurrentColor:
         result = sanitize_soup_for_pdf(soup)
         assert 'color: #333' in result.find('p').get('style', '')
 
-    def test_pisa_renders_table_with_currentcolor_without_error(self):
-        """Pisa renders table with currentcolor without error."""
-        from io import BytesIO
-
+    def test_weasyprint_renders_sanitized_currentcolor_table(self, settings):
+        """Render a sanitized currentColor table with WeasyPrint."""
         from bs4 import BeautifulSoup
-        from xhtml2pdf import pisa
+        from gym_app.utils.documents import render_html_to_pdf
 
         soup = sanitize_soup_for_pdf(BeautifulSoup(
             '<table style="border: medium none currentcolor;">'
             '<tr><td>celda</td></tr></table>',
             'html.parser',
         ))
-        html = f"<!DOCTYPE html><html><body>{str(soup)}</body></html>"
-        status = pisa.CreatePDF(html.encode('utf-8'), dest=BytesIO())
-        assert status.err == 0
+        html = f"<!DOCTYPE html><html><body>{soup!s}</body></html>"
+        pdf_content = render_html_to_pdf(html, base_url=settings.BASE_DIR)
+
+        assert pdf_content.startswith(b'%PDF-')
 
 
 class TestSanitizeSoupForExportAlias:
@@ -377,7 +375,7 @@ class TestBuildPdfStylesheet:
         from gym_app.utils.documents import build_pdf_stylesheet
         css = build_pdf_stylesheet(self._FONT_PATHS)
         assert 'table { border-collapse: collapse; margin: 0 0 6pt 0; }' in css
-        assert 'table-layout: fixed' not in css  # dropped (xhtml2pdf-only workaround)
+        assert 'table-layout: fixed' not in css  # renderer-specific workaround removed
 
     def test_embeds_font_paths_as_file_urls(self):
         """Embeds font paths as file urls."""

@@ -874,3 +874,46 @@ requirements; see the final section of this report.
   11 passed under isolated SQLite.
 - No migration, deployed database query, runtime venv mutation or service
   restart was performed.
+
+---
+
+## Final Major Resolution — Django 6.1 and ReportLab 5.0.1 (2026-08-27)
+
+### Decision
+
+- Applied the final two direct upgrades: Django 5.2.17 -> 6.1 and ReportLab
+  4.5.1 -> 5.0.1.
+- Migrated the active service/trámite HTML-to-PDF generator from xhtml2pdf to
+  the existing deny-by-default WeasyPrint renderer. Xhtml2pdf 0.2.17 and its
+  `reportlab<5` constraint were removed from the environment.
+- Migrated Django's deprecated `EMAIL_*` settings to `MAILERS` while preserving
+  the existing environment-variable names. Explicit `fail_silently=False`
+  arguments were removed; the default fail-loud behavior is unchanged.
+- Added a GitHub Actions compatibility job backed by `mysql:8.4`. It applies
+  every migration, asserts the database server version, runs Django's database
+  checks and exercises the health endpoint on the supported production engine.
+- The clean full developer environment now reports zero outdated packages.
+
+### Verification
+
+- Fresh Python 3.12 venv + full `requirements-dev.txt` installation: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities;
+  `pip list --outdated --format json`: `[]`.
+- Django 6.1 staging-like system check under isolated SQLite: no issues.
+  `makemigrations --check --dry-run`: no changes detected.
+- The production SMTP `MAILERS` entry instantiated with isolated test values
+  and preserved host, port, username, password and TLS configuration.
+- Service/trámite PDF slice: 14 passed, including a real readable WeasyPrint
+  document; currentColor/WeasyPrint slice: 4 passed; direct ReportLab PDF
+  slice: 11 passed; SECOP email slice: 7 passed; mailer settings: 2 passed;
+  health slice: 11 passed (49 focused tests total).
+- No deployed database query, migration, runtime venv mutation, native package
+  installation or service restart was performed.
+
+### Deployment gate
+
+- The active server is still MySQL 8.0.46. Django 6.1 requires MySQL 8.4 or
+  newer, so this release must not be deployed until the server database is
+  upgraded to MySQL 8.4+ and the normal backup/rollback runbook is followed.
+- The new CI job validates the release against MySQL 8.4; it does not upgrade or
+  mutate the deployed database.

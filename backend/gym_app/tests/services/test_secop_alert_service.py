@@ -127,6 +127,7 @@ class TestEvaluateProcesses:
         assert lawyer.email in call_kwargs.kwargs.get(
             'recipient_list', call_kwargs[1].get('recipient_list', [])
         ) if call_kwargs.kwargs else lawyer.email in call_kwargs[0][4] if len(call_kwargs[0]) > 4 else True
+        assert 'fail_silently' not in call_kwargs.kwargs
 
     def test_evaluate_processes_skips_inactive_alerts(self, lawyer, process):
         """Verify inactive alerts are not evaluated."""
