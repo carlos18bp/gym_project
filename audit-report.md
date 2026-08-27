@@ -563,3 +563,32 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Four model-level physical-file deletion tests and two service/trámite
   replacement-cleanup tests passed using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — django-dbbackup 5.3.0 (2026-08-27)
+
+### Decision
+
+- Applied `django-dbbackup` 4.3.0 -> 5.3.0 in isolation; no other dependency
+  pin changed.
+- Migrated the removed `DBBACKUP_STORAGE` and `DBBACKUP_STORAGE_OPTIONS`
+  settings to Django's `STORAGES["dbbackup"]` alias while preserving the same
+  filesystem backend and `BACKUP_STORAGE_PATH` location.
+- Kept explicit `default` and `staticfiles` aliases so the new `STORAGES`
+  declaration preserves Django's pre-existing file and static-file behavior.
+- Current remaining direct outdated dependencies: 9 (8 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- The default, staticfiles and dbbackup storage aliases instantiated with the
+  expected classes and configured backup path.
+- Both backup commands retained `--compress` and `--clean`; the scheduled task
+  dispatched both commands with those flags.
+- A real isolated SQLite database produced a compressed backup and valid
+  metadata through `dbbackup` 5.3.0; the health slice passed 11 tests.
+- No migration or staging database command ran.

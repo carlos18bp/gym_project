@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — django-dbbackup (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `django-dbbackup` 4.3.0 to 5.3.0 and migrated its removed legacy storage settings to `STORAGES["dbbackup"]`, preserving the existing filesystem path and Django's default/staticfiles aliases.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; both management commands retained compression/cleanup options and the scheduled dispatcher retained its two calls.
+  - A real isolated SQLite backup produced valid compressed data and metadata; 11 health tests passed. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — django-cleanup (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `django-cleanup` 8.1.0 to 9.0.0 without registering or activating its automatic signals; repository-specific cleanup behavior remains authoritative.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; package import/version metadata and the intentionally inactive app state were confirmed.

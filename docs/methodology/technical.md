@@ -31,7 +31,7 @@
 | File Validation | python-magic 0.4.27 |
 | File Lifecycle | django-cleanup 9.0.0 (installed but not registered); application-specific cleanup signals |
 | Environment Config | python-decouple 3.8 |
-| Backups | django-dbbackup 4.3.0 |
+| Backups | django-dbbackup 5.3.0 via Django `STORAGES["dbbackup"]` |
 | Query Profiling | django-silk 5.5.2 |
 | Test Data | Faker 40.37.0 |
 | Packaging Utilities | packaging 26.3 |
@@ -80,6 +80,10 @@
 > the repository neither registers `django_cleanup` in `INSTALLED_APPS` nor
 > imports it. Existing application-specific file deletion and replacement hooks
 > remain responsible for file lifecycle behavior.
+> Django-dbbackup 5.3.0 uses its required Django storage alias while preserving
+> the existing filesystem destination, retention, compression and scheduled
+> database/media command behavior. The default and staticfiles storage aliases
+> remain explicit and equivalent to Django's prior defaults.
 
 ### Frontend
 
