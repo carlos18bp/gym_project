@@ -102,6 +102,10 @@
 > metadata. The repository reaches this stack through xhtml2pdf rather than
 > direct imports; real HTML-to-PDF generation and an offline RSA trust-chain
 > validation both passed without application changes.
+> Reportlab remains at 4.5.1 because the latest xhtml2pdf release (0.2.17),
+> which generates service/trámite PDFs, declares `reportlab>=4.0.4,<5`.
+> Reportlab 5.0.1 therefore cannot resolve in the current PDF stack; this is a
+> compatibility hold rather than a known-vulnerability hold.
 
 ### Frontend
 

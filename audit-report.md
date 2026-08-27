@@ -751,3 +751,31 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   xhtml2pdf/current-color slice: 4 passed (21 focused tests total).
 - No application migration, database command, staging/production service or
   external certificate endpoint was touched.
+
+---
+
+## Major Follow-up — reportlab 5.0.1 standalone hold (2026-08-27)
+
+### Decision
+
+- Attempted reportlab 4.5.1 -> 5.0.1 as an isolated candidate against the full
+  cumulative requirements.
+- The clean resolver rejected the target because xhtml2pdf 0.2.17 requires
+  `reportlab>=4.0.4,<5`. Xhtml2pdf is the active service/trámite PDF engine and
+  0.2.17 is its latest published release, so no compatible package-only update
+  exists in the current stack.
+- Restored the exact reportlab 4.5.1 pin. Replacing the PDF engine is outside
+  this dependency-candidate campaign and requires a separate migration plan.
+- Current remaining direct outdated dependencies: 3 (the Django candidate plus
+  held `reportlab` and `svglib`).
+
+### Verification
+
+- The failure occurred during clean dependency resolution, before package
+  installation or runtime execution.
+- The restored cumulative requirements installed successfully in a fresh
+  Python 3.12 environment.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- No application code, migration, database, staging/production service or PDF
+  engine was changed.

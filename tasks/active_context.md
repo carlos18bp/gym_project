@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — reportlab 5 standalone hold (2026-08-27)**:
+  - Attempted reportlab 4.5.1→5.0.1 against the complete cumulative requirements; pip rejected it because xhtml2pdf 0.2.17 explicitly requires `reportlab>=4.0.4,<5`.
+  - Restored reportlab 4.5.1 without changing application code or replacing the service/trámite PDF engine. The rebuilt current environment passes `pip check`, Django check and a zero-finding `pip-audit`.
+  - This is an upstream compatibility hold, not a vulnerability. Revisit it when xhtml2pdf publishes reportlab 5 support or when the application deliberately migrates that PDF path.
+
 - **Gradual backend major upgrades — pyHanko validation stack (2026-08-27, complete)**:
   - Upgraded pyHanko 0.25.3→0.36.2 and `pyhanko-certvalidator` 0.26.8→0.31.4 atomically, resolving the standalone validator hold through the compatibility range declared by pyHanko 0.36.2.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; xhtml2pdf produced a real, readable service-style PDF and the validator accepted a locally generated root/signer RSA chain with network fetching disabled.
