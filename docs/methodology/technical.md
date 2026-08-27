@@ -18,7 +18,7 @@
 | PDF Generation | WeasyPrint 69.0 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
-| Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1 |
+| Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
 | HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
@@ -55,6 +55,8 @@
 > Chardet 7.6.0 then preserved the supported detection APIs and CLI; the
 > repository has no direct imports that require migration. Webencodings 0.6.1
 > preserves the HTML/CSS parsing consumers and both PDF rendering paths.
+> Uritools 6.1.3 preserves pyhanko-certvalidator's certificate URI name-tree
+> handling and the existing pyHanko/xhtml2pdf dependency paths.
 
 ### Frontend
 

@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — uritools (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `uritools` 4.0.3 to 6.1.3 for its pyhanko-certvalidator consumer.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; HTTPS/LDAP parsing and certificate URI name-tree behavior remained valid.
+  - The 4 signature PDF tests and 11 health tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — webencodings (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `webencodings` 0.5.1 to 0.6.1 for cssselect2, html5lib, tinycss2 and tinyhtml5.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; encoding aliases, HTML/CSS parsing and selector behavior remained valid.

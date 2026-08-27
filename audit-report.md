@@ -345,3 +345,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Document-render regression: 2 passed; service/trámite PDF slice: 13 passed
   using an isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — uritools 6.1.3 (2026-08-27)
+
+### Decision
+
+- Applied `uritools` 4.0.3 -> 6.1.3 in isolation; no other dependency pin
+  changed.
+- Preserved its pyhanko-certvalidator consumer and the existing pyHanko and
+  xhtml2pdf signature/PDF dependency paths without application changes.
+- Current remaining direct outdated dependencies: 18 (17 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- HTTPS/LDAP URI parsing, joining, reconstruction and certificate name-tree
+  matching passed through uritools and pyhanko-certvalidator.
+- Signature PDF slice: 4 passed; health slice: 11 passed using isolated SQLite
+  test databases.
+- No migration or staging database command ran.
