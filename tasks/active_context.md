@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — OpenCV headless (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `opencv-python-headless` 4.14.0.94 to 5.0.0.93; repository search found no direct `cv2` imports, so no application migration was required.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; OpenCV 5/NumPy 2 passed color conversion, resize, blur, PNG encode/decode and contour operations.
+  - The 11 health tests passed under isolated SQLite. No migration or staging database command ran; the unused direct pin should be reevaluated for removal in a later cleanup.
+
 - **Gradual backend major upgrades — pandas (2026-08-27, complete)**:
   - Upgraded the exact backend pin from pandas 2.3.3 to 3.0.5 for the report-generation subsystem; no application code migration was required.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; text dtype, missing values, timezone removal, grouping and round-trip Excel output passed with both XlsxWriter and openpyxl.

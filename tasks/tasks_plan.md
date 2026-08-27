@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — OpenCV headless | `opencv-python-headless` 4.14.0.94→5.0.0.93; clean resolution/audit, NumPy-backed image operation smoke and 11 health tests passed; no direct repository imports found |
 | 2026-08-27 | Gradual backend major upgrades — pandas | pandas 2.3.3→3.0.5; clean resolution/audit, dual-engine Excel round-trip, string/missing/date/grouping smoke, 10 report-function and 19 report-view tests passed |
 | 2026-08-27 | Gradual backend major upgrades — Huey | Huey 2.6.0→3.3.4; shared explicit `REDIS_URL`, 14-task registry + consumer validation, real ephemeral-Redis queue/result/lock smoke, 11 health tests and 19 focused task tests passed |
 | 2026-08-27 | Gradual backend major upgrades — redis | `redis` 5.3.1→8.1.0; clean resolution/audit, real redis-py + Huey queue/result/schedule operations, real health endpoint, and 11 health tests passed against isolated services |

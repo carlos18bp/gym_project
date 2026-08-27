@@ -19,7 +19,7 @@
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
 | PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
-| Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
+| Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
 | Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
@@ -94,6 +94,9 @@
 > Pandas 3.0.5 preserved the project's Excel report generation and parsing with
 > both XlsxWriter and openpyxl, including text, missing values, timezone removal
 > and grouped summaries; no report code migration was required.
+> OpenCV headless 5.0.0.93 imports and interoperates with NumPy 2.5.2 on the
+> deployed Linux/Python 3.12 platform. No repository module currently imports
+> `cv2`, so the pin remains a candidate for later dependency cleanup.
 
 ### Frontend
 

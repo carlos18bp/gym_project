@@ -670,3 +670,28 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Report-function slice: 10 passed; report-view slice: 19 passed, 1 skipped
   and 1 deliberately deselected to keep the batch at no more than 20 tests.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — opencv-python-headless 5.0.0.93 (2026-08-27)
+
+### Decision
+
+- Applied `opencv-python-headless` 4.14.0.94 -> 5.0.0.93 in isolation; no
+  other dependency pin changed.
+- Confirmed that repository code has no direct `cv2` imports, so no application
+  API migration was needed; the unused direct pin remains a future cleanup
+  candidate.
+- Current remaining direct outdated dependencies: 5 (4 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success using a
+  prebuilt Linux wheel.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- OpenCV 5.0.0 and NumPy 2.5.2 passed color conversion, resize, Gaussian blur,
+  PNG encoding/decoding, thresholding and contour extraction.
+- Health slice: 11 passed using an isolated SQLite test database.
+- No migration or staging database command ran.
