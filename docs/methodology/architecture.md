@@ -13,7 +13,7 @@ flowchart TB
         SW["Service Worker\n(vite-plugin-pwa)"]
     end
 
-    subgraph Server["Backend (Django 5.2.17)"]
+    subgraph Server["Backend (Django 6.1)"]
         DRF["Django REST Framework\n~205 API endpoints"]
         Models["56 Models\n(15 model files)"]
         Serializers["13 Serializer files"]
@@ -33,7 +33,7 @@ flowchart TB
 
     subgraph Storage["Data Storage"]
         DB_Dev["SQLite (dev)"]
-        DB_Prod["MySQL (prod)"]
+        DB_Prod["MySQL 8.4+ (prod)"]
         Media["Media Files\n(local filesystem)"]
         Backups["Automated Backups\n(django-dbbackup)"]
     end
@@ -125,14 +125,17 @@ sequenceDiagram
     E-->>D: Response
 ```
 
-### 3.1 Dynamic-document PDF resource boundary
+### 3.1 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
 vulnerability records across nine packages. User-authored HTML now reaches a
 deny-by-default WeasyPrint 69 fetcher: it keeps inline `data:` assets and
 approved local project files, rejects network URLs, remote `file://` hosts and
 resolved path/symlink escapes, and routes all PDF reading/writing through
-`pypdf` 6. The deprecated `PyPDF2` distribution is no longer installed.
+`pypdf` 6. The same boundary now renders dynamic documents and service/trámite
+requests; xhtml2pdf is no longer installed. ReportLab 5 remains isolated to
+direct canvas/signature/watermark and SVG-backed generation. The deprecated
+`PyPDF2` distribution is no longer installed.
 
 ---
 
@@ -485,8 +488,8 @@ flowchart TD
 flowchart TD
     subgraph Production
         Gunicorn["Gunicorn\n(WSGI server)"]
-        Django["Django 5.2.17"]
-        MySQL["MySQL"]
+        Django["Django 6.1"]
+        MySQL["MySQL 8.4+"]
         RedisQ["Redis\n(Huey broker)"]
         HueyW["Huey Worker\n(consumer)"]
         Media["Media Files\n(local disk)"]
@@ -510,3 +513,8 @@ flowchart TD
 ```
 
 > Frontend is built and served as static files through Django in production. The `npm run build` command also runs `scripts/generate-django-template.cjs` to create a Django-compatible template.
+>
+> **Deployment gate:** the currently deployed server still runs MySQL 8.0.46.
+> Upgrade it to MySQL 8.4+ before deploying the Django 6.1 release. GitHub
+> Actions separately applies all migrations and runs the health regression on
+> a real MySQL 8.4 service.

@@ -28,7 +28,7 @@ The application is **feature-complete** with all 18 major features implemented, 
 | Backend view files | 32 |
 | Backend serializer files | 13 |
 | Backend URL patterns | 205 |
-| Backend test files | 101 (3182 test functions, 582 `Test*` classes, 18 parametrize uses) |
+| Backend test files | 103 (3208 test functions, 583 `Test*` classes, 18 parametrize uses) |
 | Backend Huey periodic tasks | 11 |
 | Frontend Vue components | 115 |
 | Frontend view pages | 45 |
@@ -42,20 +42,31 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Final backend major resolution — Django 6.1 + ReportLab 5 (2026-08-27, complete in PR #118)**:
+  - Upgraded Django 5.2.17→6.1 and ReportLab 4.5.1→5.0.1. The final service/trámite HTML-to-PDF path now reuses the existing restricted WeasyPrint renderer, allowing xhtml2pdf 0.2.17 and its `reportlab<5` ceiling to be removed.
+  - Migrated the deprecated Django email settings to `MAILERS` while preserving the existing `EMAIL_*` environment-variable contract, and removed explicit `fail_silently=False` arguments that Django 7 deprecates.
+  - Added a GitHub Actions MySQL 8.4 compatibility job that applies all migrations, asserts the server version, runs Django database checks and exercises the health endpoint on the supported engine.
+  - A fresh full developer environment reports no broken requirements, no known vulnerabilities and zero outdated packages. Focused WeasyPrint, ReportLab, mailer, SECOP email and Django checks pass under isolated settings.
+  - **Deployment prerequisite:** the active host remains on MySQL 8.0.46. Upgrade it to MySQL 8.4+ before deploying this release; no deployed database, runtime venv or service was changed here.
+
+- **Backend developer-tooling refresh (2026-08-27, complete)**:
+  - Updated pre-commit 3.7.1->4.6.2 and Ruff 0.6.8->0.16.4, and made the existing `pip-audit` 2.10.1 installation reproducible through `requirements-dev.txt`.
+  - A clean full developer environment advanced the six related transitive packages and reduced `pip list --outdated` from 10 packages to two temporary Django/ReportLab holds; the final major-resolution follow-up above later cleared both.
+  - Pre-commit config validation, Ruff's real curated-selector integration, 8 focused quality-gate tests, Django check, 3,187-test collection and 11 health tests passed under isolated SQLite. Production pins, databases and services were untouched.
+
 - **Gradual backend major upgrades — svglib (2026-08-27, complete)**:
   - Upgraded svglib 1.5.1→2.2.0 after confirming that the current release moved `rlpycairo` to the optional `bitmaps` extra; the default installation no longer requires pycairo and resolves with reportlab 4.5.1.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; SVG/CSS conversion honored the 2.x 96 px→72 pt scale, produced a readable ReportLab PDF, and remained embeddable through xhtml2pdf.
   - Thirteen service/trámite PDF tests and four xhtml2pdf/current-color tests passed under isolated SQLite. No application migration, native package installation, database command or staging/production service ran.
 
-- **Gradual backend major upgrades — Django 6.1 infrastructure hold (2026-08-27)**:
+- **Gradual backend major upgrades — Django 6.1 former infrastructure hold (2026-08-27, resolved)**:
   - Installed Django 6.1 with the complete cumulative requirements; dependency resolution, `pip check`, Django's SQLite system check, `pip-audit`, 11 health tests and 3 email-path tests all passed.
   - Restored Django 5.2.17 because Django 6.1's MySQL backend requires MySQL 8.4+, while the active server on this host is MySQL 8.0.46 and CI exercises only SQLite. A green SQLite CI would therefore be insufficient deployment evidence.
-  - Django 6.1 also emits Django 7 deprecation warnings for the current `EMAIL_*` settings; a future upgrade should pair the MySQL 8.4 infrastructure change with a planned `MAILERS` migration. The restored environment remains at zero known vulnerabilities.
+  - The final follow-up pinned Django 6.1, migrated email configuration to `MAILERS`, and added a real MySQL 8.4 CI gate. Deployment remains blocked until the active MySQL 8.0.46 server itself is upgraded.
 
-- **Gradual backend major upgrades — reportlab 5 standalone hold (2026-08-27)**:
+- **Gradual backend major upgrades — ReportLab 5 former standalone hold (2026-08-27, resolved)**:
   - Attempted reportlab 4.5.1→5.0.1 against the complete cumulative requirements; pip rejected it because xhtml2pdf 0.2.17 explicitly requires `reportlab>=4.0.4,<5`.
-  - Restored reportlab 4.5.1 without changing application code or replacing the service/trámite PDF engine. The rebuilt current environment passes `pip check`, Django check and a zero-finding `pip-audit`.
-  - This is an upstream compatibility hold, not a vulnerability. Revisit it when xhtml2pdf publishes reportlab 5 support or when the application deliberately migrates that PDF path.
+  - The final follow-up migrated the service/trámite renderer to WeasyPrint, removed xhtml2pdf and pinned ReportLab 5.0.1. Direct PDF and readable service-PDF regressions pass in the clean environment.
 
 - **Gradual backend major upgrades — pyHanko validation stack (2026-08-27, complete)**:
   - Upgraded pyHanko 0.25.3→0.36.2 and `pyhanko-certvalidator` 0.26.8→0.31.4 atomically, resolving the standalone validator hold through the compatibility range declared by pyHanko 0.36.2.
@@ -245,7 +256,7 @@ The application is **feature-complete** with all 18 major features implemented, 
   - **Fake data refreshed** (delete + create completed after clearing two v2-schema landmines: orphan `gym_app_documentpaymentrecord` rows and `gym_app_user.is_archived` missing DB default — see lessons-learned). Post-seed counts verified: 34 users, 86 processes/249 stages (1 StageAlert each), 1190 documents, 60 legal requests, 30 SECOP, 6 services/24 requests, 9 subscriptions, 264 notifications. Next coverage targets: `DocumentEditor.vue` (909 stmts, 0%), large partials (`DocumentListTable` 75.9%, `SignaturesListTable` 77.4%), 13 pre-existing gate warnings.
 
 - **PDF/WeasyPrint overhaul + UI zoom + cleanup (2026-07-07 → 2026-07-15)**:
-  - **Dynamic-document PDF stack migrated to WeasyPrint** (`2d390fa`): exports now match the editor rendering. Root sequence: 500 crash on editor-created tables fixed with markup normalization (`2ba6d77`), duplicated PDF stylesheet consolidated into a shared builder in `gym_app/utils/documents.py` consumed by both `document_views.py` and `signature_views.py` (`65c48ce`), then rendering switched from xhtml2pdf to WeasyPrint 63.1. xhtml2pdf remains for service/trámite PDFs + fake-data command. Details in `error-documentation.md` → RESOLVED-018.
+  - **Dynamic-document PDF stack migrated to WeasyPrint** (`2d390fa`): exports now match the editor rendering. Root sequence: 500 crash on editor-created tables fixed with markup normalization (`2ba6d77`), duplicated PDF stylesheet consolidated into a shared builder in `gym_app/utils/documents.py` consumed by both `document_views.py` and `signature_views.py` (`65c48ce`), then rendering switched from xhtml2pdf to WeasyPrint 63.1. The 2026-08-27 dependency follow-up also moved service/trámite PDFs to this renderer and removed xhtml2pdf. Details in `error-documentation.md` → RESOLVED-018.
   - **Global app zoom** (`cc92301`): `frontend/src/style.css` forces 80% desktop / 75% mobile zoom for a wider UI — pixel-based test assertions see zoomed geometry.
   - **Unused frontend components removed** (`9ec8737`): components 117 → 111; 3 orphan unit test suites deleted.
   - **Quality gate false positives fixed** (`c054df1`): `pytest.raises` now counts as assertion; commands test area recognized (`scripts/quality/backend_analyzer.py`).
@@ -415,11 +426,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 | Component | Detail |
 |-----------|--------|
-| Backend | Django 5.2.17 + DRF 3.18.0, SQLite (dev), Python 3.12 |
+| Backend | Django 6.1 + DRF 3.18.0, SQLite (dev), MySQL 8.4+ (prod), Python 3.12 |
 | Frontend | Vue 3.5 + Vite 6 + Pinia + TailwindCSS 3, Node 22.13.0 |
 | Task Queue | Huey 2.6.0 (immediate mode in dev, Redis in prod) |
 | Testing | pytest 9.1.1, Jest 29, Playwright |
-| CI | GitHub Actions (test quality gate on PR/push) |
+| CI | GitHub Actions (quality gate on PR/push + MySQL 8.4 compatibility) |
 | Pre-commit | Ruff lint + test quality gate |
 
 ---

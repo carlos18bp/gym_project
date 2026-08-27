@@ -7,17 +7,17 @@
 | Category | Technology | Version |
 |----------|-----------|---------|
 | Language | Python | 3.12 |
-| Framework | Django | 5.2.17 |
+| Framework | Django | 6.1 |
 | REST API | Django REST Framework | 3.18.0 |
 | Authentication | SimpleJWT | 5.5.1 |
 | Task Queue | Huey | 3.3.4 |
 | Queue Backend | Redis client | 8.1.0 |
 | Database (dev) | SQLite | built-in |
-| Database (prod) | MySQL | mysqlclient 2.2.8 |
+| Database (prod) | MySQL 8.4+ | mysqlclient 2.2.8 |
 | Production Server | Gunicorn | 26.2.0 |
 | Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
-| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 + svglib 2.2.0 (service/trámite PDFs + SVG conversion + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
+| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (all HTML-to-PDF exports, including service/trámite), ReportLab 5.0.1 + svglib 2.2.0 (canvas/signature/watermark and SVG conversion), PyMuPDF 1.28.2 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
 | Digital Signatures | pyHanko 0.36.2, pyhanko-certvalidator 0.31.4, cryptography 50.0.1, uritools 6.1.3 |
@@ -61,7 +61,7 @@
 > repository has no direct imports that require migration. Webencodings 0.6.1
 > preserves the HTML/CSS parsing consumers and both PDF rendering paths.
 > Uritools 6.1.3 preserves pyhanko-certvalidator's certificate URI name-tree
-> handling and the existing pyHanko/xhtml2pdf dependency paths.
+> handling and the existing pyHanko validation paths.
 > Pycparser 3.0 preserves cffi declarations and the cryptography, WeasyPrint
 > and signature/PDF paths built on that native-interface chain.
 > Zopfli 0.4.3 preserves zlib/gzip compatibility, FontTools' optional WOFF
@@ -97,23 +97,21 @@
 > OpenCV headless 5.0.0.93 imports and interoperates with NumPy 2.5.2 on the
 > deployed Linux/Python 3.12 platform. No repository module currently imports
 > `cv2`, so the pin remains a candidate for later dependency cleanup.
-> PyHanko 0.36.2 and pyhanko-certvalidator 0.31.4 now form the resolved
+> PyHanko 0.36.2 and pyhanko-certvalidator 0.31.4 form the resolved
 > signature-validation compatibility unit required by pyHanko's package
-> metadata. The repository reaches this stack through xhtml2pdf rather than
-> direct imports; real HTML-to-PDF generation and an offline RSA trust-chain
-> validation both passed without application changes.
-> Reportlab remains at 4.5.1 because the latest xhtml2pdf release (0.2.17),
-> which generates service/trámite PDFs, declares `reportlab>=4.0.4,<5`.
-> Reportlab 5.0.1 therefore cannot resolve in the current PDF stack; this is a
-> compatibility hold rather than a known-vulnerability hold.
-> Django remains on the supported 5.2 LTS line because Django 6.1 requires
-> MySQL 8.4 or newer while this host's active MySQL service is 8.0.46. The
-> application itself loaded and passed focused SQLite regressions under 6.1;
-> that exercise also identified the future Django 7 migration from legacy
-> `EMAIL_*` settings to `MAILERS`.
-> Svglib 2.2.0 now installs without Cairo and remains compatible with reportlab
-> 4.5.1. Its intentional SVG 2.x scale change (96 CSS px = 72 pt) was verified,
-> along with CSS/text conversion and SVG embedding through xhtml2pdf.
+> metadata. Offline RSA trust-chain validation remains covered.
+> ReportLab 5.0.1 now resolves because the final service/trámite HTML-to-PDF
+> path moved from xhtml2pdf 0.2.17 to the existing restricted WeasyPrint
+> renderer. Xhtml2pdf was removed; ReportLab remains for direct canvas,
+> signature, watermark and SVG-backed PDF work.
+> Django 6.1 is pinned with the legacy email settings migrated to `MAILERS`.
+> CI now applies migrations and runs a health regression against a real MySQL
+> 8.4 service. The deployed host is still MySQL 8.0.46, so this release has a
+> hard pre-deploy requirement: upgrade the server database to MySQL 8.4 or
+> newer before installing the Django 6.1 environment or restarting services.
+> Svglib 2.2.0 installs without Cairo and remains compatible with ReportLab 5.
+> Its intentional SVG 2.x scale change (96 CSS px = 72 pt) remains covered by
+> direct SVG/ReportLab regression tests.
 
 ### Frontend
 
@@ -143,7 +141,9 @@
 
 | Category | Technology |
 |----------|-----------|
-| Pre-commit | pre-commit hooks with custom test quality gate |
+| Pre-commit | pre-commit 4.6.2 hooks with custom test quality gate |
+| Backend Linting | Ruff 0.16.4 with explicit curated selectors |
+| Dependency Audit | pip-audit 2.10.1 |
 | CI | GitHub Actions (`.github/workflows/test-quality-gate.yml`) |
 | Quality Gate | Custom Python analyzer (`scripts/test_quality_gate.py`) — backend, frontend-unit, frontend-e2e |
 | CORS | django-cors-headers 4.4.0 |
@@ -325,7 +325,7 @@ gym_project/
 │   │   ├── urls.py           # 205 URL patterns
 │   │   └── admin.py          # Django admin configuration
 │   ├── requirements.txt      # production dependencies
-│   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
+│   └── requirements-dev.txt  # Dev tooling (pre-commit, Ruff, pip-audit)
 │
 ├── frontend/
 │   ├── src/

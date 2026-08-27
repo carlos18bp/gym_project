@@ -1,10 +1,12 @@
 """Tests for gym_app.services.service_tramite_pdf."""
 
 import types
-from unittest.mock import MagicMock, patch
+from io import BytesIO
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from pypdf import PdfReader
 
 from gym_app.models import (
     Service,
@@ -23,7 +25,8 @@ from gym_app.services.service_tramite_pdf import (
 User = get_user_model()
 
 MOCK_RENDER = "gym_app.services.service_tramite_pdf.render_to_string"
-MOCK_PISA = "gym_app.services.service_tramite_pdf.pisa.CreatePDF"
+MOCK_PDF_RENDERER = "gym_app.services.service_tramite_pdf.render_html_to_pdf"
+PDF_BYTES = b"%PDF-1.7\nmock service request\n%%EOF"
 
 
 def _mock_answer(field_type, value_text=None, value_json=None):
@@ -117,18 +120,6 @@ def pdf_request_with_answers(pdf_request, pdf_service):
     return pdf_request
 
 
-def _make_pisa_ok():
-    status = MagicMock()
-    status.err = 0
-    return status
-
-
-def _make_pisa_fail():
-    status = MagicMock()
-    status.err = 1
-    return status
-
-
 # ============================================================
 # TestNormalizeAnswerValue
 # ============================================================
@@ -199,9 +190,11 @@ class TestGenerateServiceRequestPdf:
     def test_saves_document_as_pdf_file(self, pdf_request_with_answers, settings, tmp_path):
         """Save the generated PDF as a file attached to the service request."""
         settings.MEDIA_ROOT = str(tmp_path)
-        with patch(MOCK_RENDER, return_value="<html></html>"):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, return_value="<html></html>"), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request_with_answers)
 
         assert pdf_request_with_answers.generated_document.name.endswith(".pdf")
 
@@ -214,9 +207,11 @@ class TestGenerateServiceRequestPdf:
             captured_context.update(context)
             return "<html></html>"
 
-        with patch(MOCK_RENDER, side_effect=capture_render):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, side_effect=capture_render), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request_with_answers)
 
         stages = captured_context["stages"]
         orders = [s["order"] for s in stages]
@@ -231,9 +226,11 @@ class TestGenerateServiceRequestPdf:
             captured_context.update(context)
             return "<html></html>"
 
-        with patch(MOCK_RENDER, side_effect=capture_render):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, side_effect=capture_render), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request_with_answers)
 
         stage_items = captured_context["stages"][0]["items"]
         soporte_item = next(item for item in stage_items if item["label"] == "Soporte")
@@ -248,22 +245,27 @@ class TestGenerateServiceRequestPdf:
             captured_context.update(context)
             return "<html></html>"
 
-        with patch(MOCK_RENDER, side_effect=capture_render):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, side_effect=capture_render), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request_with_answers)
 
         stage_items = captured_context["stages"][0]["items"]
         categorias_item = next(item for item in stage_items if item["label"] == "Categorias")
         assert categorias_item["value"] == "A, B"
 
-    def test_raises_service_request_pdf_error_on_pisa_failure(self, pdf_request_with_answers, settings, tmp_path):
-        """Raise ServiceRequestPDFError when xhtml2pdf reports a rendering failure."""
+    def test_raises_service_request_pdf_error_on_render_failure(self, pdf_request_with_answers, settings, tmp_path):
+        """Raise ServiceRequestPDFError when WeasyPrint rendering fails."""
         settings.MEDIA_ROOT = str(tmp_path)
-        with patch(MOCK_RENDER, return_value="<html></html>"):
-            with patch(MOCK_PISA, return_value=_make_pisa_fail()):
-                with pytest.raises(ServiceRequestPDFError) as exc_info:
-                    generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, return_value="<html></html>"), patch(
+            MOCK_PDF_RENDERER,
+            side_effect=RuntimeError("render failed"),
+        ), pytest.raises(ServiceRequestPDFError) as exc_info:
+            generate_service_request_pdf(pdf_request_with_answers)
+
         assert exc_info.type is ServiceRequestPDFError
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
 
     def test_context_includes_requester_and_service(self, pdf_request_with_answers, settings, tmp_path):
         """Include requester and service objects in the template context."""
@@ -274,9 +276,11 @@ class TestGenerateServiceRequestPdf:
             captured_context.update(context)
             return "<html></html>"
 
-        with patch(MOCK_RENDER, side_effect=capture_render):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request_with_answers)
+        with patch(MOCK_RENDER, side_effect=capture_render), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request_with_answers)
 
         assert captured_context["requester"] == pdf_request_with_answers.requester
         assert captured_context["service"] == pdf_request_with_answers.service
@@ -292,8 +296,30 @@ class TestGenerateServiceRequestPdf:
             original_name="orphan.pdf",
         )
 
-        with patch(MOCK_RENDER, return_value="<html></html>"):
-            with patch(MOCK_PISA, return_value=_make_pisa_ok()):
-                generate_service_request_pdf(pdf_request)
+        with patch(MOCK_RENDER, return_value="<html></html>"), patch(
+            MOCK_PDF_RENDERER,
+            return_value=PDF_BYTES,
+        ):
+            generate_service_request_pdf(pdf_request)
 
         assert pdf_request.generated_document.name.endswith(".pdf")
+
+    def test_renders_readable_pdf_with_weasyprint(
+        self,
+        pdf_request_with_answers,
+        settings,
+        tmp_path,
+    ):
+        """Render service-request content through the real WeasyPrint path."""
+        settings.MEDIA_ROOT = str(tmp_path)
+
+        generate_service_request_pdf(pdf_request_with_answers)
+
+        pdf_request_with_answers.generated_document.open("rb")
+        pdf_content = pdf_request_with_answers.generated_document.read()
+        pdf_request_with_answers.generated_document.close()
+        reader = PdfReader(BytesIO(pdf_content))
+        rendered_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+        assert pdf_content.startswith(b"%PDF-")
+        assert "Servicio PDF" in rendered_text

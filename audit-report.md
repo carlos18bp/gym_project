@@ -86,8 +86,9 @@ policy. For 0.x packages, a minor-line change is treated as a policy-major.
 `distlib`, `filelock`, `platformdirs`, `pre-commit`, `python-discovery`, `ruff`
 and `virtualenv` were observed in the staging virtualenv but are not direct pins
 in `backend/requirements.txt`. They were not added or mutated by this scoped
-application update. Tooling updates should be managed with the environment that
-owns them; `ruff` also requires staying on its 0.15.x line under this policy.
+application update. An operator-approved developer-tooling follow-up later
+updated their owning pins without promoting any of them into the production
+requirements; see the final section of this report.
 
 ---
 
@@ -840,3 +841,79 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   (17 focused tests total).
 - No application migration, native package installation, database command,
   staging/production service or external resource was touched.
+
+---
+
+## Developer Tooling Refresh (2026-08-27)
+
+### Decision
+
+- Updated the developer-tooling owners in `backend/requirements-dev.txt`:
+  `pre-commit` 3.7.1 -> 4.6.2 and Ruff 0.6.8 -> 0.16.4.
+- Added the existing audit tool as an explicit developer pin:
+  `pip-audit==2.10.1`.
+- A clean resolver consequently advanced the six observed tooling dependencies:
+  `distlib` 0.4.0 -> 0.4.3, `filelock` 3.29.0 -> 3.32.4,
+  `msgpack` 1.2.1 -> 1.2.2, `platformdirs` 4.9.6 -> 4.11.4,
+  `python-discovery` 1.2.2 -> 1.5.3 and `virtualenv` 21.3.0 -> 21.7.5.
+- These packages remain outside `backend/requirements.txt`; production runtime
+  pins and application behavior are unchanged.
+- The only remaining outdated packages in a clean full developer environment
+  are the intentional Django 6.1 and ReportLab 5.0.1 holds documented above.
+
+### Verification
+
+- Fresh Python 3.12 venv + full `requirements-dev.txt` installation: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities;
+  `pip list --outdated`: only Django 5.2.17 and ReportLab 4.5.1.
+- `pre-commit validate-config`: success with pre-commit 4.6.2.
+- Ruff 0.16.4 executed through the real quality-gate integration with the
+  repository's explicit curated selectors: status `ok`, zero findings.
+- Eight focused external-lint integration tests passed.
+- `python manage.py check`: no issues; 3,187 tests collected; health slice:
+  11 passed under isolated SQLite.
+- No migration, deployed database query, runtime venv mutation or service
+  restart was performed.
+
+---
+
+## Final Major Resolution — Django 6.1 and ReportLab 5.0.1 (2026-08-27)
+
+### Decision
+
+- Applied the final two direct upgrades: Django 5.2.17 -> 6.1 and ReportLab
+  4.5.1 -> 5.0.1.
+- Migrated the active service/trámite HTML-to-PDF generator from xhtml2pdf to
+  the existing deny-by-default WeasyPrint renderer. Xhtml2pdf 0.2.17 and its
+  `reportlab<5` constraint were removed from the environment.
+- Migrated Django's deprecated `EMAIL_*` settings to `MAILERS` while preserving
+  the existing environment-variable names. Explicit `fail_silently=False`
+  arguments were removed; the default fail-loud behavior is unchanged.
+- Added a GitHub Actions compatibility job backed by `mysql:8.4`. It applies
+  every migration, asserts the database server version, runs Django's database
+  checks and exercises the health endpoint on the supported production engine.
+- The clean full developer environment now reports zero outdated packages.
+
+### Verification
+
+- Fresh Python 3.12 venv + full `requirements-dev.txt` installation: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities;
+  `pip list --outdated --format json`: `[]`.
+- Django 6.1 staging-like system check under isolated SQLite: no issues.
+  `makemigrations --check --dry-run`: no changes detected.
+- The production SMTP `MAILERS` entry instantiated with isolated test values
+  and preserved host, port, username, password and TLS configuration.
+- Service/trámite PDF slice: 14 passed, including a real readable WeasyPrint
+  document; currentColor/WeasyPrint slice: 4 passed; direct ReportLab PDF
+  slice: 11 passed; SECOP email slice: 7 passed; mailer settings: 2 passed;
+  health slice: 11 passed (49 focused tests total).
+- No deployed database query, migration, runtime venv mutation, native package
+  installation or service restart was performed.
+
+### Deployment gate
+
+- The active server is still MySQL 8.0.46. Django 6.1 requires MySQL 8.4 or
+  newer, so this release must not be deployed until the server database is
+  upgraded to MySQL 8.4+ and the normal backup/rollback runbook is followed.
+- The new CI job validates the release against MySQL 8.4; it does not upgrade or
+  mutate the deployed database.
