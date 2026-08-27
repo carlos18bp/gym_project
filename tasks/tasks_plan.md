@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — pyphen | `pyphen` 0.17.2→0.18.1; clean resolution/audit, Spanish fallback + splitting + WeasyPrint hyphenation smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pydyf | `pydyf` 0.11.0→0.12.1; clean resolution/audit, real PDF structure/metadata/link smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — cachetools | `cachetools` 5.5.2→7.1.7; clean resolution/audit, TTL + LRU + memoization smoke, 10 Google-login and 11 health tests passed |
 | 2026-08-27 | Gradual backend major upgrades — zopfli | `zopfli` 0.2.3.post1→0.4.3; clean resolution/audit, zlib/gzip + FontTools compression smoke, 2 document-render and 7 service/trámite PDF tests passed |

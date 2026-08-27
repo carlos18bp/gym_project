@@ -466,3 +466,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Document-render slice: 2 passed; service/trámite PDF generation slice: 7
   passed using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — pyphen 0.18.1 (2026-08-27)
+
+### Decision
+
+- Applied `pyphen` 0.17.2 -> 0.18.1 in isolation; no other dependency pin
+  changed.
+- Preserved WeasyPrint 69.0's language-aware hyphenation integration without
+  application or template changes.
+- Current remaining direct outdated dependencies: 13 (12 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Spanish (`es-CO` -> `es`) dictionary fallback, word splitting and narrow
+  automatic-hyphenation PDF rendering passed with pyphen 0.18.1.
+- Document-render slice: 2 passed; service/trámite PDF generation slice: 7
+  passed using isolated SQLite test databases.
+- No migration or staging database command ran.

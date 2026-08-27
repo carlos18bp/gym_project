@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pyphen (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pyphen` 0.17.2 to 0.18.1 for its direct consumer WeasyPrint 69.0.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Spanish dictionary fallback, splitting and automatic-hyphenation PDF rendering remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — pydyf (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pydyf` 0.11.0 to 0.12.1 for its direct consumer WeasyPrint 69.0.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; real PDF output retained its header, page, title metadata and link annotation.

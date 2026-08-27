@@ -17,7 +17,7 @@
 | Production Server | Gunicorn | 23.0.0 |
 | Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
-| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
+| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
 | Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
@@ -68,6 +68,8 @@
 > import or installed reverse dependency requires an application migration.
 > Pydyf 0.12.1 remains compatible with WeasyPrint 69.0 and preserves generated
 > PDF structure, metadata, link annotations and application rendering paths.
+> Pyphen 0.18.1 preserves the Spanish dictionary fallback, word splitting and
+> WeasyPrint's language-aware automatic hyphenation.
 
 ### Frontend
 
