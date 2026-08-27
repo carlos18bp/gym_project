@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Backend developer-tooling refresh | pre-commit 3.7.1->4.6.2, Ruff 0.6.8->0.16.4 and pip-audit 2.10.1 pinned in dev tooling; clean full environment now reports only the two intentional Django/ReportLab holds, with config/lint/check/collection/19 focused tests green |
 | 2026-08-27 | Gradual backend major upgrades — svglib | svglib 1.5.1→2.2.0; Cairo is now optional, clean audit/checks passed, SVG/CSS 96 px→72 pt conversion + ReportLab/xhtml2pdf output and 17 focused PDF tests remained healthy |
 | 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ⏸ Held at 5.2.17: code/check/audit + 14 focused SQLite tests pass on 6.1, but the active MySQL 8.0.46 server is below Django 6.1's MySQL 8.4 minimum; future work also migrates `EMAIL_*` to `MAILERS` |
 | 2026-08-27 | Gradual backend major upgrades — reportlab standalone | ⏸ Held at 4.5.1: xhtml2pdf 0.2.17 requires `reportlab>=4.0.4,<5`; clean resolver rejected 5.0.1 and the restored cumulative environment remains healthy with zero known vulnerabilities |

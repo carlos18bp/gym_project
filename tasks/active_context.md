@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Backend developer-tooling refresh (2026-08-27, complete)**:
+  - Updated pre-commit 3.7.1->4.6.2 and Ruff 0.6.8->0.16.4, and made the existing `pip-audit` 2.10.1 installation reproducible through `requirements-dev.txt`.
+  - A clean full developer environment advanced the six related transitive packages and reduced `pip list --outdated` from 10 packages to the two intentional Django/ReportLab holds; `pip check` and `pip-audit` remained clean.
+  - Pre-commit config validation, Ruff's real curated-selector integration, 8 focused quality-gate tests, Django check, 3,187-test collection and 11 health tests passed under isolated SQLite. Production pins, databases and services were untouched.
+
 - **Gradual backend major upgrades — svglib (2026-08-27, complete)**:
   - Upgraded svglib 1.5.1→2.2.0 after confirming that the current release moved `rlpycairo` to the optional `bitmaps` extra; the default installation no longer requires pycairo and resolves with reportlab 4.5.1.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; SVG/CSS conversion honored the 2.x 96 px→72 pt scale, produced a readable ReportLab PDF, and remained embeddable through xhtml2pdf.

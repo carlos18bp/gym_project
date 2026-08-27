@@ -143,7 +143,9 @@
 
 | Category | Technology |
 |----------|-----------|
-| Pre-commit | pre-commit hooks with custom test quality gate |
+| Pre-commit | pre-commit 4.6.2 hooks with custom test quality gate |
+| Backend Linting | Ruff 0.16.4 with explicit curated selectors |
+| Dependency Audit | pip-audit 2.10.1 |
 | CI | GitHub Actions (`.github/workflows/test-quality-gate.yml`) |
 | Quality Gate | Custom Python analyzer (`scripts/test_quality_gate.py`) — backend, frontend-unit, frontend-e2e |
 | CORS | django-cors-headers 4.4.0 |
@@ -325,7 +327,7 @@ gym_project/
 │   │   ├── urls.py           # 205 URL patterns
 │   │   └── admin.py          # Django admin configuration
 │   ├── requirements.txt      # production dependencies
-│   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
+│   └── requirements-dev.txt  # Dev tooling (pre-commit, Ruff, pip-audit)
 │
 ├── frontend/
 │   ├── src/

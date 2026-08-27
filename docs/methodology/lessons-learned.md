@@ -213,6 +213,8 @@
 - Major security bumps must be resolved against the complete pinned requirements file, not package-by-package: `cryptography` 50 requires CFFI 2 and WeasyPrint 69 requires cssselect2 0.8.
 - A non-security bump can create new native deployment requirements: `svglib` 1.6 pulls `rlpycairo`/`pycairo`, which cannot build on the current host without Cairo development headers. Keep 1.5.1 until that native dependency is deliberately provisioned.
 - Rendering user-authored HTML requires a deny-by-default resource policy even after upgrading WeasyPrint; patched dependencies do not replace application-level SSRF and local-file boundaries.
+- Keep developer-tooling owners pinned separately from production requirements. Pinning pre-commit, Ruff and pip-audit in `requirements-dev.txt` lets their transitive graph refresh without promoting `virtualenv`, `filelock` or audit internals into the runtime dependency surface.
+- Ruff 0.16 expands its default rule set substantially. The quality gate remains stable because it always passes an explicit curated selector list; preserve that boundary on future Ruff upgrades.
 
 ### Jest: ExampleModal.vue Renders Empty Under vue3-jest (open investigation)
 - `src/views/user_guide/components/ExampleModal.vue` mounts to empty html under Jest with EVERY approach tried (2026-07-16): real @headlessui/vue + attachTo + flushes, VTU name-based stubs, and full `jest.mock('@headlessui/vue')`
