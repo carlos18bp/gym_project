@@ -96,5 +96,5 @@ django-dbbackup==4.3.0
 django-silk==5.5.2
 
 # Production server
-gunicorn==23.0.0
+gunicorn==26.2.0
 mysqlclient==2.2.8

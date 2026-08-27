@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — gunicorn (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `gunicorn` 23.0.0 to 26.2.0 while retaining the three-worker Unix-socket systemd command and WSGI entry point.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Gunicorn configuration check/print modes accepted every deployed argument.
+  - The 11 health tests passed under SQLite. No service restart, migration or staging database command ran.
+
 - **Gradual backend major upgrades — cssselect2 (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `cssselect2` 0.8.0 to 0.9.0 for its direct consumers WeasyPrint and svglib.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; compound selectors, SVG CSS conversion and styled WeasyPrint output remained valid.

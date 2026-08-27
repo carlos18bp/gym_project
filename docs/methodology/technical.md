@@ -14,7 +14,7 @@
 | Queue Backend | Redis | 5.3.1 |
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.8 |
-| Production Server | Gunicorn | 23.0.0 |
+| Production Server | Gunicorn | 26.2.0 |
 | Native Bindings | cffi 2.1.1, pycparser 3.0 |
 | Compression | Brotli 1.2.0, zopfli 0.4.3 |
 | PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
@@ -73,6 +73,8 @@
 > WeasyPrint's language-aware automatic hyphenation.
 > Cssselect2 0.9.0 preserves compound selector matching and the WeasyPrint and
 > svglib CSS-to-PDF rendering paths.
+> Gunicorn 26.2.0 accepts the existing three-worker Unix-socket systemd
+> configuration and loads `gym_project.wsgi:application` without changes.
 
 ### Frontend
 

@@ -514,3 +514,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Document-render slice: 2 passed; service/trámite PDF generation slice: 7
   passed using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — gunicorn 26.2.0 (2026-08-27)
+
+### Decision
+
+- Applied `gunicorn` 23.0.0 -> 26.2.0 in isolation; no other dependency pin
+  changed.
+- Preserved the repository's three-worker Unix-socket systemd configuration
+  and `gym_project.wsgi:application` entry point without service-file changes.
+- Current remaining direct outdated dependencies: 11 (10 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Gunicorn 26.2.0 accepted the WSGI application, access log, three-worker and
+  Unix-socket settings through both configuration check and print modes.
+- Health slice: 11 passed using an isolated SQLite test database.
+- No service was started or restarted; no migration or staging database command
+  ran.
