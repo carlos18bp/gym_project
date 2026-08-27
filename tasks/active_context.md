@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — zopfli (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `zopfli` 0.2.3.post1 to 0.4.3 for the optional FontTools WOFF-compression path.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; zlib/gzip round trips and FontTools compression remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — pycparser (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pycparser` 2.23 to 3.0 for its cffi consumer.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; C AST parsing, cffi calls and Ed25519 sign/verify remained valid.

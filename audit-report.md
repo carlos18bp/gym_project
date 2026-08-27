@@ -393,3 +393,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Signature PDF slice: 4 passed; service/trámite PDF generation slice: 7 passed
   using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — zopfli 0.4.3 (2026-08-27)
+
+### Decision
+
+- Applied `zopfli` 0.2.3.post1 -> 0.4.3 in isolation; no other dependency pin
+  changed.
+- Preserved the optional FontTools WOFF compression path and the existing
+  WeasyPrint/xhtml2pdf PDF-generation paths without application changes.
+- Current remaining direct outdated dependencies: 16 (15 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Zlib/gzip round trips and FontTools' explicit Zopfli compression path passed
+  with zopfli 0.4.3.
+- Document-render slice: 2 passed; service/trámite PDF generation slice: 7
+  passed using isolated SQLite test databases.
+- No migration or staging database command ran.
