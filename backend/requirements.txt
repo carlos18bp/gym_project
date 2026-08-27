@@ -64,7 +64,7 @@ six==1.17.0
 soupsieve==2.9.2
 sqlparse==0.6.0
 svglib==1.5.1
-termcolor==2.5.0
+termcolor==3.3.0
 tinycss2==1.5.1
 tinyhtml5==2.1.0
 tqdm==4.70.0

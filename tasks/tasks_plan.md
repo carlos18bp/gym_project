@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — termcolor | `termcolor` 2.5.0→3.3.0; clean resolution/audit, ANSI/no-color + Fire dispatch smoke, command-registry load, and 11 health tests passed |
 | 2026-08-27 | Gradual backend major upgrades — packaging | `packaging` 24.2→26.3; clean resolution/audit, version and specifier smoke, Gunicorn WSGI config validation, and 11 health tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pytz | `pytz` 2025.2→2026.3.post1; pandas/Bogotá conversion smoke, dbbackup command discovery and 10 report-model tests passed with clean resolution and audit |
 | 2026-08-27 | Gradual backend major upgrades — tzdata | `tzdata` 2025.3→2026.3; packaged Bogotá zone smoke, report models and process-alert scheduling passed under SQLite, with clean resolution and zero-finding audit |

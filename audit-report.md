@@ -274,3 +274,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Gunicorn's WSGI configuration check passed; health slice: 11 passed using an
   isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — termcolor 3.3.0 (2026-08-27)
+
+### Decision
+
+- Applied `termcolor` 2.5.0 -> 3.3.0 in isolation; no other dependency pin
+  changed.
+- Preserved the existing `fire` 0.7.1 integration without application or
+  management-command changes.
+- Current remaining direct outdated dependencies: 21 (20 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- ANSI color, no-color and Fire command-dispatch smoke passed with termcolor
+  3.3.0 and Fire 0.7.1.
+- Django's management-command registry loaded normally; health slice: 11 passed
+  using an isolated SQLite test database.
+- No migration or staging database command ran.
