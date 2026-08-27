@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — packaging (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `packaging` 24.2 to 26.3 for its direct consumers pytest and Gunicorn.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; version/specifier parsing and both consumer imports remained valid.
+  - Gunicorn accepted the existing WSGI configuration and the 11 health tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — pytz (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pytz` 2025.2 to 2026.3.post1 for the consumers pandas and django-dbbackup.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Bogotá UTC offsets remained `-05:00` through both pytz and pandas.

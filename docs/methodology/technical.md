@@ -28,6 +28,7 @@
 | Backups | django-dbbackup 4.3.0 |
 | Query Profiling | django-silk 5.5.2 |
 | Test Data | Faker 40.37.0 |
+| Packaging Utilities | packaging 26.3 |
 | Linting | Ruff |
 | Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 7.1.0, coverage 7.15.4 |
 
@@ -46,7 +47,8 @@
 > Requests continues to use its bundled CA path and the SECOP client contract is
 > unchanged. The next isolated step advanced the packaged IANA fallback database
 > to tzdata 2026.3 and pytz to 2026.3.post1 without changing Django's time-zone
-> configuration.
+> configuration. Packaging then advanced to 26.3 while preserving pytest's
+> requirement handling and Gunicorn's WSGI configuration validation.
 
 ### Frontend
 

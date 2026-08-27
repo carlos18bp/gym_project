@@ -250,3 +250,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - `manage.py help dbbackup` loaded the command without executing a backup.
 - Report-model slice: 10 passed using an isolated SQLite test database.
 - No migration, backup or staging database command ran.
+
+---
+
+## Major Follow-up — packaging 26.3 (2026-08-27)
+
+### Decision
+
+- Applied `packaging` 24.2 -> 26.3 in isolation; no other dependency pin
+  changed.
+- Preserved its existing consumers, pytest and Gunicorn, without application or
+  server configuration changes.
+- Current remaining direct outdated dependencies: 22 (21 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Version and specifier parsing smoke passed through `packaging` 26.3, pytest
+  9.1.1 and Gunicorn 23.0.0.
+- Gunicorn's WSGI configuration check passed; health slice: 11 passed using an
+  isolated SQLite test database.
+- No migration or staging database command ran.
