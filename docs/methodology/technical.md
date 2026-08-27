@@ -23,6 +23,7 @@
 | Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
+| In-process Caching | cachetools 7.1.7 |
 | HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
 | Encoding Utilities | chardet 7.6.0, webencodings 0.6.1 |
 | Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
@@ -63,6 +64,8 @@
 > and signature/PDF paths built on that native-interface chain.
 > Zopfli 0.4.3 preserves zlib/gzip compatibility, FontTools' optional WOFF
 > compression path and both application PDF-generation paths.
+> Cachetools 7.1.7 preserves TTL, LRU and memoization behavior; no repository
+> import or installed reverse dependency requires an application migration.
 
 ### Frontend
 

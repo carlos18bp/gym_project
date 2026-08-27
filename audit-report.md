@@ -417,3 +417,28 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Document-render slice: 2 passed; service/trámite PDF generation slice: 7
   passed using isolated SQLite test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — cachetools 7.1.7 (2026-08-27)
+
+### Decision
+
+- Applied `cachetools` 5.5.2 -> 7.1.7 in isolation; no other dependency pin
+  changed.
+- Confirmed the repository and installed dependency graph have no direct
+  cachetools consumer requiring an API migration; the Google OAuth path remains
+  operational with google-auth 2.57.0.
+- Current remaining direct outdated dependencies: 15 (14 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- TTL expiry, LRU eviction and memoization smoke passed with cachetools 7.1.7;
+  the google-auth transport imported normally.
+- Google login slice: 10 passed; health slice: 11 passed using isolated SQLite
+  test databases.
+- No migration or staging database command ran.

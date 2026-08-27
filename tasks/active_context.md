@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — cachetools (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `cachetools` 5.5.2 to 7.1.7; no repository import or installed reverse dependency required migration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; TTL, LRU and memoization behavior remained valid.
+  - The 10 Google-login and 11 health tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — zopfli (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `zopfli` 0.2.3.post1 to 0.4.3 for the optional FontTools WOFF-compression path.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; zlib/gzip round trips and FontTools compression remained valid.
