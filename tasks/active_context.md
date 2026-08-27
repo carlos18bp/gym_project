@@ -42,6 +42,12 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — Faker (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `Faker` 25.9.2 to 40.37.0 in isolation. Faker imports remain confined to fake-data management commands; application runtime behavior and seeder business rules are unchanged.
+  - Reviewed the intervening major release notes against the project's provider surface. Python 3.12 remains supported, the temporary `date_time_between` boundary changes from Faker 34 were reverted in Faker 35, and the default plus `es_CO` providers used by the seeders remain available.
+  - Verification used a clean Python 3.12 venv: full requirements installation and `pip check` passed, Django reported zero issues, all 3,187 tests collected, and the 12 focused service/corporate/intranet seeder tests passed both before and after the upgrade.
+  - A direct smoke exercised every Faker API used by the project, including the `es_CO` company providers. `pip-audit` remained at zero known vulnerabilities; no fake-data refresh or database-writing command was run.
+
 - **Gradual backend major upgrades — pytest-cov (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pytest-cov` 6.3.0 to 7.1.0 as the first isolated major step in the dependency roadmap; application runtime code and coverage configuration are unchanged.
   - Reviewed the 7.x breaking change that removes automatic Python subprocess coverage. The repository's subprocess-based tests execute Node tooling, while CI covers only `gym_app`, so enabling Coverage.py's subprocess patch would add behavior without preserving any currently measured path.

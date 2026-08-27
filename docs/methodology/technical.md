@@ -25,7 +25,7 @@
 | Environment Config | python-decouple 3.8 |
 | Backups | django-dbbackup 4.3.0 |
 | Query Profiling | django-silk 5.5.2 |
-| Test Data | Faker 25.9.2 |
+| Test Data | Faker 40.37.0 |
 | Linting | Ruff |
 | Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 7.1.0, coverage 7.15.4 |
 
@@ -37,7 +37,9 @@
 > build dependency and does not remediate any reported advisory. The subsequent
 > `pytest-cov` 7.1.0 upgrade preserves the CI coverage totals and report formats;
 > its removed subprocess instrumentation does not affect this repository because
-> Python subprocesses do not execute covered `gym_app` code.
+> Python subprocesses do not execute covered `gym_app` code. The isolated Faker
+> 40.37.0 upgrade preserves the provider APIs and `es_CO` locale used by the
+> fake-data management commands; no seeder implementation changes were needed.
 
 ### Frontend
 

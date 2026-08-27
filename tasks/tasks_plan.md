@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — Faker | `Faker` 25.9.2→40.37.0; clean Python 3.12 resolution, provider/locale smoke, 12 focused seeder tests, full collection and `pip-audit` all passed without changing fake-data logic |
 | 2026-08-27 | Gradual backend major upgrades — pytest-cov | `pytest-cov` 6.3.0→7.1.0; isolated install and `pip check` passed, 3,187 tests collected, health slice preserved identical coverage totals, and `pip-audit` remained at 0 findings |
 | 2026-08-26 | Backend dependency vulnerability remediation | 85 audit records reduced to 0; security-major pins applied, `PyPDF2` removed, WeasyPrint resource fetching restricted, and pytest 9 fixture compatibility completed |
 

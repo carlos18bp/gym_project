@@ -20,7 +20,7 @@ djangorestframework==3.18.0
 djangorestframework-simplejwt==5.5.1
 docx2pdf==0.1.8
 et_xmlfile==2.0.0
-Faker==25.9.2
+Faker==40.37.0
 fire==0.7.1
 freezegun==1.5.5
 fonttools==4.63.0
