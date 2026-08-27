@@ -695,3 +695,30 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   PNG encoding/decoding, thresholding and contour extraction.
 - Health slice: 11 passed using an isolated SQLite test database.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — pyhanko-certvalidator 0.31.4 standalone hold (2026-08-27)
+
+### Decision
+
+- Attempted `pyhanko-certvalidator` 0.26.8 -> 0.31.4 as an isolated candidate.
+- The clean resolver rejected the combination because pyHanko 0.25.3 requires
+  `pyhanko-certvalidator>=0.26.5,<0.27`.
+- Reverted the pin to 0.26.8. The target will be retried atomically with the
+  next pyHanko candidate because the two packages form a resolver-enforced
+  compatibility unit.
+- Current remaining direct outdated dependencies: 5 (3 upgrade candidates plus
+  held `pyhanko-certvalidator` and `svglib` candidates).
+
+### Verification
+
+- The failure occurred during clean dependency resolution, before package
+  installation or runtime execution.
+- Installed metadata independently confirmed pyHanko 0.25.3's `<0.27` upper
+  bound; xhtml2pdf 0.2.17 accepts both packages without an additional upper
+  bound.
+- The reverted cumulative requirements installed cleanly; `pip check` passed,
+  `pip-audit` reported no known vulnerabilities and Django reported no issues.
+- No application, migration, database, staging or production service was
+  touched.

@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pyhanko-certvalidator standalone hold (2026-08-27)**:
+  - Attempted `pyhanko-certvalidator` 0.26.8→0.31.4 as an isolated candidate; pip correctly rejected it because the still-pinned pyHanko 0.25.3 declares `pyhanko-certvalidator>=0.26.5,<0.27`.
+  - Reverted the pin to 0.26.8 without changing runtime code. The upgrade will be retried atomically with the next pyHanko candidate, since the resolver proves they are a coupled compatibility unit.
+  - This is a dependency-constraint hold, not a vulnerability: the cumulative audit remains at zero known vulnerabilities.
+
 - **Gradual backend major upgrades — OpenCV headless (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `opencv-python-headless` 4.14.0.94 to 5.0.0.93; repository search found no direct `cv2` imports, so no application migration was required.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; OpenCV 5/NumPy 2 passed color conversion, resize, blur, PNG encode/decode and contour operations.
