@@ -20,7 +20,7 @@
 | PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
 | Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
 | Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
-| Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1, uritools 6.1.3 |
+| Digital Signatures | pyHanko 0.36.2, pyhanko-certvalidator 0.31.4, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
 | In-process Caching | cachetools 7.1.7 |
@@ -97,6 +97,11 @@
 > OpenCV headless 5.0.0.93 imports and interoperates with NumPy 2.5.2 on the
 > deployed Linux/Python 3.12 platform. No repository module currently imports
 > `cv2`, so the pin remains a candidate for later dependency cleanup.
+> PyHanko 0.36.2 and pyhanko-certvalidator 0.31.4 now form the resolved
+> signature-validation compatibility unit required by pyHanko's package
+> metadata. The repository reaches this stack through xhtml2pdf rather than
+> direct imports; real HTML-to-PDF generation and an offline RSA trust-chain
+> validation both passed without application changes.
 
 ### Frontend
 

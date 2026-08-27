@@ -41,8 +41,8 @@ pyasn1==0.6.4
 pyasn1_modules==0.4.2
 pycparser==3.0
 pydyf==0.12.1
-pyHanko==0.25.3
-pyhanko-certvalidator==0.26.8
+pyHanko==0.36.2
+pyhanko-certvalidator==0.31.4
 PyJWT==2.13.0
 PyMuPDF==1.28.2
 pypdf==6.16.2

@@ -722,3 +722,32 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
   `pip-audit` reported no known vulnerabilities and Django reported no issues.
 - No application, migration, database, staging or production service was
   touched.
+
+---
+
+## Major Follow-up — pyHanko 0.36.2 + pyhanko-certvalidator 0.31.4 (2026-08-27)
+
+### Decision
+
+- Applied pyHanko 0.25.3 -> 0.36.2 and `pyhanko-certvalidator` 0.26.8 ->
+  0.31.4 atomically, resolving the preceding standalone-validator hold.
+- Installed metadata confirms that pyHanko 0.36.2 requires
+  `pyhanko-certvalidator>=0.31.4,<0.32`; no repository module imports either
+  package directly, and the application reaches the stack through xhtml2pdf.
+- No application code migration was required.
+- Current remaining direct outdated dependencies: 3 (`reportlab`, Django and
+  the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- xhtml2pdf produced a real one-page service-style PDF whose header and content
+  were parsed back with pypdf.
+- pyhanko-certvalidator accepted a locally generated RSA root/signer chain with
+  network fetching disabled and the expected digital-signature key usage.
+- Service/trámite PDF slice: 13 passed; signature-PDF slice: 4 passed;
+  xhtml2pdf/current-color slice: 4 passed (21 focused tests total).
+- No application migration, database command, staging/production service or
+  external certificate endpoint was touched.
