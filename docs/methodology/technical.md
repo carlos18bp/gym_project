@@ -10,22 +10,32 @@
 | Framework | Django | 5.2.17 |
 | REST API | Django REST Framework | 3.18.0 |
 | Authentication | SimpleJWT | 5.5.1 |
-| Task Queue | Huey | 2.6.0 |
-| Queue Backend | Redis | 5.3.1 |
+| Task Queue | Huey | 3.3.4 |
+| Queue Backend | Redis client | 8.1.0 |
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.8 |
-| Production Server | Gunicorn | 23.0.0 |
-| PDF Generation | WeasyPrint 69.0 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
-| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 2.3.3 |
-| Image Processing | Pillow 12.3.0, opencv-python-headless 4.14.0.94 |
-| Digital Signatures | pyHanko 0.25.3, cryptography 50.0.1 |
+| Production Server | Gunicorn | 26.2.0 |
+| Native Bindings | cffi 2.1.1, pycparser 3.0 |
+| Compression | Brotli 1.2.0, zopfli 0.4.3 |
+| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (dynamic-document exports), xhtml2pdf 0.2.17 + svglib 2.2.0 (service/trámite PDFs + SVG conversion + fake-data command), PyMuPDF 1.28.2, reportlab 4.5.1 |
+| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
+| Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
+| Digital Signatures | pyHanko 0.36.2, pyhanko-certvalidator 0.31.4, cryptography 50.0.1, uritools 6.1.3 |
 | QR Codes | qrcode 8.2 |
 | OAuth | google-auth 2.57.0 |
+| In-process Caching | cachetools 7.1.7 |
+| HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
+| Encoding Utilities | chardet 7.6.0, webencodings 0.6.1 |
+| Document Styling | cssselect2 0.9.0, tinycss2 1.5.1, tinyhtml5 2.1.0 |
+| Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
+| File Lifecycle | django-cleanup 9.0.0 (installed but not registered); application-specific cleanup signals |
 | Environment Config | python-decouple 3.8 |
-| Backups | django-dbbackup 4.3.0 |
+| Backups | django-dbbackup 5.3.0 via Django `STORAGES["dbbackup"]` |
 | Query Profiling | django-silk 5.5.2 |
-| Test Data | Faker 25.9.2 |
+| Test Data | Faker 40.37.0 |
+| Packaging Utilities | packaging 26.3 |
+| CLI Utilities | Fire 0.7.1, termcolor 3.3.0 |
 | Linting | Ruff |
 | Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 7.1.0, coverage 7.15.4 |
 
@@ -33,11 +43,77 @@
 > 3.12 environment with the pinned requirements and `pip==26.2.1` reports zero
 > known vulnerabilities. `PyPDF2` was removed, WeasyPrint resource fetching is
 > restricted, and the suite's inert fixture marks were migrated for pytest 9.
-> `svglib` remains at 1.5.1 because 1.6.0 adds an unavailable `pycairo` native
-> build dependency and does not remediate any reported advisory. The subsequent
+> The initial svglib 1.6.0 hold was later cleared by svglib 2.2.0, which moved
+> Cairo support to the optional `bitmaps` extra. The subsequent
 > `pytest-cov` 7.1.0 upgrade preserves the CI coverage totals and report formats;
 > its removed subprocess instrumentation does not affect this repository because
-> Python subprocesses do not execute covered `gym_app` code.
+> Python subprocesses do not execute covered `gym_app` code. The isolated Faker
+> 40.37.0 upgrade preserves the provider APIs and `es_CO` locale used by the
+> fake-data management commands; no seeder implementation changes were needed.
+> The sequential major-upgrade campaign then advanced certifi to 2026.7.22;
+> Requests continues to use its bundled CA path and the SECOP client contract is
+> unchanged. The next isolated step advanced the packaged IANA fallback database
+> to tzdata 2026.3 and pytz to 2026.3.post1 without changing Django's time-zone
+> configuration. Packaging then advanced to 26.3 while preserving pytest's
+> requirement handling and Gunicorn's WSGI configuration validation. The Fire
+> command-line dependency chain also remains compatible with termcolor 3.3.0.
+> Chardet 7.6.0 then preserved the supported detection APIs and CLI; the
+> repository has no direct imports that require migration. Webencodings 0.6.1
+> preserves the HTML/CSS parsing consumers and both PDF rendering paths.
+> Uritools 6.1.3 preserves pyhanko-certvalidator's certificate URI name-tree
+> handling and the existing pyHanko/xhtml2pdf dependency paths.
+> Pycparser 3.0 preserves cffi declarations and the cryptography, WeasyPrint
+> and signature/PDF paths built on that native-interface chain.
+> Zopfli 0.4.3 preserves zlib/gzip compatibility, FontTools' optional WOFF
+> compression path and both application PDF-generation paths.
+> Cachetools 7.1.7 preserves TTL, LRU and memoization behavior; no repository
+> import or installed reverse dependency requires an application migration.
+> Pydyf 0.12.1 remains compatible with WeasyPrint 69.0 and preserves generated
+> PDF structure, metadata, link annotations and application rendering paths.
+> Pyphen 0.18.1 preserves the Spanish dictionary fallback, word splitting and
+> WeasyPrint's language-aware automatic hyphenation.
+> Cssselect2 0.9.0 preserves compound selector matching and the WeasyPrint and
+> svglib CSS-to-PDF rendering paths.
+> Gunicorn 26.2.0 accepts the existing three-worker Unix-socket systemd
+> configuration and loads `gym_project.wsgi:application` without changes.
+> Django-cleanup 9.0.0 also resolves cleanly, but remains intentionally inactive:
+> the repository neither registers `django_cleanup` in `INSTALLED_APPS` nor
+> imports it. Existing application-specific file deletion and replacement hooks
+> remain responsible for file lifecycle behavior.
+> Django-dbbackup 5.3.0 uses its required Django storage alias while preserving
+> the existing filesystem destination, retention, compression and scheduled
+> database/media command behavior. The default and staticfiles storage aliases
+> remain explicit and equivalent to Django's prior defaults.
+> Redis-py 8.1.0 remains compatible with the health endpoint and Huey 3.3.4;
+> direct client, pipeline, queue, result-store and scheduled-task Lua operations
+> passed against an isolated Redis server.
+> Huey 3.3.4 preserved the registered task/decorator, consumer, result-store and
+> lock APIs used by the application. `REDIS_URL` is now materialized once in
+> Django settings and shared by Huey and the health endpoint instead of probing
+> storage implementation attributes.
+> Pandas 3.0.5 preserved the project's Excel report generation and parsing with
+> both XlsxWriter and openpyxl, including text, missing values, timezone removal
+> and grouped summaries; no report code migration was required.
+> OpenCV headless 5.0.0.93 imports and interoperates with NumPy 2.5.2 on the
+> deployed Linux/Python 3.12 platform. No repository module currently imports
+> `cv2`, so the pin remains a candidate for later dependency cleanup.
+> PyHanko 0.36.2 and pyhanko-certvalidator 0.31.4 now form the resolved
+> signature-validation compatibility unit required by pyHanko's package
+> metadata. The repository reaches this stack through xhtml2pdf rather than
+> direct imports; real HTML-to-PDF generation and an offline RSA trust-chain
+> validation both passed without application changes.
+> Reportlab remains at 4.5.1 because the latest xhtml2pdf release (0.2.17),
+> which generates service/trámite PDFs, declares `reportlab>=4.0.4,<5`.
+> Reportlab 5.0.1 therefore cannot resolve in the current PDF stack; this is a
+> compatibility hold rather than a known-vulnerability hold.
+> Django remains on the supported 5.2 LTS line because Django 6.1 requires
+> MySQL 8.4 or newer while this host's active MySQL service is 8.0.46. The
+> application itself loaded and passed focused SQLite regressions under 6.1;
+> that exercise also identified the future Django 7 migration from legacy
+> `EMAIL_*` settings to `MAILERS`.
+> Svglib 2.2.0 now installs without Cairo and remains compatible with reportlab
+> 4.5.1. Its intentional SVG 2.x scale change (96 CSS px = 72 pt) was verified,
+> along with CSS/text conversion and SVG embedding through xhtml2pdf.
 
 ### Frontend
 

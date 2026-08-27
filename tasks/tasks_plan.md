@@ -58,6 +58,32 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — svglib | svglib 1.5.1→2.2.0; Cairo is now optional, clean audit/checks passed, SVG/CSS 96 px→72 pt conversion + ReportLab/xhtml2pdf output and 17 focused PDF tests remained healthy |
+| 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ⏸ Held at 5.2.17: code/check/audit + 14 focused SQLite tests pass on 6.1, but the active MySQL 8.0.46 server is below Django 6.1's MySQL 8.4 minimum; future work also migrates `EMAIL_*` to `MAILERS` |
+| 2026-08-27 | Gradual backend major upgrades — reportlab standalone | ⏸ Held at 4.5.1: xhtml2pdf 0.2.17 requires `reportlab>=4.0.4,<5`; clean resolver rejected 5.0.1 and the restored cumulative environment remains healthy with zero known vulnerabilities |
+| 2026-08-27 | Gradual backend major upgrades — pyHanko validation stack | pyHanko 0.25.3→0.36.2 + `pyhanko-certvalidator` 0.26.8→0.31.4 as a resolver-required unit; clean audit, real xhtml2pdf output, offline RSA chain validation and 21 focused tests passed |
+| 2026-08-27 | Gradual backend major upgrades — OpenCV headless | `opencv-python-headless` 4.14.0.94→5.0.0.93; clean resolution/audit, NumPy-backed image operation smoke and 11 health tests passed; no direct repository imports found |
+| 2026-08-27 | Gradual backend major upgrades — pandas | pandas 2.3.3→3.0.5; clean resolution/audit, dual-engine Excel round-trip, string/missing/date/grouping smoke, 10 report-function and 19 report-view tests passed |
+| 2026-08-27 | Gradual backend major upgrades — Huey | Huey 2.6.0→3.3.4; shared explicit `REDIS_URL`, 14-task registry + consumer validation, real ephemeral-Redis queue/result/lock smoke, 11 health tests and 19 focused task tests passed |
+| 2026-08-27 | Gradual backend major upgrades — redis | `redis` 5.3.1→8.1.0; clean resolution/audit, real redis-py + Huey queue/result/schedule operations, real health endpoint, and 11 health tests passed against isolated services |
+| 2026-08-27 | Gradual backend major upgrades — django-dbbackup | `django-dbbackup` 4.3.0→5.3.0; migrated to `STORAGES["dbbackup"]`, preserved command scheduling, created a real compressed SQLite backup + metadata, and passed 11 health tests |
+| 2026-08-27 | Gradual backend major upgrades — django-cleanup | `django-cleanup` 8.1.0→9.0.0; clean resolution/audit, app intentionally remained inactive, and 6 application-specific file cleanup tests passed |
+| 2026-08-27 | Gradual backend major upgrades — gunicorn | `gunicorn` 23.0.0→26.2.0; clean resolution/audit, deployed WSGI/worker/socket config accepted, and 11 health tests passed without starting services |
+| 2026-08-27 | Gradual backend major upgrades — cssselect2 | `cssselect2` 0.8.0→0.9.0; clean resolution/audit, compound selector + WeasyPrint + svglib smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pyphen | `pyphen` 0.17.2→0.18.1; clean resolution/audit, Spanish fallback + splitting + WeasyPrint hyphenation smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pydyf | `pydyf` 0.11.0→0.12.1; clean resolution/audit, real PDF structure/metadata/link smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — cachetools | `cachetools` 5.5.2→7.1.7; clean resolution/audit, TTL + LRU + memoization smoke, 10 Google-login and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — zopfli | `zopfli` 0.2.3.post1→0.4.3; clean resolution/audit, zlib/gzip + FontTools compression smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pycparser | `pycparser` 2.23→3.0; clean resolution/audit, C parser + cffi + Ed25519 smoke, 4 signature PDF and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — uritools | `uritools` 4.0.3→6.1.3; clean resolution/audit, HTTPS/LDAP + certificate name-tree smoke, 4 signature PDF and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — webencodings | `webencodings` 0.5.1→0.6.1; clean resolution/audit, encoding + HTML/CSS/PDF smoke, 2 document-render and 13 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — chardet | `chardet` 5.2.0→7.6.0; clean resolution/audit, supported detector API + CLI smoke, and 11 health tests passed; no direct consumers required migration |
+| 2026-08-27 | Gradual backend major upgrades — termcolor | `termcolor` 2.5.0→3.3.0; clean resolution/audit, ANSI/no-color + Fire dispatch smoke, command-registry load, and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — packaging | `packaging` 24.2→26.3; clean resolution/audit, version and specifier smoke, Gunicorn WSGI config validation, and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pytz | `pytz` 2025.2→2026.3.post1; pandas/Bogotá conversion smoke, dbbackup command discovery and 10 report-model tests passed with clean resolution and audit |
+| 2026-08-27 | Gradual backend major upgrades — tzdata | `tzdata` 2025.3→2026.3; packaged Bogotá zone smoke, report models and process-alert scheduling passed under SQLite, with clean resolution and zero-finding audit |
+| 2026-08-27 | Gradual backend major upgrades — certifi | `certifi` 2024.12.14→2026.7.22; clean resolution, CA-bundle/Requests smoke, health and SECOP client regression, Django check and zero-finding `pip-audit` passed |
+| 2026-08-27 | Gradual backend major upgrades — Faker | `Faker` 25.9.2→40.37.0; clean Python 3.12 resolution, provider/locale smoke, 12 focused seeder tests, full collection and `pip-audit` all passed without changing fake-data logic |
 | 2026-08-27 | Gradual backend major upgrades — pytest-cov | `pytest-cov` 6.3.0→7.1.0; isolated install and `pip check` passed, 3,187 tests collected, health slice preserved identical coverage totals, and `pip-audit` remained at 0 findings |
 | 2026-08-26 | Backend dependency vulnerability remediation | 85 audit records reduced to 0; security-major pins applied, `PyPDF2` removed, WeasyPrint resource fetching restricted, and pytest 9 fixture compatibility completed |
 

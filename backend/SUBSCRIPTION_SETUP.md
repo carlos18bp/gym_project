@@ -4,7 +4,7 @@
 
 ### 1. Instalar dependencias
 El task queue (Huey) y el cliente de Redis ya están declarados en
-`requirements.txt` (`huey==2.5.2`, `redis`). Instalarlos con:
+`requirements.txt` (`huey==3.3.4`, `redis`). Instalarlos con:
 ```bash
 source venv/bin/activate
 pip install -r requirements.txt

@@ -42,6 +42,137 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — svglib (2026-08-27, complete)**:
+  - Upgraded svglib 1.5.1→2.2.0 after confirming that the current release moved `rlpycairo` to the optional `bitmaps` extra; the default installation no longer requires pycairo and resolves with reportlab 4.5.1.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; SVG/CSS conversion honored the 2.x 96 px→72 pt scale, produced a readable ReportLab PDF, and remained embeddable through xhtml2pdf.
+  - Thirteen service/trámite PDF tests and four xhtml2pdf/current-color tests passed under isolated SQLite. No application migration, native package installation, database command or staging/production service ran.
+
+- **Gradual backend major upgrades — Django 6.1 infrastructure hold (2026-08-27)**:
+  - Installed Django 6.1 with the complete cumulative requirements; dependency resolution, `pip check`, Django's SQLite system check, `pip-audit`, 11 health tests and 3 email-path tests all passed.
+  - Restored Django 5.2.17 because Django 6.1's MySQL backend requires MySQL 8.4+, while the active server on this host is MySQL 8.0.46 and CI exercises only SQLite. A green SQLite CI would therefore be insufficient deployment evidence.
+  - Django 6.1 also emits Django 7 deprecation warnings for the current `EMAIL_*` settings; a future upgrade should pair the MySQL 8.4 infrastructure change with a planned `MAILERS` migration. The restored environment remains at zero known vulnerabilities.
+
+- **Gradual backend major upgrades — reportlab 5 standalone hold (2026-08-27)**:
+  - Attempted reportlab 4.5.1→5.0.1 against the complete cumulative requirements; pip rejected it because xhtml2pdf 0.2.17 explicitly requires `reportlab>=4.0.4,<5`.
+  - Restored reportlab 4.5.1 without changing application code or replacing the service/trámite PDF engine. The rebuilt current environment passes `pip check`, Django check and a zero-finding `pip-audit`.
+  - This is an upstream compatibility hold, not a vulnerability. Revisit it when xhtml2pdf publishes reportlab 5 support or when the application deliberately migrates that PDF path.
+
+- **Gradual backend major upgrades — pyHanko validation stack (2026-08-27, complete)**:
+  - Upgraded pyHanko 0.25.3→0.36.2 and `pyhanko-certvalidator` 0.26.8→0.31.4 atomically, resolving the standalone validator hold through the compatibility range declared by pyHanko 0.36.2.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; xhtml2pdf produced a real, readable service-style PDF and the validator accepted a locally generated root/signer RSA chain with network fetching disabled.
+  - Thirteen service/trámite PDF tests, four signature-PDF tests and four xhtml2pdf/current-color tests passed under isolated SQLite. No application migration, database command or staging/production service ran.
+
+- **Gradual backend major upgrades — OpenCV headless (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `opencv-python-headless` 4.14.0.94 to 5.0.0.93; repository search found no direct `cv2` imports, so no application migration was required.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; OpenCV 5/NumPy 2 passed color conversion, resize, blur, PNG encode/decode and contour operations.
+  - The 11 health tests passed under isolated SQLite. No migration or staging database command ran; the unused direct pin should be reevaluated for removal in a later cleanup.
+
+- **Gradual backend major upgrades — pandas (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from pandas 2.3.3 to 3.0.5 for the report-generation subsystem; no application code migration was required.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; text dtype, missing values, timezone removal, grouping and round-trip Excel output passed with both XlsxWriter and openpyxl.
+  - Ten report-function tests and 19 report-view tests passed under isolated SQLite (one pre-existing conditional skip and one deliberate deselection kept the batches within the 20-test limit). No migration or staging database command ran.
+
+- **Gradual backend major upgrades — Huey (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from Huey 2.6.0 to 3.3.4 while preserving all 14 registered project tasks, Django's `run_huey` consumer and the existing decorators, schedules and locks.
+  - Materialized `REDIS_URL` once in Django settings so Huey and the health endpoint share the same configured source without depending on storage implementation attributes.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; an ephemeral Redis smoke validated enqueue, execution, result retrieval and lock contention. The 11 health and 19 focused task tests passed under isolated SQLite. No staging/production Redis connection, migration or staging database command ran.
+
+- **Gradual backend major upgrades — redis (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `redis` 5.3.1 to 8.1.0 while preserving `Redis.from_url` health checks and Huey 2.6.0's connection-pool integration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; direct client, pipeline, queue, result-store and scheduled-task Lua operations passed against an ephemeral Redis server.
+  - The real health endpoint reported SQLite and Redis healthy, and the 11 health tests passed. No staging/production Redis connection, migration or staging database command ran.
+
+- **Gradual backend major upgrades — django-dbbackup (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `django-dbbackup` 4.3.0 to 5.3.0 and migrated its removed legacy storage settings to `STORAGES["dbbackup"]`, preserving the existing filesystem path and Django's default/staticfiles aliases.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; both management commands retained compression/cleanup options and the scheduled dispatcher retained its two calls.
+  - A real isolated SQLite backup produced valid compressed data and metadata; 11 health tests passed. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — django-cleanup (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `django-cleanup` 8.1.0 to 9.0.0 without registering or activating its automatic signals; repository-specific cleanup behavior remains authoritative.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; package import/version metadata and the intentionally inactive app state were confirmed.
+  - Four physical-file deletion tests and two replacement-cleanup tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — gunicorn (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `gunicorn` 23.0.0 to 26.2.0 while retaining the three-worker Unix-socket systemd command and WSGI entry point.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Gunicorn configuration check/print modes accepted every deployed argument.
+  - The 11 health tests passed under SQLite. No service restart, migration or staging database command ran.
+
+- **Gradual backend major upgrades — cssselect2 (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `cssselect2` 0.8.0 to 0.9.0 for its direct consumers WeasyPrint and svglib.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; compound selectors, SVG CSS conversion and styled WeasyPrint output remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — pyphen (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pyphen` 0.17.2 to 0.18.1 for its direct consumer WeasyPrint 69.0.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Spanish dictionary fallback, splitting and automatic-hyphenation PDF rendering remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — pydyf (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pydyf` 0.11.0 to 0.12.1 for its direct consumer WeasyPrint 69.0.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; real PDF output retained its header, page, title metadata and link annotation.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — cachetools (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `cachetools` 5.5.2 to 7.1.7; no repository import or installed reverse dependency required migration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; TTL, LRU and memoization behavior remained valid.
+  - The 10 Google-login and 11 health tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — zopfli (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `zopfli` 0.2.3.post1 to 0.4.3 for the optional FontTools WOFF-compression path.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; zlib/gzip round trips and FontTools compression remained valid.
+  - The 2 document-render and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — pycparser (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pycparser` 2.23 to 3.0 for its cffi consumer.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; C AST parsing, cffi calls and Ed25519 sign/verify remained valid.
+  - The 4 signature PDF and 7 service/trámite PDF-generation tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — uritools (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `uritools` 4.0.3 to 6.1.3 for its pyhanko-certvalidator consumer.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; HTTPS/LDAP parsing and certificate URI name-tree behavior remained valid.
+  - The 4 signature PDF tests and 11 health tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — webencodings (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `webencodings` 0.5.1 to 0.6.1 for cssselect2, html5lib, tinycss2 and tinyhtml5.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; encoding aliases, HTML/CSS parsing and selector behavior remained valid.
+  - Direct WeasyPrint rendering, 2 document-render tests and 13 service/trámite PDF tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — chardet (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `chardet` 5.2.0 to 7.6.0; the repository has no direct imports or reverse package dependencies requiring migration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; UTF-8 and legacy-byte detection plus the CLI remained operational.
+  - The supported top-level `UniversalDetector` API and the 11 health tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — termcolor (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `termcolor` 2.5.0 to 3.3.0 for its direct consumer Fire 0.7.1.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; ANSI color, no-color and Fire dispatch behavior remained valid.
+  - Django's command registry loaded normally and the 11 health tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — packaging (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `packaging` 24.2 to 26.3 for its direct consumers pytest and Gunicorn.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; version/specifier parsing and both consumer imports remained valid.
+  - Gunicorn accepted the existing WSGI configuration and the 11 health tests passed under SQLite. No migration or staging database command ran.
+
+- **Gradual backend major upgrades — pytz (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pytz` 2025.2 to 2026.3.post1 for the consumers pandas and django-dbbackup.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Bogotá UTC offsets remained `-05:00` through both pytz and pandas.
+  - The dbbackup management command loaded normally and 10 report-model tests passed under SQLite. No backup or database-writing command ran.
+
+- **Gradual backend major upgrades — tzdata (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `tzdata` 2025.3 to 2026.3, preserving it as the cross-platform IANA fallback consumed by pandas and Python's `zoneinfo`.
+  - A clean Python 3.12 environment passed the cumulative install, `pip check`, Django check and zero-finding `pip-audit`; the packaged `America/Bogota` resource loaded successfully.
+  - Report-model tests (10) and process-alert scheduling tests (16) passed under an isolated SQLite test database. No staging database command ran.
+
+- **Gradual backend major upgrades — certifi (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `certifi` 2024.12.14 to 2026.7.22; no application code or Requests configuration changed.
+  - A clean Python 3.12 environment installed the cumulative requirements and passed `pip check`, Django's system check and a zero-finding `pip-audit`.
+  - The CA bundle loaded into an SSL context with 121 certificate authorities, Requests resolved the same bundle path, and the health plus SECOP client regression slices passed.
+
+- **Gradual backend major upgrades — Faker (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `Faker` 25.9.2 to 40.37.0 in isolation. Faker imports remain confined to fake-data management commands; application runtime behavior and seeder business rules are unchanged.
+  - Reviewed the intervening major release notes against the project's provider surface. Python 3.12 remains supported, the temporary `date_time_between` boundary changes from Faker 34 were reverted in Faker 35, and the default plus `es_CO` providers used by the seeders remain available.
+  - Verification used a clean Python 3.12 venv: full requirements installation and `pip check` passed, Django reported zero issues, all 3,187 tests collected, and the 12 focused service/corporate/intranet seeder tests passed both before and after the upgrade.
+  - A direct smoke exercised every Faker API used by the project, including the `es_CO` company providers. `pip-audit` remained at zero known vulnerabilities; no fake-data refresh or database-writing command was run.
+
 - **Gradual backend major upgrades — pytest-cov (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `pytest-cov` 6.3.0 to 7.1.0 as the first isolated major step in the dependency roadmap; application runtime code and coverage configuration are unchanged.
   - Reviewed the 7.x breaking change that removes automatic Python subprocess coverage. The repository's subprocess-based tests execute Node tooling, while CI covers only `gym_app`, so enabling Coverage.py's subprocess patch would add behavior without preserving any currently measured path.

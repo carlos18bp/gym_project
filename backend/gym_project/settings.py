@@ -246,9 +246,10 @@ WOMPI_API_URL = (
 # ---------------------------------------------------------------------------
 # Huey task queue
 # ---------------------------------------------------------------------------
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')
 HUEY = RedisHuey(
     name='gym_project',
-    url=config('REDIS_URL', default='redis://localhost:6379/1'),
+    url=REDIS_URL,
     immediate=not IS_PRODUCTION,
 )
 
@@ -268,9 +269,21 @@ SECOP_CONFIG = {
 # ---------------------------------------------------------------------------
 # Backups (django-dbbackup)
 # ---------------------------------------------------------------------------
-DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
-DBBACKUP_STORAGE_OPTIONS = {
-    'location': config('BACKUP_STORAGE_PATH', default='/var/backups/gym_project'),
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+    'dbbackup': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': config(
+                'BACKUP_STORAGE_PATH', default='/var/backups/gym_project'
+            ),
+        },
+    },
 }
 DBBACKUP_FILENAME_TEMPLATE = '{datetime}.sql'
 DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.{extension}'
