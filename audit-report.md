@@ -538,3 +538,28 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Health slice: 11 passed using an isolated SQLite test database.
 - No service was started or restarted; no migration or staging database command
   ran.
+
+---
+
+## Major Follow-up — django-cleanup 9.0.0 (2026-08-27)
+
+### Decision
+
+- Applied `django-cleanup` 8.1.0 -> 9.0.0 in isolation; no other dependency pin
+  changed.
+- Confirmed that `django_cleanup` is not registered in `INSTALLED_APPS` and is
+  not imported by repository code, so this upgrade does not activate automatic
+  file-deletion signals or otherwise change runtime behavior.
+- Current remaining direct outdated dependencies: 10 (9 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Package import and version metadata passed while confirming its intentionally
+  inactive application status.
+- Four model-level physical-file deletion tests and two service/trámite
+  replacement-cleanup tests passed using isolated SQLite test databases.
+- No migration or staging database command ran.

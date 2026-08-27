@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — django-cleanup | `django-cleanup` 8.1.0→9.0.0; clean resolution/audit, app intentionally remained inactive, and 6 application-specific file cleanup tests passed |
 | 2026-08-27 | Gradual backend major upgrades — gunicorn | `gunicorn` 23.0.0→26.2.0; clean resolution/audit, deployed WSGI/worker/socket config accepted, and 11 health tests passed without starting services |
 | 2026-08-27 | Gradual backend major upgrades — cssselect2 | `cssselect2` 0.8.0→0.9.0; clean resolution/audit, compound selector + WeasyPrint + svglib smoke, 2 document-render and 7 service/trámite PDF tests passed |
 | 2026-08-27 | Gradual backend major upgrades — pyphen | `pyphen` 0.17.2→0.18.1; clean resolution/audit, Spanish fallback + splitting + WeasyPrint hyphenation smoke, 2 document-render and 7 service/trámite PDF tests passed |

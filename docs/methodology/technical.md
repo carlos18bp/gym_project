@@ -29,6 +29,7 @@
 | Document Styling | cssselect2 0.9.0, tinycss2 1.5.1, tinyhtml5 2.1.0 |
 | Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
+| File Lifecycle | django-cleanup 9.0.0 (installed but not registered); application-specific cleanup signals |
 | Environment Config | python-decouple 3.8 |
 | Backups | django-dbbackup 4.3.0 |
 | Query Profiling | django-silk 5.5.2 |
@@ -75,6 +76,10 @@
 > svglib CSS-to-PDF rendering paths.
 > Gunicorn 26.2.0 accepts the existing three-worker Unix-socket systemd
 > configuration and loads `gym_project.wsgi:application` without changes.
+> Django-cleanup 9.0.0 also resolves cleanly, but remains intentionally inactive:
+> the repository neither registers `django_cleanup` in `INSTALLED_APPS` nor
+> imports it. Existing application-specific file deletion and replacement hooks
+> remain responsible for file lifecycle behavior.
 
 ### Frontend
 

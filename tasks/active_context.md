@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — django-cleanup (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `django-cleanup` 8.1.0 to 9.0.0 without registering or activating its automatic signals; repository-specific cleanup behavior remains authoritative.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; package import/version metadata and the intentionally inactive app state were confirmed.
+  - Four physical-file deletion tests and two replacement-cleanup tests passed under SQLite. No migration or staging database command ran.
+
 - **Gradual backend major upgrades — gunicorn (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `gunicorn` 23.0.0 to 26.2.0 while retaining the three-worker Unix-socket systemd command and WSGI entry point.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; Gunicorn configuration check/print modes accepted every deployed argument.
