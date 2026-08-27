@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — redis | `redis` 5.3.1→8.1.0; clean resolution/audit, real redis-py + Huey queue/result/schedule operations, real health endpoint, and 11 health tests passed against isolated services |
 | 2026-08-27 | Gradual backend major upgrades — django-dbbackup | `django-dbbackup` 4.3.0→5.3.0; migrated to `STORAGES["dbbackup"]`, preserved command scheduling, created a real compressed SQLite backup + metadata, and passed 11 health tests |
 | 2026-08-27 | Gradual backend major upgrades — django-cleanup | `django-cleanup` 8.1.0→9.0.0; clean resolution/audit, app intentionally remained inactive, and 6 application-specific file cleanup tests passed |
 | 2026-08-27 | Gradual backend major upgrades — gunicorn | `gunicorn` 23.0.0→26.2.0; clean resolution/audit, deployed WSGI/worker/socket config accepted, and 11 health tests passed without starting services |

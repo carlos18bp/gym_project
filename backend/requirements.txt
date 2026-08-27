@@ -87,7 +87,7 @@ python-decouple==3.8
 
 # Task queue (Huey + Redis)
 huey==2.6.0
-redis==5.3.1
+redis==8.1.0
 
 # Backups
 django-dbbackup==5.3.0

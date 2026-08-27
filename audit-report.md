@@ -592,3 +592,29 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - A real isolated SQLite database produced a compressed backup and valid
   metadata through `dbbackup` 5.3.0; the health slice passed 11 tests.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — redis 8.1.0 (2026-08-27)
+
+### Decision
+
+- Applied `redis` 5.3.1 -> 8.1.0 in isolation; no other dependency pin
+  changed.
+- Preserved the `Redis.from_url` health-check API and Huey 2.6.0's
+  `ConnectionPool.from_url` integration without application or settings changes.
+- Current remaining direct outdated dependencies: 8 (7 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Against an ephemeral local Redis server, redis-py 8.1.0 passed ping, string
+  reads/writes and pipeline operations.
+- Huey passed queue enqueue/dequeue, result storage and scheduled-task Lua
+  operations; the real health endpoint reported both database and Redis healthy.
+- Health slice: 11 passed using an isolated SQLite test database.
+- No production/staging Redis connection, migration or staging database command
+  ran.

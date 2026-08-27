@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — redis (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `redis` 5.3.1 to 8.1.0 while preserving `Redis.from_url` health checks and Huey 2.6.0's connection-pool integration.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; direct client, pipeline, queue, result-store and scheduled-task Lua operations passed against an ephemeral Redis server.
+  - The real health endpoint reported SQLite and Redis healthy, and the 11 health tests passed. No staging/production Redis connection, migration or staging database command ran.
+
 - **Gradual backend major upgrades — django-dbbackup (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `django-dbbackup` 4.3.0 to 5.3.0 and migrated its removed legacy storage settings to `STORAGES["dbbackup"]`, preserving the existing filesystem path and Django's default/staticfiles aliases.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; both management commands retained compression/cleanup options and the scheduled dispatcher retained its two calls.
