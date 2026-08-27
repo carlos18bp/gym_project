@@ -106,6 +106,11 @@
 > which generates service/trámite PDFs, declares `reportlab>=4.0.4,<5`.
 > Reportlab 5.0.1 therefore cannot resolve in the current PDF stack; this is a
 > compatibility hold rather than a known-vulnerability hold.
+> Django remains on the supported 5.2 LTS line because Django 6.1 requires
+> MySQL 8.4 or newer while this host's active MySQL service is 8.0.46. The
+> application itself loaded and passed focused SQLite regressions under 6.1;
+> that exercise also identified the future Django 7 migration from legacy
+> `EMAIL_*` settings to `MAILERS`.
 
 ### Frontend
 

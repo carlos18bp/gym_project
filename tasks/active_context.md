@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — Django 6.1 infrastructure hold (2026-08-27)**:
+  - Installed Django 6.1 with the complete cumulative requirements; dependency resolution, `pip check`, Django's SQLite system check, `pip-audit`, 11 health tests and 3 email-path tests all passed.
+  - Restored Django 5.2.17 because Django 6.1's MySQL backend requires MySQL 8.4+, while the active server on this host is MySQL 8.0.46 and CI exercises only SQLite. A green SQLite CI would therefore be insufficient deployment evidence.
+  - Django 6.1 also emits Django 7 deprecation warnings for the current `EMAIL_*` settings; a future upgrade should pair the MySQL 8.4 infrastructure change with a planned `MAILERS` migration. The restored environment remains at zero known vulnerabilities.
+
 - **Gradual backend major upgrades — reportlab 5 standalone hold (2026-08-27)**:
   - Attempted reportlab 4.5.1→5.0.1 against the complete cumulative requirements; pip rejected it because xhtml2pdf 0.2.17 explicitly requires `reportlab>=4.0.4,<5`.
   - Restored reportlab 4.5.1 without changing application code or replacing the service/trámite PDF engine. The rebuilt current environment passes `pip check`, Django check and a zero-finding `pip-audit`.

@@ -779,3 +779,33 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - `python manage.py check`: no issues (0 silenced).
 - No application code, migration, database, staging/production service or PDF
   engine was changed.
+
+---
+
+## Major Follow-up — Django 6.1 infrastructure hold (2026-08-27)
+
+### Decision
+
+- Attempted Django 5.2.17 -> 6.1 against the full cumulative requirements.
+- The dependency set resolved and the application loaded under Python 3.12 and
+  SQLite, but Django 6.1's MySQL backend requires MySQL 8.4 or newer. This
+  host's active MySQL service and server binary are version 8.0.46.
+- Restored Django 5.2.17 because the repository's CI backend uses SQLite and
+  cannot prove compatibility with the deployed MySQL engine.
+- Django 6.1 also exposed the next framework migration: the legacy `EMAIL_*`
+  settings emit `RemovedInDjango70Warning` and should move to `MAILERS` before
+  Django 7.0.
+- Current remaining direct outdated dependencies: 3 (the `svglib` candidate
+  plus held Django and `reportlab`).
+
+### Verification
+
+- Clean Python 3.12 resolution with Django 6.1: success; `pip check` and
+  `pip-audit` reported no broken requirements or known vulnerabilities.
+- Django 6.1 system check under isolated SQLite: no issues (0 silenced), with
+  only the documented Django 7 email-setting deprecations.
+- Health slice: 11 passed; email-path slice: 3 passed under isolated SQLite.
+- The restored Django 5.2.17 cumulative environment installed cleanly and
+  again passed `pip check`, the zero-finding audit and Django's system check.
+- No migration, deployed database query, application code, staging/production
+  service or MySQL configuration was changed.

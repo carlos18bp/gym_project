@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ⏸ Held at 5.2.17: code/check/audit + 14 focused SQLite tests pass on 6.1, but the active MySQL 8.0.46 server is below Django 6.1's MySQL 8.4 minimum; future work also migrates `EMAIL_*` to `MAILERS` |
 | 2026-08-27 | Gradual backend major upgrades — reportlab standalone | ⏸ Held at 4.5.1: xhtml2pdf 0.2.17 requires `reportlab>=4.0.4,<5`; clean resolver rejected 5.0.1 and the restored cumulative environment remains healthy with zero known vulnerabilities |
 | 2026-08-27 | Gradual backend major upgrades — pyHanko validation stack | pyHanko 0.25.3→0.36.2 + `pyhanko-certvalidator` 0.26.8→0.31.4 as a resolver-required unit; clean audit, real xhtml2pdf output, offline RSA chain validation and 21 focused tests passed |
 | 2026-08-27 | Gradual backend major upgrades — OpenCV headless | `opencv-python-headless` 4.14.0.94→5.0.0.93; clean resolution/audit, NumPy-backed image operation smoke and 11 health tests passed; no direct repository imports found |
