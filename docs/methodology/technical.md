@@ -27,14 +27,17 @@
 | Query Profiling | django-silk 5.5.2 |
 | Test Data | Faker 25.9.2 |
 | Linting | Ruff |
-| Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 6.3.0, coverage 7.15.4 |
+| Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 7.1.0, coverage 7.15.4 |
 
-> **Backend dependency remediation (complete, 2026-08-26):** a clean Python
+> **Backend dependency remediation (complete, 2026-08-27):** a clean Python
 > 3.12 environment with the pinned requirements and `pip==26.2.1` reports zero
 > known vulnerabilities. `PyPDF2` was removed, WeasyPrint resource fetching is
 > restricted, and the suite's inert fixture marks were migrated for pytest 9.
 > `svglib` remains at 1.5.1 because 1.6.0 adds an unavailable `pycairo` native
-> build dependency and does not remediate any reported advisory.
+> build dependency and does not remediate any reported advisory. The subsequent
+> `pytest-cov` 7.1.0 upgrade preserves the CI coverage totals and report formats;
+> its removed subprocess instrumentation does not affect this repository because
+> Python subprocesses do not execute covered `gym_app` code.
 
 ### Frontend
 

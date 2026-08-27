@@ -5,6 +5,11 @@
 **Base:** `release-september-2026-c` @ `f17c4e65ada75e2c0e56dea6a0558925622cd7b0`
 **Scope:** backend only; patch + minor updates only (no major version bumps)
 
+> **Major follow-up (2026-08-27):** branch
+> `chore/27082026-pytest-cov-major` advances `pytest-cov` 6.3.0 to 7.1.0 as
+> the first operator-approved, package-specific major evaluation. The original
+> 2026-08-26 snapshot and remediation history below remain unchanged.
+
 ## Summary
 
 | Surface | Vulns (initial) | Outdated (initial) | Vulns (final) |
@@ -126,3 +131,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - `pytest --collect-only -q`: 3,187 tests collected, 0 collection errors.
 - Slice: `pytest gym_app/tests/views/test_health.py -q`: 11 passed.
 - No migrations or database-writing management commands were run.
+
+---
+
+## Major Follow-up — `pytest-cov` 7.1.0 (2026-08-27)
+
+### Decision
+
+- Applied `pytest-cov` 6.3.0 -> 7.1.0 in isolation; no other dependency pin changed.
+- Kept `.coveragerc` unchanged. Version 7 removes automatic Python subprocess
+  instrumentation, but this repository's subprocess-based tests execute Node
+  tooling and CI measures only `gym_app`.
+- Current remaining direct outdated dependencies: 27 (26 major-line skips plus
+  the held `svglib` 1.6.0 candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full `requirements.txt`: success.
+- `pip check`: no broken requirements.
+- `python manage.py check`: no issues (0 silenced).
+- `pytest --collect-only -q`: 3,187 tests collected, 0 collection errors.
+- CI-style health slice with xdist and terminal/XML/JSON reports: 11 passed.
+- Coverage parity vs 6.3.0: 10,877 statements, 3,441 covered lines, 2,918
+  branches, 2 covered branches and 25% displayed coverage in both runs.
+- `pip-audit`: 0 known vulnerabilities across 92 packages in the isolated venv.

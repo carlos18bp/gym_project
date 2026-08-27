@@ -42,6 +42,12 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — pytest-cov (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `pytest-cov` 6.3.0 to 7.1.0 as the first isolated major step in the dependency roadmap; application runtime code and coverage configuration are unchanged.
+  - Reviewed the 7.x breaking change that removes automatic Python subprocess coverage. The repository's subprocess-based tests execute Node tooling, while CI covers only `gym_app`, so enabling Coverage.py's subprocess patch would add behavior without preserving any currently measured path.
+  - Verification used a clean Python 3.12 venv: full requirements installation and `pip check` passed, Django reported zero issues, 3,187 tests collected, and the 11-test health slice passed under xdist while producing terminal/XML/JSON coverage reports.
+  - Baseline parity was exact between 6.3.0 and 7.1.0: 10,877 statements, 3,441 covered lines, 2,918 branches, 2 covered branches and 25% slice coverage. `pip-audit` remained at zero known vulnerabilities across 92 installed packages.
+
 - **Focused contract-execution walkthrough (2026-08-26, complete)**:
   - Added `docs/reports/Guia_Prueba_Cuentas_De_Cobro_26082026.md`, a standalone Spanish walkthrough that leads with the four deterministic `[QA Cuentas de Cobro]` contracts and keeps the from-scratch setup as an optional path.
   - Re-verified staging without mutations: `lawyer1@example.com` and `client1@example.com` are active with the documented test password; all four contracts remain fully signed and visible, with the expected empty, accepted, uploaded and rejected installment states. No fake-data refresh was needed.
