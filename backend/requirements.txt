@@ -69,7 +69,7 @@ tinycss2==1.5.1
 tinyhtml5==2.1.0
 tqdm==4.70.0
 typing_extensions==4.16.0
-tzdata==2025.3
+tzdata==2026.3
 tzlocal==5.4.4
 uritools==4.0.3
 urllib3==2.7.0

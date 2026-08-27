@@ -204,3 +204,26 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Health slice: 11 passed; SECOP client regression: 21 passed.
 - `pip-audit`: no known vulnerabilities in the isolated venv.
 - No migration or database-writing management command ran.
+
+---
+
+## Major Follow-up — tzdata 2026.3 (2026-08-27)
+
+### Decision
+
+- Applied `tzdata` 2025.3 -> 2026.3 in isolation; no other dependency pin
+  changed.
+- Kept Django's time-zone settings and application code unchanged. The package
+  remains the fallback IANA database used by `zoneinfo` and pandas.
+- Current remaining direct outdated dependencies: 24 (23 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- Packaged-data smoke loaded tzdata 2026.3 and `America/Bogota`.
+- Report-model slice: 10 passed; process-alert task slice: 16 passed using an
+  isolated SQLite test database.
+- No migration or staging database command ran.

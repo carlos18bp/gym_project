@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — tzdata (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from `tzdata` 2025.3 to 2026.3, preserving it as the cross-platform IANA fallback consumed by pandas and Python's `zoneinfo`.
+  - A clean Python 3.12 environment passed the cumulative install, `pip check`, Django check and zero-finding `pip-audit`; the packaged `America/Bogota` resource loaded successfully.
+  - Report-model tests (10) and process-alert scheduling tests (16) passed under an isolated SQLite test database. No staging database command ran.
+
 - **Gradual backend major upgrades — certifi (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `certifi` 2024.12.14 to 2026.7.22; no application code or Requests configuration changed.
   - A clean Python 3.12 environment installed the cumulative requirements and passed `pip check`, Django's system check and a zero-finding `pip-audit`.

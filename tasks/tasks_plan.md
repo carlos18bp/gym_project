@@ -58,6 +58,7 @@
 
 | Date | Task | Result |
 |------|------|--------|
+| 2026-08-27 | Gradual backend major upgrades — tzdata | `tzdata` 2025.3→2026.3; packaged Bogotá zone smoke, report models and process-alert scheduling passed under SQLite, with clean resolution and zero-finding audit |
 | 2026-08-27 | Gradual backend major upgrades — certifi | `certifi` 2024.12.14→2026.7.22; clean resolution, CA-bundle/Requests smoke, health and SECOP client regression, Django check and zero-finding `pip-audit` passed |
 | 2026-08-27 | Gradual backend major upgrades — Faker | `Faker` 25.9.2→40.37.0; clean Python 3.12 resolution, provider/locale smoke, 12 focused seeder tests, full collection and `pip-audit` all passed without changing fake-data logic |
 | 2026-08-27 | Gradual backend major upgrades — pytest-cov | `pytest-cov` 6.3.0→7.1.0; isolated install and `pip check` passed, 3,187 tests collected, health slice preserved identical coverage totals, and `pip-audit` remained at 0 findings |
