@@ -618,3 +618,31 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Health slice: 11 passed using an isolated SQLite test database.
 - No production/staging Redis connection, migration or staging database command
   ran.
+
+---
+
+## Major Follow-up — Huey 3.3.4 (2026-08-27)
+
+### Decision
+
+- Applied Huey 2.6.0 -> 3.3.4 in isolation; no other dependency pin changed.
+- Preserved Django integration, all 14 registered tasks, the `run_huey`
+  consumer, periodic schedules, retries and distributed locks.
+- Materialized `REDIS_URL` once in Django settings so Huey and the health
+  endpoint share the same source without depending on storage implementation
+  attributes.
+- Current remaining direct outdated dependencies: 7 (6 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced); `run_huey --help` loaded the
+  Django management command and consumer options.
+- Against an ephemeral local Redis server, Huey 3.3.4 enqueued and executed a
+  real task, returned its result and enforced lock contention.
+- Health slice: 11 passed; notification, signature reminder and SECOP task
+  slices: 19 passed using isolated SQLite test databases.
+- No production/staging Redis connection, migration or staging database command
+  ran.

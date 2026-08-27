@@ -10,7 +10,7 @@
 | Framework | Django | 5.2.17 |
 | REST API | Django REST Framework | 3.18.0 |
 | Authentication | SimpleJWT | 5.5.1 |
-| Task Queue | Huey | 2.6.0 |
+| Task Queue | Huey | 3.3.4 |
 | Queue Backend | Redis client | 8.1.0 |
 | Database (dev) | SQLite | built-in |
 | Database (prod) | MySQL | mysqlclient 2.2.8 |
@@ -84,9 +84,13 @@
 > the existing filesystem destination, retention, compression and scheduled
 > database/media command behavior. The default and staticfiles storage aliases
 > remain explicit and equivalent to Django's prior defaults.
-> Redis-py 8.1.0 remains compatible with the health endpoint and Huey 2.6.0;
+> Redis-py 8.1.0 remains compatible with the health endpoint and Huey 3.3.4;
 > direct client, pipeline, queue, result-store and scheduled-task Lua operations
 > passed against an isolated Redis server.
+> Huey 3.3.4 preserved the registered task/decorator, consumer, result-store and
+> lock APIs used by the application. `REDIS_URL` is now materialized once in
+> Django settings and shared by Huey and the health endpoint instead of probing
+> storage implementation attributes.
 
 ### Frontend
 

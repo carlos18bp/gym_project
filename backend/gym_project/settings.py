@@ -246,9 +246,10 @@ WOMPI_API_URL = (
 # ---------------------------------------------------------------------------
 # Huey task queue
 # ---------------------------------------------------------------------------
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')
 HUEY = RedisHuey(
     name='gym_project',
-    url=config('REDIS_URL', default='redis://localhost:6379/1'),
+    url=REDIS_URL,
     immediate=not IS_PRODUCTION,
 )
 

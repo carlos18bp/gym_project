@@ -86,7 +86,7 @@ python-magic==0.4.27
 python-decouple==3.8
 
 # Task queue (Huey + Redis)
-huey==2.6.0
+huey==3.3.4
 redis==8.1.0
 
 # Backups

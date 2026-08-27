@@ -42,6 +42,11 @@ The application is **feature-complete** with all 18 major features implemented, 
 
 ## 2. Recent Focus Areas
 
+- **Gradual backend major upgrades — Huey (2026-08-27, complete)**:
+  - Upgraded the exact backend pin from Huey 2.6.0 to 3.3.4 while preserving all 14 registered project tasks, Django's `run_huey` consumer and the existing decorators, schedules and locks.
+  - Materialized `REDIS_URL` once in Django settings so Huey and the health endpoint share the same configured source without depending on storage implementation attributes.
+  - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; an ephemeral Redis smoke validated enqueue, execution, result retrieval and lock contention. The 11 health and 19 focused task tests passed under isolated SQLite. No staging/production Redis connection, migration or staging database command ran.
+
 - **Gradual backend major upgrades — redis (2026-08-27, complete)**:
   - Upgraded the exact backend pin from `redis` 5.3.1 to 8.1.0 while preserving `Redis.from_url` health checks and Huey 2.6.0's connection-pool integration.
   - The cumulative clean environment passed installation, `pip check`, Django check and a zero-finding `pip-audit`; direct client, pipeline, queue, result-store and scheduled-task Lua operations passed against an ephemeral Redis server.
