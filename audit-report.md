@@ -442,3 +442,27 @@ owns them; `ruff` also requires staying on its 0.15.x line under this policy.
 - Google login slice: 10 passed; health slice: 11 passed using isolated SQLite
   test databases.
 - No migration or staging database command ran.
+
+---
+
+## Major Follow-up — pydyf 0.12.1 (2026-08-27)
+
+### Decision
+
+- Applied `pydyf` 0.11.0 -> 0.12.1 in isolation; no other dependency pin
+  changed.
+- Preserved WeasyPrint 69.0's low-level PDF writer integration without
+  application or rendering code changes.
+- Current remaining direct outdated dependencies: 14 (13 upgrade candidates
+  plus the held `svglib` candidate).
+
+### Verification
+
+- Clean Python 3.12 venv + full cumulative `requirements.txt`: success.
+- `pip check`: no broken requirements; `pip-audit`: no known vulnerabilities.
+- `python manage.py check`: no issues (0 silenced).
+- A real WeasyPrint document retained its PDF header, page count, title metadata
+  and link annotation when parsed back through pypdf.
+- Document-render slice: 2 passed; service/trámite PDF generation slice: 7
+  passed using isolated SQLite test databases.
+- No migration or staging database command ran.
