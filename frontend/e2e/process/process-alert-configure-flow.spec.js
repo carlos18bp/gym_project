@@ -41,18 +41,23 @@ const buildScenarioUsers = ({ lawyerId, clientId }) => ({
   }),
 });
 
-async function fillRequiredProcessFields(page) {
-  const plaintiffInputs = await page.locator('input[name="plaintiff"]:visible').all();
-  const defendantInputs = await page.locator('input[name="defendant"]:visible').all();
+function getLabeledInput(page, label) {
+  return page
+    .locator("label")
+    .filter({ hasText: label })
+    .locator("..")
+    .getByRole("textbox");
+}
 
-  await plaintiffInputs[0].fill("Demandante");
-  await defendantInputs[0].fill("Demandado");
+async function fillRequiredProcessFields(page) {
+  await getLabeledInput(page, "Dte./Accionante").fill("Demandante");
+  await getLabeledInput(page, "Ddo./Accionado").fill("Demandado");
 
   await page.getByRole("button", { name: "Seleccionar" }).click();
   await page.getByRole("option", { name: "Civil" }).click();
 
-  await defendantInputs[1].fill("Subcaso");
-  await plaintiffInputs[1].fill("RAD-9200");
+  await getLabeledInput(page, "Subclase").fill("Subcaso");
+  await getLabeledInput(page, "Radicado").fill("RAD-9200");
   await page.getByRole("textbox", { name: /^Autoridad/ }).fill("Juzgado 1");
 
   await page.getByPlaceholder("Buscar y agregar usuarios").fill("Client");
@@ -149,7 +154,9 @@ test(
       .getByTestId("alert-description-input")
       .fill("Recordar presentar memorial ante el juzgado");
 
-    await page.getByRole("button", { name: "Guardar Proceso" }).click();
+    const saveButton = page.getByRole("button", { name: "Guardar Proceso" });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
     await completeSuccessDialog(page);
     await expect(page).toHaveURL(/\/process_list/);
 
@@ -183,7 +190,9 @@ test(
     await activeToggle.click();
     await expect(activeToggle).toHaveClass(/bg-gray-200/);
 
-    await page.getByRole("button", { name: "Guardar Proceso" }).click();
+    const saveButton = page.getByRole("button", { name: "Guardar Proceso" });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
     await completeSuccessDialog(page);
 
     expect(submitted).toHaveLength(1);
