@@ -15,16 +15,15 @@ jobs:
   # Backend — pytest (Django + SQLite)
   # ───────────────────────────────────────────
   backend-tests:
+    name: backend-tests (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # The suite runs in parallel (pytest -n auto); on the 4-vCPU runner that is
-    # ~2x faster than the serial run that used to crowd the old 30-min ceiling.
-    # 25 leaves comfortable headroom while still catching a genuine hang.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     timeout-minutes: 25
     permissions:
       contents: read
-    outputs:
-      line-coverage: ${{ steps.coverage-parse.outputs.line-pct }}
-      branch-coverage: ${{ steps.coverage-parse.outputs.branch-pct }}
     defaults:
       run:
         working-directory: backend
@@ -51,15 +50,82 @@ jobs:
       - name: Run migrations
         run: python manage.py migrate --no-input
 
-      - name: Run pytest
-        run: >
-          pytest -n auto --tb=short
-          --junitxml=test-results/results.xml
-          --cov=gym_app
-          --cov-branch
-          --cov-report=term
-          --cov-report=xml:test-results/coverage.xml
-          --cov-report=json:coverage-backend.json
+      - name: Verify backend shard manifest
+        run: python "$GITHUB_WORKSPACE/scripts/ci/backend-shard-files.py" --check 4
+
+      - name: Run pytest shard
+        env:
+          SHARD: ${{ matrix.shard }}/4
+        run: |
+          FILES=$(python "$GITHUB_WORKSPACE/scripts/ci/backend-shard-files.py" --shard "$SHARD")
+          pytest -n auto --tb=short \
+            --junitxml=test-results/results.xml \
+            --cov=gym_app \
+            --cov-branch \
+            --cov-report= \
+            $FILES
+
+      - name: Upload backend shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-shard-${{ strategy.job-index }}
+          path: |
+            backend/.coverage
+            backend/test-results/results.xml
+          include-hidden-files: true
+          retention-days: 1
+
+  backend-coverage-merge:
+    if: always()
+    needs: backend-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      line-coverage: ${{ steps.coverage-parse.outputs.line-pct }}
+      branch-coverage: ${{ steps.coverage-parse.outputs.branch-pct }}
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install coverage merger
+        run: pip install coverage==7.15.4
+
+      - name: Download backend shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: backend-shard-*
+          path: backend/shard-artifacts
+
+      - name: Merge backend coverage and JUnit
+        run: python "$GITHUB_WORKSPACE/scripts/ci/backend-merge-shards.py" --expected-shards 4
+
+      - name: Parse coverage metrics
+        id: coverage-parse
+        if: always()
+        run: |
+          if [ -f test-results/coverage.xml ]; then
+            LINE_RATE=$(grep -oP 'line-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            BRANCH_RATE=$(grep -oP 'branch-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
+            LINE_PCT=$(echo "$LINE_RATE" | awk '{printf "%.1f", $1 * 100}')
+            BRANCH_PCT=$(echo "$BRANCH_RATE" | awk '{printf "%.1f", $1 * 100}')
+            echo "line-pct=$LINE_PCT" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=$BRANCH_PCT" >> "$GITHUB_OUTPUT"
+          else
+            echo "line-pct=N/A" >> "$GITHUB_OUTPUT"
+            echo "branch-pct=N/A" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload backend test artifacts
         if: always()
@@ -78,22 +144,6 @@ jobs:
           name: coverage-backend
           path: backend/coverage-backend.json
           retention-days: 5
-
-      - name: Parse coverage metrics
-        id: coverage-parse
-        if: always()
-        run: |
-          if [ -f test-results/coverage.xml ]; then
-            LINE_RATE=$(grep -oP 'line-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
-            BRANCH_RATE=$(grep -oP 'branch-rate="\K[0-9.]+' test-results/coverage.xml | head -1 || echo "0")
-            LINE_PCT=$(echo "$LINE_RATE" | awk '{printf "%.1f", $1 * 100}')
-            BRANCH_PCT=$(echo "$BRANCH_RATE" | awk '{printf "%.1f", $1 * 100}')
-            echo "line-pct=$LINE_PCT" >> "$GITHUB_OUTPUT"
-            echo "branch-pct=$BRANCH_PCT" >> "$GITHUB_OUTPUT"
-          else
-            echo "line-pct=N/A" >> "$GITHUB_OUTPUT"
-            echo "branch-pct=N/A" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Write backend summary
         if: always()
@@ -500,7 +550,7 @@ jobs:
   # ───────────────────────────────────────────
   coverage-summary:
     if: always()
-    needs: [backend-tests, mysql-84-compatibility, frontend-unit-tests, e2e-merge-reports]
+    needs: [backend-coverage-merge, mysql-84-compatibility, frontend-unit-tests, e2e-merge-reports]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
