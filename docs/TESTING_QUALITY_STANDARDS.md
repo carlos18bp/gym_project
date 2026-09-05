@@ -20,6 +20,8 @@ This document applies to:
 
 > **Note:** These standards focus on test quality and maintainability only. They do not change production business logic.
 
+> **Responsive behaviour** has its own canonical standard — `RESPONSIVE_STANDARDS.md` (synced next to this file, consumed by `/responsive-pass`). Viewport-scoped E2E tests follow both documents: that one fixes the widths and the invariants, this one fixes the junk gate and the definition of done.
+
 ---
 
 ## Mandatory Rules (Pass/Fail)
@@ -1211,6 +1213,7 @@ and are audited like any other exception.
 | `// quality: allow-render-only (reason)` | `no_data_assertion` | the view under test is deliberately static and its content is pinned by another test |
 | `// quality: allow-duplicate (reason)` | `duplicate_coverage` | the same body must run twice by design (e.g. a per-role or per-viewport contract) |
 | `// quality: allow-mock-only (reason)` | `mock_only_assertion` | the outbound call IS the contract (e.g. telemetry/analytics emission with no observable state) |
+| `// quality: allow-negation-only (reason)` | `negation_only_assertion` | absence IS the contract and nothing else renders in that state to anchor on (e.g. a `return null` guard), or a pure function's null case whose positive twin is pinned by an adjacent test |
 | `// quality: allow-reimpl (reason)` | `reimplements_sut` | recomputing is the spec itself (e.g. a property/identity the test intentionally re-states) |
 | `// quality: allow-flow-tag-mismatch (reason)` | `flow_tag_mismatch` | the spec legitimately exercises the tagged flow through vocabulary the heuristic cannot map (e.g. the UI copy names the action differently than the flow id) |
 | `// quality: allow-url-alternation (reason)` | `tautological_url` | the test genuinely accepts two destinations (e.g. a geo-dependent localized home) — the default shape `toHaveURL(/sign-in\|<navigated-segment>/)` cannot fail and is junk |

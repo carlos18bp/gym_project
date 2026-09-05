@@ -10,7 +10,6 @@ from gym_app.models import Notification
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def notification(client_user):
     """Single unread notification for client_user."""
     return Notification.objects.create(
@@ -23,7 +22,6 @@ def notification(client_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def read_notification(client_user):
     """Read notification for client_user."""
     return Notification.objects.create(
@@ -37,7 +35,6 @@ def read_notification(client_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def archived_notification(client_user):
     """Create an archived notification for client_user."""
     return Notification.objects.create(
@@ -52,7 +49,6 @@ def archived_notification(client_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def snoozed_notification(client_user):
     """Currently-snoozed notification for client_user."""
     return Notification.objects.create(
@@ -67,7 +63,6 @@ def snoozed_notification(client_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def deleted_notification(client_user):
     """Soft-deleted notification for client_user."""
     return Notification.objects.create(
@@ -81,7 +76,6 @@ def deleted_notification(client_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def other_user_notification(lawyer_user):
     """Notification belonging to a different user."""
     return Notification.objects.create(

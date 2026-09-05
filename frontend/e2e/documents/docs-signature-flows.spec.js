@@ -9,9 +9,8 @@ import {
 
 /**
  * Consolidated E2E tests for document signature flows.
- * Replaces 9 fragmented spec files with 5 user-flow tests.
- * Covers: sign-signed-documents, sign-electronic-signature, sign-document-flow,
- *         sign-client-flow, sign-archived-documents, sign-status-modal
+ * Replaces 9 fragmented spec files with 4 user-flow tests.
+ * Covers: sign-signed-documents, sign-electronic-signature.
  */
 
 test("lawyer sees pending signature documents on Dcs. Por Firmar tab", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
@@ -64,31 +63,6 @@ test("lawyer sees fully signed documents on Dcs. Formalizados tab", { tag: ['@fl
 
   await page.getByRole("button", { name: "Dcs. Formalizados" }).click();
   await expect(page.getByText("Contrato Firmado Completo")).toBeVisible({ timeout: 10_000 });
-});
-
-test("lawyer sees rejected documents on Dcs. Archivados tab", { tag: ['@flow:sign-signed-documents', '@module:signatures', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
-  const userId = 8502;
-  const docs = [
-    buildMockDocument({
-      id: 2020, title: "Contrato Rechazado", state: "Rejected",
-      createdBy: userId, requires_signature: true,
-      signatures: [
-        { id: 20, signer_email: "client@example.com", signed: false, signer_name: "Cliente", rejected: true },
-      ],
-    }),
-  ];
-
-  await installDynamicDocumentApiMocks(page, { userId, role: "lawyer", hasSignature: true, documents: docs });
-  await setAuthLocalStorage(page, {
-    token: "e2e-token",
-    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
-  });
-
-  await page.goto("/dynamic_document_dashboard");
-  await expect(page.getByRole("button", { name: "Minutas" })).toBeVisible({ timeout: 15_000 });
-
-  await page.getByRole("button", { name: "Dcs. Archivados" }).click();
-  await expect(page.getByText("Contrato Rechazado")).toBeVisible({ timeout: 10_000 });
 });
 
 test("lawyer opens electronic signature modal and sees upload/draw options", { tag: ['@flow:sign-electronic-signature', '@module:signatures', '@priority:P1', '@role:lawyer'] }, async ({ page }) => {

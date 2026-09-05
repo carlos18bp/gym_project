@@ -1,14 +1,16 @@
 ---
 name: "all-in-base"
-description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en main/master?', '¿quedó algo sin mergear?', '¿todo el trabajo de esta sesión ya aterrizó?', '¿puedo cerrar?'. Responde SÍ/NO por repo — default: los repos que ESTA sesión tocó (la lista sale del contexto de la conversación; git la verifica), fallback el repo del cwd — chequeando tree limpio + commits sin push + contenido en la base (misma mecánica ya-en-base de merge-when-green, cubre squash) + PRs de la sesión abiertos. Si el veredicto es NO y no se pasó --check-only, lo TERMINA delegando: 1 rama pendiente → flujo merge-when-green; varias ramas/repos → merge-queue; toolkit → Path B. Una release sin release_merge queda ⏸️, jamás se mergea. NO usar para drenar ramas ajenas a la sesión ($merge-queue) ni para un merge puntual ya decidido ($merge-when-green), ni en cron/headless. Sesgo heredado: ante duda dice NO — jamás un SÍ falso."
+description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en main/master?', '¿quedó algo sin mergear?', '¿todo el trabajo de esta sesión ya aterrizó?', '¿puedo cerrar?'. Responde SÍ/NO por repo — default: los repos que ESTA sesión tocó (la lista sale del contexto de la conversación; git la verifica), fallback el repo del cwd — chequeando tree limpio + sin push + PR abierto con CI verde (= ENTREGADO) + contenido en la base (informativo; misma mecánica ya-en-base de merge-when-green, cubre squash). Si el veredicto es NO y no se pasó --check-only, lo TERMINA hasta el DoD de sesión vía $pr-green (commit/push/PR/CI) — NUNCA mergea; el drenaje es de $merge-queue/operador. Una release sin release_merge queda ⏸️, jamás se mergea. NO usar para drenar ramas ajenas a la sesión ($merge-queue) ni para mergear ($merge-when-green es del operador), ni en cron/headless. Sesgo heredado: ante duda dice NO — jamás un SÍ falso."
 ---
 
 > **⚠️ How to invoke**:
-> - Sin argumento: `$all-in-base` → responde la pregunta "¿todo el trabajo de ESTA
->   sesión ya está en `main`/`master`?" y, si la respuesta es NO, lo termina.
+> - Sin argumento: `$all-in-base` → responde la pregunta "¿el trabajo de ESTA sesión
+>   está **ENTREGADO**?" — tree limpio ∧ pusheado ∧ (PR abierto con CI verde ∨ ya
+>   contenido en la base) — y, si la respuesta es NO, lo termina hasta ese DoD.
+>   **"En la base" es informativo**: el merge no es de la sesión.
 > - **Alcance default = los repos que esta sesión tocó**: la lista sale del contexto
 >   de la conversación (vos sabés qué repos editaste/commiteaste en esta sesión);
->   cada candidato se verifica con `[ -d ~/webapps/<repo>/.git ]`. Si el contexto no
+>   cada candidato se verifica con `ls -d ~/webapps/<repo>/.git`. Si el contexto no
 >   identifica ningún repo (sesión recién resumida, contexto compactado), fallback:
 >   el repo del **cwd**.
 > - `--check-only`: sólo el veredicto (tabla SÍ/NO por repo), cero mutación — ni
@@ -22,12 +24,13 @@ description: "Usar al cerrar una sesión de trabajo: '¿ya está todo en main/ma
 >   censo las ve, van como ℹ️ con puntero a $merge-queue (que es quien drena
 >   colas multi-rama).
 >
-> **Qué significa "terminarlo":** la delegación es decision-complete — cada repo
-> pendiente entra al flujo de $merge-when-green (o $merge-queue si hay varias
-> unidades) por la fase de su primer faltante, con defaults (squash) y sin
-> re-preguntar. Los guards de coordenada (wrong-host, release) son siempre-ON y
-> nunca se saltan: una release sin `release_merge:` se integra y espera su CI, pero
-> queda ⏸️ — el veredicto honesto es "NO va a estar en la base hasta autorizarla".
+> **Qué significa "terminarlo":** llevar el trabajo hasta el **DoD de sesión** (PR
+> abierto + CI verde), nunca hasta el merge. La delegación es decision-complete:
+> cada repo pendiente entra a $pr-green por la fase de su primer faltante
+> (commit → push → PR → CI), sin re-preguntar. Los guards de coordenada (wrong-host,
+> release) son siempre-ON y nunca se saltan: una release sin `release_merge:` queda
+> ⏸️ — el veredicto honesto es "NO va a estar en la base hasta que el operador la
+> autorice". El **drenaje** (mergear) es de $merge-queue o del operador.
 
 ## Cómo invocar este skill
 
@@ -42,150 +45,151 @@ es NO y no se pasó `--check-only`):
 
 | label | description | preview |
 |---|---|---|
-| Terminar lo pendiente (Recommended) | delegar cada repo según la tabla (merge-when-green / merge-queue); releases quedan ⏸️ | la columna "Falta" de la tabla |
+| Terminar lo pendiente (Recommended) | llevar cada repo al DoD de sesión vía $pr-green (commit/push/PR/CI); NO mergea, releases quedan ⏸️ | la columna "Falta" de la tabla |
 | Sólo responder | quedarse con el veredicto (equivale a `--check-only`) | `$all-in-base --check-only` |
 | Abortar | salir sin tocar nada | — |
 
-**Qué NO se pregunta:** el merge de una release — lo decide `release_merge:` en
-projects.yml (blocklist §4); el método de merge (squash default — la delegación
-entra a merge-when-green sin re-abrir su picker, regla (4) de su gating); qué
-repos auditar (lo dicta el contexto de la sesión o el flag).
+**Qué NO se pregunta:** el **merge** — esta skill no mergea nada, ni una release
+(lo decide `release_merge:` en projects.yml + el operador; blocklist §4) ni un PR de
+sesión (eso es $merge-queue); el método de merge, por lo mismo; qué repos auditar
+(lo dicta el contexto de la sesión o el flag). La delegación entra a $pr-green
+sin re-abrir su picker (regla (4) de su gating).
 
 ## Phase 0 — Alcance + preflight
 
+> **Post-`EnterWorktree`: UN comando simple por llamada.** Adentro de un worktree
+> nativo, Claude rechaza el comando con `$(...)`, `{a,b}`, `for`/`while` o heredoc
+> con sustitución, y el que apunta al clon compartido (`git -C <clon principal>`,
+> `cd <clon principal>`) — se cae el bloque entero. Esta skill no computa nada en
+> bash: el censo sale de `session-worktree.sh` y los valores se escriben
+> **literales**. Convención completa: `git-branch-protocol` §1 del CLAUDE.md del repo.
+
+**Flags** — los parseás vos leyendo `$ARGUMENTS`; un bucle de parseo sería rechazado:
+
+| Token | Efecto |
+|---|---|
+| `--check-only` | sólo el veredicto, cero mutación (ni delegación ni sweep de watchers) |
+| `--all-repos` | **sólo desde `vps-ops-toolkit`** (error duro fuera): audita `LOCAL_PROJECTS` + toolkit |
+| `--all` · `--all-vps` | **ERROR**: no hay eje fleet — no se audita a ciegas en clones de otros VPS. ¿Todo lo pendiente de ESTE host? → `--all-repos` |
+| cualquier otro | **ERROR**: argumento desconocido |
+
 ```bash
-ARGS_RAW="${ARGUMENTS:-}"
-CHECK_ONLY=0; ALL_REPOS=0
-for tok in $ARGS_RAW; do
-    case "$tok" in
-        --check-only) CHECK_ONLY=1 ;;
-        --all-repos)  ALL_REPOS=1 ;;
-        --all|--all-vps)
-            echo "❌ ERROR: '$tok' no existe en all-in-base."
-            echo "   ¿Todo el trabajo pendiente de ESTE host? → --all-repos (sólo desde vps-ops-toolkit)"
-            echo "   No hay eje fleet: no se audita a ciegas en clones de otros VPS."
-            exit 2 ;;
-        *) echo "❌ ERROR: argumento desconocido '$tok'."; exit 2 ;;
-    esac
-done
-
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-    echo "❌ ERROR: el cwd no es un repo git."; exit 2; }
-cd "$REPO_ROOT"
-
-if (( ALL_REPOS == 1 )) && [ "$(basename "$REPO_ROOT")" != "vps-ops-toolkit" ]; then
-    echo "❌ ERROR: --all-repos sólo se invoca desde vps-ops-toolkit."
-    echo "   Para el veredicto de la sesión desde acá: $all-in-base (sin flags)."
-    exit 2
-fi
-
-# gh es obligatorio: sin él no se puede afirmar SÍ sobre un squash (merge-tree
-# necesita la base fresca, y los PRs de la sesión no se pueden consultar).
-# Sin gh la respuesta honesta es "no evaluable" — que NUNCA se reporta como SÍ.
-command -v gh >/dev/null || { echo "⚠️ gh no disponible — veredicto degradado a 'no evaluable' (jamás SÍ)."; }
-gh auth status >/dev/null 2>&1 || echo "⚠️ gh sin auth — ídem."
-
-echo "🎯 all-in-base — check-only=$CHECK_ONLY all-repos=$ALL_REPOS"
+gh auth status
 ```
 
+`gh` es obligatorio: sin él no se puede afirmar SÍ sobre un squash (merge-tree
+necesita la base fresca, y los PRs de la sesión no se pueden consultar). Sin `gh` la
+respuesta honesta es **"no evaluable"** — que NUNCA se reporta como SÍ.
+
+Reportá `🎯 all-in-base — check-only=<0|1> all-repos=<0|1>`.
+
 **Armado de la lista de repos:**
-- **Default**: enumerá los repos que ESTA sesión tocó — editó, commiteó, mergeó —
-  según tu propio contexto de la conversación. Verificá cada candidato con
-  `[ -d "$HOME/webapps/<repo>/.git" ]`. Si el contexto no identifica ninguno
-  (sesión nueva/resumida): el repo del cwd, y decilo en el reporte.
-- **`--all-repos`**: `source scripts/lib/bootstrap-common.sh` +
+- **Default**: enumerá los repos que ESTA sesión tocó — editó, commiteó — según tu
+  propio contexto de la conversación. Verificá cada candidato con
+  `ls -d ~/webapps/<repo>/.git` (una llamada por repo; `[ -d … ]` en un bucle sería
+  rechazado). Si el contexto no identifica ninguno (sesión nueva/resumida): el repo
+  del cwd, y decilo en el reporte.
+- **Dónde se censa cada repo:** en el **worktree de la sesión**
+  (`~/webapps/.wt/<repo>/<slug>`), donde vive su rama — nunca en el clon principal,
+  que es el checkout de deploy. El helper resuelve el path solo (Phase 1); si querés
+  verlos todos: `session-worktree.sh list --all --porcelain`.
+- **`--all-repos`**: corre desde el clon del toolkit (no hay worktree ni gates ahí):
+  `source scripts/lib/bootstrap-common.sh` +
   `PROJECT_DEFS_QUIET=1 source scripts/lib/project-definitions.sh` →
   `REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")`.
 
 ## Phase 1 — Censo por repo (read-only)
 
-Un bloque autocontenido por repo (las variables no persisten entre bloques). La
-mecánica "¿el contenido ya está en la base?" es la MISMA de la Phase 1.5 de
-$merge-when-green (dos capas: rev-list + merge-tree squash-aware, rc sin pipe).
-**Diferencia deliberada con 1.5:** allá un tree sucio significa "no evaluable ⇒
-seguir el flujo"; acá la pregunta es "¿está en la base?" y trabajo sin commitear
-NO está en la base por definición ⇒ **tree sucio = NO rotundo**, no abstención.
+El censo lo hace el helper, que resuelve de una sola vez el worktree, la base de
+integración **stacked** (la del PR abierto; si no, la release cuando el resolver
+reporta `pr_state=single`; si no, la default), el PR y el `in_base` con las dos capas
+de la Phase 1.5 de $merge-when-green (`rev-list --count` + `merge-tree
+--write-tree` squash-aware, rc leído sin pipe). **Diferencia deliberada con 1.5:**
+allá un tree sucio significa "no evaluable ⇒ seguir el flujo"; acá la pregunta es
+"¿está en la base?" y trabajo sin commitear NO está en la base por definición ⇒
+**`dirty>0` = NO rotundo**, no abstención.
+
+**a) El repo donde estás parado** (tu worktree de sesión) — un registro completo:
 
 ```bash
-cd "$HOME/webapps/<repo>" || { echo "REPO=<repo> VERDICT=skip:no-existe"; exit 0; }
-# Si la sesión trabajó en un worktree, el censo corre AHÍ (cd al worktree, no al
-# clon principal): la rama de la sesión vive en el worktree.
-CUR="$(git rev-parse --abbrev-ref HEAD)"
-DEFAULT="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name 2>/dev/null || echo master)"
-# BASE_INT — la base de integración de ESTA rama (stacked): la del PR abierto si
-# tiene; si no, la release en repo participante (resolver, pr_state=single); si
-# no, la default. "¿Ya está TODO en la base?" se responde contra ESA base — para
-# una rama de sesión stacked, aterrizar en la RELEASE es SÍ (release→default es
-# un evento del operador, no un pendiente de la sesión).
-BASE_INT="$DEFAULT"
-PR_BASE="$(gh pr view "$CUR" --json baseRefName,state -q 'select(.state=="OPEN") | .baseRefName' 2>/dev/null || true)"
-if [ -n "$PR_BASE" ]; then
-    BASE_INT="$PR_BASE"
-else
-    PROJ="$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")"
-    RESOLVER="$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh"
-    if [ -x "$RESOLVER" ]; then
-        RB="$(bash "$RESOLVER" --check "$PROJ" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')"
-        [ -n "$RB" ] && [ "$RB" != "$CUR" ] && BASE_INT="$RB"
-    fi
-fi
-git fetch origin "$BASE_INT" --quiet 2>/dev/null || true
-BASE="origin/$BASE_INT"
-DIRTY="$(git status --porcelain | wc -l)"
-UNPUSHED="$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo no-upstream)"
-AHEAD="$(git rev-list --count "$BASE..HEAD" 2>/dev/null || echo '?')"
-# Capa squash de mwg Phase 1.5 — OJO: rc SIN pipe en la asignación (con "| head"
-# el $? sería el de head y se perdería el rc que distingue merge limpio de conflicto).
-MT_OUT="$(git merge-tree --write-tree "$BASE" HEAD 2>/dev/null)"; MT_RC=$?
-MT="$(printf '%s\n' "$MT_OUT" | head -1)"
-BT="$(git rev-parse "$BASE^{tree}" 2>/dev/null || echo none)"
-IN_BASE=no
-if [ "$AHEAD" = "0" ]; then IN_BASE=yes
-elif [ "$MT_RC" -eq 0 ] && [ -n "$MT" ] && [ "$MT" = "$BT" ]; then IN_BASE=yes; fi
-PRS="$(gh pr list --state open --head "$CUR" --json number,mergeStateStatus \
-      -q '.[] | "#\(.number):\(.mergeStateStatus)"' 2>/dev/null | paste -sd, -)"
-echo "REPO=<repo> CUR=$CUR BASE=$BASE_INT DIRTY=$DIRTY UNPUSHED=$UNPUSHED AHEAD=$AHEAD IN_BASE=$IN_BASE PRS=${PRS:-none}"
+bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh status
 ```
 
-**Variante toolkit** (trunk flow, sin PRs — mecánica T2 de merge-when-green):
+**b) Cualquier otro repo que tocó la sesión** — post-entry no hay `cd` ni
+`git -C <clon principal>` que valgan; el helper lo alcanza por nombre y devuelve una
+fila por worktree enlazado:
 
 ```bash
-cd "$HOME/webapps/vps-ops-toolkit"
-git fetch origin master --quiet 2>/dev/null || true
-DIRTY="$(git status --porcelain | wc -l)"
-git merge-base --is-ancestor HEAD origin/master && ANC=yes || ANC=no
-echo "REPO=vps-ops-toolkit DIRTY=$DIRTY ancestor-de-origin/master=$ANC"
+bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh list --project=<repo> --porcelain
 ```
+
+Columnas de `list --porcelain` (14, TSV):
+`repo slug path branch dirty unpushed upstream pr pr_state base in_base age_h locked verdict`.
+`status` agrega, para TU worktree, `default_branch resolved_branch registered_branch
+deploy_branch open_pr pr_state_coord release_merge host_status pr_url ci` — de ahí
+salen el hold de release y el estado del CI sin una sola línea de bash propia.
+
+**CI del PR** (sólo hace falta en el caso b; `status` ya trae `ci=`):
+
+```bash
+gh pr checks <pr_number literal> --json bucket -q '[.[].bucket] | unique | join(",")'
+```
+
+**Variante toolkit** (trunk flow, sin PRs — mecánica T2 de merge-when-green). Es OTRO
+repo, así que `git -C` sí está permitido; lo que no se hace nunca es `cd` al clon:
+
+```bash
+git -C ~/webapps/vps-ops-toolkit fetch origin master --quiet
+```
+```bash
+git -C ~/webapps/vps-ops-toolkit status --porcelain
+```
+```bash
+git -C ~/webapps/vps-ops-toolkit merge-base --is-ancestor HEAD origin/master
+```
+
+Exit `0` de ese último = `ancestor-de-origin/master=yes`; exit `1` = `no`.
 
 **Veredicto por repo (lo clasificás vos con los datos):**
-- **✅ SÍ** ⇔ `DIRTY=0` ∧ `IN_BASE=yes` (toolkit: `DIRTY=0` ∧ `ANC=yes`). Con el
-  contenido ya en la base, `UNPUSHED` es diagnóstico (rama local vieja), no
-  bloqueante.
-- **❌ NO** con la razón acumulada: tree sucio (`DIRTY>0`) · commits sin push ·
-  rama no contenida en la base (`AHEAD>0` y merge-tree ≠ base) · PR de la sesión
-  abierto con CI pendiente.
-- **⏸️ NO (hold)**: la rama es release sin `release_merge:` — para los repos NO,
-  consultá la coordenada (`resolve-work-coordinate.sh --check <repo>`: si
-  `CUR ∈ open_pr` y `release_merge=` no la nombra, es hold). Para un SÍ no hace
+- **✅ ENTREGADO** ⇔ `dirty=0` ∧ `unpushed=0` ∧ (`in_base=yes` ∨ (`pr_state=OPEN` ∧
+  `ci=pass`)). El toolkit (trunk, sin PR): tree limpio ∧ ancestor `yes`. **"En la
+  base" ya no es requisito**: un PR verde esperando el drenaje ES la entrega de la
+  sesión.
+- **❌ NO** con la razón acumulada: tree sucio (`dirty>0`) · commits sin push
+  (`unpushed>0`) · **sin PR abierto** (`pr_state=none`/`CLOSED`) · **CI rojo o
+  pendiente** (`ci=fail|pending`). `in_base` sólo se informa (si es `yes`, alcanza
+  para el ✅ aunque el PR ya esté mergeado/cerrado).
+- **PR abierto sin checks** (`ci=none` — el repo no corre CI en esa rama) ⇒ se informa
+  como **ℹ️ sin checks** y **NO bloquea el ✅**: no hay verde que esperar, así que
+  exigirlo dejaría a ese repo en NO para siempre. Misma regla que $pr-green Phase 3.
+- **⏸️ NO (hold)**: la rama es release sin `release_merge:`. Con `status` ya lo sabés
+  sin consultar nada más: `branch` ∈ `open_pr` (candidatos a release) **y**
+  `release_merge` no la nombra (`none` = release en hold). Para el caso b (`list`, que
+  no trae esas claves) o si el registro no fuera concluyente, la fuente sigue siendo el
+  resolver, con un comando simple:
+  `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <repo>`
+  — si `CUR ∈ open_pr` y `release_merge=` no la nombra, es hold. Para un SÍ no hace
   falta el resolver.
-- Sesgo heredado de 1.5: git < 2.38, conflicto del merge-tree, o `gh` caído ⇒
-  esa capa no puede afirmar nada ⇒ **nunca SÍ por esa vía** (se reporta "no
-  evaluable" con el dato que falte).
+- Sesgo heredado de 1.5: `in_base=?` o `ci=?`/`pr_state=?` (git < 2.38, conflicto del
+  merge-tree, `gh` caído) ⇒ esa capa no puede afirmar nada ⇒ **nunca SÍ por esa vía**
+  (se reporta "no evaluable" con el dato que falte).
 
 ## Phase 2 — Tabla de veredicto + la única pregunta
 
-La tabla se muestra SIEMPRE. El veredicto global es **SÍ ⇔ todos los repos en ✅**.
+La tabla se muestra SIEMPRE. El veredicto global es **ENTREGADO ⇔ todos los repos
+en ✅**.
 
-La columna **vs base** nombra SIEMPRE la base evaluada — para una rama de sesión
-stacked es la RELEASE, y un ✅ ahí significa "en la release", no "en main"
-(release→default queda como fila propia del hold, evento del operador):
+La columna **En la base** es **informativa** y nombra SIEMPRE la base evaluada —
+para una rama de sesión stacked es la RELEASE. Un PR abierto con CI verde ya es
+ENTREGADO aunque esa columna diga "ahead N": el drenaje no es de la sesión.
 
-| Repo | Rama | Tree | Sin push | vs base | PR sesión | Veredicto | Falta |
-|---|---|---|---|---|---|---|---|
-| projectapp | fix/x | ✅ | 0 | vs main: ya-en-base (no-op) | #186 merged | ✅ SÍ | — |
-| mimittos_project | chore/y | ❌ 3 arch. | 1 | vs main: ahead 2 | — | ❌ NO | commit→push→PR→CI→merge |
-| kore_project | feat/z | ✅ | 0 | vs july-release: ya-en-base | #61 merged | ✅ SÍ (en la release) | — |
-| vastago_project_staging | release-v2 | ✅ | 0 | vs master: ahead 5 | #12 CI ✅ | ⏸️ NO (hold) | `release_merge:` |
+| Repo | Rama | Tree | Sin push | PR | CI | En la base (info) | Entregado | Falta |
+|---|---|---|---|---|---|---|---|---|
+| projectapp | fix/x | ✅ | 0 | #186 merged | ✅ | vs main: ya-en-base (no-op) | ✅ SÍ | — |
+| mimittos_project | chore/y | ❌ 3 arch. | 1 | — | — | vs main: ahead 2 | ❌ NO | commit→push→PR→CI |
+| kore_project | feat/z | ✅ | 0 | #61 OPEN | ✅ | vs july-release: ahead 3 | ✅ SÍ | — (drena `$merge-queue`) |
+| tuhuella_project_staging | feat/w | ✅ | 0 | #22 OPEN | ❌ | vs release: ahead 1 | ❌ NO | fix loop del CI |
+| vastago_project_staging | release-v2 | ✅ | 0 | #12 OPEN | ✅ | vs master: ahead 5 | ⏸️ NO (hold) | `release_merge:` (operador) |
 
 Ramas del repo ajenas a la sesión con trabajo pendiente: fila ℹ️ con puntero a
 `$merge-queue` (no entran al veredicto de la sesión).
@@ -198,21 +202,22 @@ Ramas del repo ajenas a la sesión con trabajo pendiente: fila ℹ️ con punter
 
 Por prosa + wikilink — jamás el tool `Skill`. En orden de la tabla:
 
-- **1 unidad pendiente en 1 repo** → ejecutá el flujo de $merge-when-green
-  **entrando por la fase del primer faltante**: tree sucio → Phase 1 (commit) ·
-  commits sin push → el push de Phase 1 · sin PR → Phase 2 · CI pendiente →
-  Phase 3 · verde sin mergear → Phase 5. Defaults (squash), sin re-preguntar
-  (regla (4) de su gating: el flujo viene decidido del llamador). Los guards de
-  coordenada (Phase 0.5: wrong-host, release) **nunca se saltan**.
-- **≥2 unidades pendientes en un repo** → $merge-queue desde ese repo (su censo
-  completo manda; esta tabla es su input, no su reemplazo).
-- **≥2 repos pendientes** → repo por repo en el orden de la tabla. Desde el
-  toolkit con `--all-repos`, el atajo es $merge-queue `--all-repos`.
+- **1 unidad pendiente de ESTA sesión** → ejecutá el flujo de $pr-green
+  **entrando por la fase de su primer faltante**: tree sucio → su Phase 1 (commit) ·
+  commits sin push → el push de esa misma Phase 1 · sin PR → su Phase 2 · CI
+  pendiente o rojo → sus Phases 3-4. **Ahí termina**: `pr-green` no mergea, y esta
+  skill tampoco. Sin re-preguntar (regla (4) de su gating: el flujo viene decidido
+  del llamador); sus guards (worktree, wrong-host) **nunca se saltan**.
+- **≥2 unidades propias** → una corrida de $pr-green **por unidad**, en el orden
+  de la tabla (cada una en su worktree). No se agrupan: cada PR es de su sesión.
+- **Ramas/PRs ajenos a esta sesión** → ℹ️ con puntero a $merge-queue; esta skill
+  no los toca ni los cuenta en el veredicto.
+- **≥2 repos pendientes** → repo por repo en el orden de la tabla.
 - **Toolkit pendiente** → Path B de $merge-when-green (T1 green gate → T2
-  commit+push → T3 propagación → T4).
-- **Release sin autorizar** → se integra y espera su CI si falta, pero queda ⏸️ —
-  next step exacto: setear `release_merge: <rama>` en projects.yml y
-  `$merge-when-green`.
+  commit+push → T3 propagación → T4): es trunk flow, sin PR, y sigue igual.
+- **Release sin autorizar** → queda ⏸️: el hold es del operador. Next step exacto:
+  setear `release_merge: <rama>` en projects.yml y que el **operador** corra
+  `$merge-when-green`. La sesión no la mergea nunca.
 
 Tras cada delegación, **re-corré el censo de Phase 1 de ese repo** y actualizá la
 tabla: el SÍ final se afirma con evidencia, no por haber delegado.
@@ -231,24 +236,31 @@ esta skill:
    (regla de no-redundancia — jamás dos watchers del mismo objeto). Veredicto SÍ
    ⇒ no hay CI en vuelo causado por esta sesión; el run en vuelo de la base, si
    existe, no es de esta sesión (comando manual en Next steps si interesa).
-3. **Retiro del worktree de sesión** (protocolo por sesión): con veredicto ✅ SÍ
-   en un repo donde la sesión trabajó en `~/webapps/.wt/<repo>/<slug>`, el
-   worktree ya cumplió — retiralo (con `--check-only`: sólo listarlo como
-   retirable):
+3. **Retiro del worktree de sesión** (protocolo por sesión). El worktree se retira
+   **sólo cuando el trabajo ya aterrizó** — `pr_state=MERGED` o `in_base=yes` en el
+   censo —, no por estar ENTREGADO (con `--check-only`: sólo listarlo como retirable):
    ```bash
-   cd "$HOME/webapps/<repo>"
-   git worktree remove "$HOME/webapps/.wt/<repo>/<slug>"   # rechaza si está sucio — eso es un NO, no forzar
-   git worktree prune
+   bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh remove <slug> --project=<repo>
    ```
-   Nunca `--force`: un worktree sucio contradice el SÍ y se reporta. La rama
-   local obsoleta sigue siendo del operador (`-D` manual).
+   Sin `--force`, nunca (el helper no lo tiene). **Git rechaza retirar el worktree en
+   el que estás parado**: si el retirable es el TUYO, reportalo como retirable y
+   dejalo — lo junta una corrida posterior desde otro tree o el gc del operador.
+   `remove` sale `1` si el worktree está sucio: eso se **reporta**, no se fuerza (el
+   helper no tiene `--force`, y el hook deniega `git worktree remove --force`).
+   **Entregado pero sin mergear** (PR abierto y verde) → **el worktree queda vivo**:
+   la cola puede delegarte un conflicto o un rojo y vas a necesitarlo. Lo retira una
+   corrida posterior de `$all-in-base` (cuando vea el PR mergeado) o el gc del
+   operador (`session-worktree.sh gc --apply`). Decilo así en la tabla
+   (`conservado — PR #n abierto`). La rama local obsoleta sigue siendo del operador
+   (`-D` manual).
 
 ## Safety rules
 
 - Read-only hasta la confirmación de Q1 (o flags explícitos); `--check-only` es
   cero mutación siempre.
-- Jamás mergea una release sin `release_merge:` (blocklist §4) — el hold es el
-  veredicto honesto, no un fallo.
+- **Jamás mergea nada** — ni un PR de sesión (eso es $merge-queue/operador) ni
+  una release sin `release_merge:` (blocklist §4). El hold es el veredicto honesto,
+  no un fallo.
 - Jamás borra ramas (`-D` es del operador).
 - **Sesgo a falso negativo**: un "NO" de más cuesta una mirada; un "SÍ" falso
   cuesta trabajo perdido. Ante cualquier duda (gh caído, git viejo, merge-tree en
@@ -264,30 +276,36 @@ $output-protocol §4), ofrecer vía AskUserQuestion:
 
 | Opción (label) | description (costo/efecto) | preview (comando exacto) |
 |---|---|---|
-| Terminar lo pendiente | si corrió `--check-only` y el veredicto fue NO | `$all-in-base` |
-| Drenar con merge-queue | si hay VARIAS ramas/PRs pendientes (de la sesión o ajenas) | `$merge-queue` |
+| Terminar lo pendiente | si corrió `--check-only` y el veredicto fue NO; lleva al DoD de sesión (no mergea) | `$all-in-base` |
 | Ver un PR puntual | review manual en el browser | `gh pr view <n> --web` |
 | Re-censar | refrescar el veredicto tras cambios externos | `$all-in-base --check-only` |
+
+**Nunca se ofrece `$merge-queue` como fila clickeable**: el drenaje es del operador
+(o del orquestador), jamás una acción que una sesión elige de un menú. Va como texto
+`(operador) $merge-queue` en `## Next steps` — misma lógica que la blocklist
+$output-protocol §4 para el merge.
 
 ## Output final
 
 Reportar siguiendo $output-protocol.
 
 ```markdown
-🟢 all-in-base — SÍ: todo el trabajo de la sesión está en la base (N repos verificados)
+🟢 all-in-base — ENTREGADO: el trabajo de la sesión está pusheado y con PR verde (N repos verificados)
 (🟡 si era NO y se terminó ahora — detalle en tabla · ⏸️ si queda una release en
-hold · 🔴 si la terminación falló · con --check-only el veredicto SÍ/NO va en esta
-misma línea, con ⏭️ si no había nada que evaluar)
+hold · 🔴 si la terminación falló · con --check-only el veredicto va en esta misma
+línea, con ⏭️ si no había nada que evaluar)
 
-| Repo | Rama | Tree | Sin push | vs base | PR sesión | Veredicto | Resultado |
-|---|---|---|---|---|---|---|---|
+| Repo | Rama | Tree | Sin push | PR | CI | En la base (info) | Entregado | Worktree | Resultado |
+|---|---|---|---|---|---|---|---|---|---|
 ```
 
 (La columna `Resultado` sólo si corrió Phase 3: qué flujo lo terminó y el SHA/PR.
-Fila condicional `Monitor CI` / `Sweep` sólo si Phase 4 actuó: 👁️ label montado
-por la delegación / 🧹 N watchers barridos.)
+`Worktree`: `retirado` (PR mergeado / ya-en-base) · `conservado — PR #n abierto` ·
+`n/a`. Fila condicional `Monitor CI` / `Sweep` sólo si Phase 4 actuó: 👁️ label
+montado por la delegación / 🧹 N watchers barridos.)
 
-`## Next steps` — sólo accionables: release en hold → `release_merge:` +
-`$merge-when-green` · ramas locales obsoletas → `git branch -D <rama>` (manual) ·
+`## Next steps` — sólo accionables: **PR verde sin mergear → `(operador)
+$merge-queue`** · release en hold → `release_merge:` + `(operador)
+$merge-when-green` · ramas locales obsoletas → `git branch -D <rama>` (manual) ·
 monitores en vuelo → su ledger (`label → vigila → acción`) + respaldo manual
 `gh run watch <id> -R <repo>` · repos ℹ️ con trabajo ajeno → `$merge-queue`.

@@ -15,7 +15,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def creator_lawyer():
     """Creator lawyer."""
     return User.objects.create_user(
@@ -28,7 +27,6 @@ def creator_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def recipient_client():
     """Recipient client."""
     return User.objects.create_user(
@@ -41,7 +39,6 @@ def recipient_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def completed_document(creator_lawyer):
     """Completed document."""
     return DynamicDocument.objects.create(

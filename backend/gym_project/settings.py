@@ -192,15 +192,21 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # ---------------------------------------------------------------------------
 # Email
 # ---------------------------------------------------------------------------
-EMAIL_BACKEND = config(
-    'EMAIL_BACKEND',
-    default='django.core.mail.backends.smtp.EmailBackend',
-)
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+MAILERS = {
+    'default': {
+        'BACKEND': config(
+            'EMAIL_BACKEND',
+            default='django.core.mail.backends.smtp.EmailBackend',
+        ),
+        'OPTIONS': {
+            'host': config('EMAIL_HOST', default='smtp.gmail.com'),
+            'port': config('EMAIL_PORT', default=587, cast=int),
+            'use_tls': config('EMAIL_USE_TLS', default=True, cast=bool),
+            'username': config('EMAIL_HOST_USER', default=''),
+            'password': config('EMAIL_HOST_PASSWORD', default=''),
+        },
+    },
+}
 DEFAULT_FROM_EMAIL = config(
     'DEFAULT_FROM_EMAIL',
     default='G&M Consultores Jurídicos <noreply@example.com>',
@@ -246,9 +252,10 @@ WOMPI_API_URL = (
 # ---------------------------------------------------------------------------
 # Huey task queue
 # ---------------------------------------------------------------------------
+REDIS_URL = config('REDIS_URL', default='redis://localhost:6379/1')
 HUEY = RedisHuey(
     name='gym_project',
-    url=config('REDIS_URL', default='redis://localhost:6379/1'),
+    url=REDIS_URL,
     immediate=not IS_PRODUCTION,
 )
 
@@ -256,7 +263,7 @@ HUEY = RedisHuey(
 # SECOP (Public Procurement) integration
 # ---------------------------------------------------------------------------
 SECOP_CONFIG = {
-    'DATASET_ID': config('SECOP_DATASET_ID', default='bt96-ncis'),
+    'DATASET_ID': config('SECOP_DATASET_ID', default='p6dx-8zbt'),
     'BASE_URL': 'https://www.datos.gov.co/resource',
     'APP_TOKEN': config('SECOP_APP_TOKEN', default=''),
     'APP_SECRET': config('SECOP_APP_SECRET', default=''),
@@ -268,9 +275,21 @@ SECOP_CONFIG = {
 # ---------------------------------------------------------------------------
 # Backups (django-dbbackup)
 # ---------------------------------------------------------------------------
-DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
-DBBACKUP_STORAGE_OPTIONS = {
-    'location': config('BACKUP_STORAGE_PATH', default='/var/backups/gym_project'),
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+    'dbbackup': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'OPTIONS': {
+            'location': config(
+                'BACKUP_STORAGE_PATH', default='/var/backups/gym_project'
+            ),
+        },
+    },
 }
 DBBACKUP_FILENAME_TEMPLATE = '{datetime}.sql'
 DBBACKUP_MEDIA_FILENAME_TEMPLATE = '{datetime}.{extension}'
@@ -297,7 +316,8 @@ if ENABLE_SILK:
 
     SILKY_PERMISSIONS = silk_permissions
 
-    SILKY_MAX_RECORDED_REQUESTS = 10000
+    SILKY_MAX_RECORDED_REQUESTS = config(
+        'SILKY_MAX_RECORDED_REQUESTS', default=2000, cast=int)
     SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
 
     SILKY_IGNORE_PATHS = [

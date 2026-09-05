@@ -106,8 +106,8 @@ test("basic user can access documents dashboard", { tag: ['@flow:basic-restricti
   await expect(page.getByRole("table").getByText("Documento Para Básico")).toBeVisible({ timeout: 15_000 });
 });
 
-test("basic user session state reflects limited access role", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
-  // audit: load-only flow (role restriction — the subscription lock is a
+test("basic user has Firma Electrónica enabled but Membrete Global disabled", { tag: ['@flow:basic-restrictions', '@module:auth', '@priority:P3', '@role:basic'] }, async ({ page }) => {
+  // quality: allow-no-interaction (role restriction: the letterhead lock is a
   // disabled control, so there is no interaction available to the basic user)
   const userId = 9602;
   const lawyerId = 9603;

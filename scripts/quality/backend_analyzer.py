@@ -426,6 +426,28 @@ class ASTAnalyzer:
         return signals
 
 
+def location_is_allowed(area: str, allowed: "frozenset[str]") -> bool:
+    """Is a test file sitting in a folder this repo accepts?
+
+    `area` is the first path segment under tests/, or "" for a file lying
+    directly in tests/. That root case had no way to be spelled in
+    py_allowed_folders — the list names subfolders, and an empty entry does not
+    survive config parsing — so a repo whose apps keep their tests flat could
+    only accept them one `# quality: disable misplaced_file` marker per file.
+    That is what blocked multi-app scanning (F53): the app a repo declared was
+    invariably the one organised in subfolders, and every sibling app it had
+    never scanned was flat, so widening the scan turned the gate red on layout
+    rather than on quality.
+
+    "." names the tests/ root, matching the meaning frontend_unit_dir already
+    gives it. It stays opt-in: a repo that wants tests to mirror the source tree
+    simply does not list it.
+    """
+    if area in allowed:
+        return True
+    return area == "" and "." in allowed
+
+
 class PythonAnalyzer:
     """
     Analyzes Python test files for quality issues.
@@ -492,7 +514,7 @@ class PythonAnalyzer:
         # Determine area and location validity
         relative = path.relative_to(tests_root)
         area = relative.parts[0] if len(relative.parts) > 1 else ""
-        location_ok = area in self.config.py_allowed_folders
+        location_ok = location_is_allowed(area, self.config.py_allowed_folders)
         
         file_result = FileResult(file=rel_path, area=area, location_ok=location_ok)
         

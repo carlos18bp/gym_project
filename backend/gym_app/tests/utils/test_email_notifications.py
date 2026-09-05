@@ -15,7 +15,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -28,21 +27,18 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_request_type():
     """Legal request type."""
     return LegalRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_discipline():
     """Legal discipline."""
     return LegalDiscipline.objects.create(name="Derecho Civil")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_request(client_user, legal_request_type, legal_discipline):
     """Legal request."""
     return LegalRequest.objects.create(
@@ -54,7 +50,6 @@ def legal_request(client_user, legal_request_type, legal_discipline):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_response(legal_request, client_user):
     """Legal response."""
     return LegalRequestResponse.objects.create(
@@ -414,7 +409,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -427,7 +421,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():  # noqa: F811
     """Client user."""
     return User.objects.create_user(
@@ -440,7 +433,6 @@ def client_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def legal_request(client_user):  # noqa: F811
     """Legal request."""
     req_type = LegalRequestType.objects.create(name="Ucov Type")
@@ -454,7 +446,6 @@ def legal_request(client_user):  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_response(legal_request, lawyer_user):
     """Lawyer response."""
     return LegalRequestResponse.objects.create(

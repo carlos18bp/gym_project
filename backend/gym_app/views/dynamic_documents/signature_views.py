@@ -42,7 +42,7 @@ from reportlab.lib.units import inch
 from django.http import FileResponse, HttpResponse
 import traceback
 from io import BytesIO
-from PyPDF2 import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter
 from bs4 import BeautifulSoup
 from reportlab.pdfgen import canvas
 from django.core.mail import EmailMessage
@@ -1538,8 +1538,8 @@ def add_identifier_footer(pdf_buffer, identifier):
 
     # Mezclar el footer en cada página
     for page in reader.pages:
-        page.merge_page(footer_pdf.pages[0])
-        writer.add_page(page)
+        writer_page = writer.add_page(page)
+        writer_page.merge_page(footer_pdf.pages[0])
 
     output_buffer = BytesIO()
     writer.write(output_buffer)

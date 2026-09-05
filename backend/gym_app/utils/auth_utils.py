@@ -17,6 +17,17 @@ def is_gym_staff(user):
     )
 
 
+def is_platform_admin(user):
+    """Return True only for platform administrators.
+
+    Distinct from ``is_gym_staff`` (which also grants lawyers): the admin
+    data-reassignment module is restricted to superusers, staff, and the
+    'admin' role — lawyers must never reach it.
+    """
+    role = (getattr(user, 'role', '') or '').lower()
+    return bool(user.is_superuser or user.is_staff or role == 'admin')
+
+
 def generate_auth_tokens(user):
     """
     Generate JWT authentication tokens for the given user.

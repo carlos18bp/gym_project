@@ -1,17 +1,23 @@
 ---
 name: merge-when-green
-description: "Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni en cron/headless. Las ramas release se mergean sólo si projects.yml las autoriza (release_merge: <rama>); sin autorización se integran y se espera el CI, sin merge. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
+description: "Herramienta del OPERADOR (manual-only desde 2026-08-22): las sesiones de proyecto no la invocan — cierran con [[pr-green]] (PR + CI verde, sin merge). Usar cuando trabajo ya commiteado (o listo para commitear) debe INTEGRARSE: 'mergealo cuando el CI esté verde', 'integrá esta rama', 'cerrá el PR cuando pase'. NO usar para crear commits sueltos ([[git-commit]]), ni en cron/headless. Las ramas release se mergean sólo si projects.yml las autoriza (release_merge: <rama>); sin autorización se integran y se espera el CI, sin merge. En repos de proyecto (Path A): commit + PR + espera del CI + fix loop + merge. En vps-ops-toolkit (Path B): green gate local + push a master + propagación al fleet. --all-repos desde el toolkit (Path C): barrido en dos fases. Si la rama ya está contenida en la base, corta sin PR ni espera (short-circuit ya-en-base)."
+disable-model-invocation: true
 allowed-tools: Bash, AskUserQuestion, TaskStop
 argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] [--autonomous] [--fix-nontest] [--max-iterations=N] · toolkit: [--no-verify] [--no-propagate] [--no-ci-watch] [--all-repos]"
 ---
 
-> **⚠️ How to invoke**:
+> **⚠️ How to invoke** — **herramienta del OPERADOR** (`disable-model-invocation:
+> true`): ninguna sesión la auto-invoca. Una sesión de proyecto cierra con
+> [[pr-green]] (PR abierto + CI verde) y PARA; el merge lo hace [[merge-queue]] o el
+> operador con esta skill.
 > - Sin argumento: `/merge-when-green` → opera sobre el repo git del **cwd**
 >   (resuelto con `git rev-parse --show-toplevel`). El comportamiento se bifurca
 >   según el repo:
-> - **Repo de proyecto** (con PR + CI) → **Path A**: commitea lo pendiente, asegura
->   el PR de la rama, espera el CI de GitHub Actions, y mergea cuando está verde. Si
->   el CI falla, arregla los tests rotos en loop antes de mergear. `gh` obligatorio.
+> - **Repo de proyecto** (con PR + CI) → **Path A**: el caso normal es **mergear el PR
+>   de sesión que YA está abierto** — su sesión dueña lo dejó verde y frenó ahí. Las
+>   Phases 1-4 (commit, ya-en-base, PR, espera del CI, fix loop) son el **espejo de
+>   [[pr-green]]**: la sesión dueña ya las corrió, así que acá suelen ser no-ops de
+>   verificación. Lo que esta skill agrega es la **Phase 5 (merge)**. `gh` obligatorio.
 > - **`vps-ops-toolkit`** (commit directo a `master`, sin PR — ver "Git en este
 >   repo" en su CLAUDE.md) → **Path B (trunk flow)**: valida el verde localmente con
 >   los mismos checks del CI (`scripts/ci/*` + `bash -n` + shellcheck si está), y si
@@ -56,8 +62,8 @@ argument-hint: "proyecto: [--merge-method=squash|merge|rebase] [--no-create-pr] 
 > commitear lo pendiente, si la rama ya está contenida en `main`/`master` —
 > verificado por **contenido**, así que vale también para un **squash merge**, donde
 > los commits de la rama no quedan como ancestros — se **verifica y se reporta dónde
-> aterrizó**, se deja la base local al día (`checkout` + `pull --ff-only`) y se
-> termina: **no se crea PR, no se espera el CI, no se mergea**. El verde que habilitó
+> aterrizó** **sin tocar el clon principal**, y se termina: **no se crea PR, no se
+> espera el CI, no se mergea**. El verde que habilitó
 > ese merge ya es el veredicto. La rama local obsoleta se nombra, **no se borra**. No
 > hay flag: el reporte entrega el comando para mirar el CI a mano si querés.
 >
@@ -169,13 +175,20 @@ los Paths B y C.
 
 # Path A — repos de proyecto (PR + CI + merge)
 
-**Resolver la rama de trabajo (git-branch-protocol, protocolo por sesión).** Lo
-normal es llegar acá ya parado en TU rama de sesión (creada en tu worktree al
-empezar el trabajo). Si `CURRENT` es `main`/`master` y tenés cambios para
-commitear: creá TU rama de sesión (`<prefijo>/<DDMMYYYY>-<desc>`, fecha con
-`date +%d%m%Y`) — **nunca** reutilices la rama de otra sesión ni commitees en la
-release; ver el protocolo en el `CLAUDE.md` del proyecto. **No se mergea
-`main`/`master` sobre sí mismo.**
+**Dónde se para el operador (protocolo por sesión).** Lo normal es operar sobre un
+**PR ya abierto por una sesión**: todo se hace vía `gh` (consultar, esperar el CI y
+mergear no requieren checkout de nada), así que el cwd puede ser el clon principal
+sin tocarlo. Casos que no son ése:
+
+- **Estás en el clon principal, sobre `main`/`master` o la release, con cambios
+  sueltos** → **acá no se crea rama ni se commitea** (el hook `PreToolUse` lo deniega,
+  y es el checkout del servicio corriendo): creá un worktree con
+  `bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh" create <prefijo> <slug>`,
+  entrá (Claude: `EnterWorktree path=…` · Codex: `cd …`) y **re-invocá desde ahí**.
+- **El fix loop (Phase 4) necesita un tree** donde escribir: el **worktree de la sesión
+  dueña** del PR, o se **delega el fix a esa sesión** (el mecanismo de [[merge-queue]]
+  § «Delegación a la sesión dueña»). Nunca el clon principal.
+- **No se mergea `main`/`master` sobre sí mismo.**
 
 ## Phase 0.5 — Coordenada de trabajo (guards)
 
@@ -293,12 +306,16 @@ Reutilizá el flujo de `/git-commit` sobre la rama de trabajo:
 
 ## Phase 1.5 — ¿El trabajo ya está en la base?
 
-**El hueco que cierra:** con varias sesiones de Claude Code abiertas sobre el
-MISMO repo, comparten working tree y rama. La primera que corre `/merge-when-green`
-mergea y se lleva puesto el trabajo de las demás. Cuando le toca el turno a la
-sesión 2, su trabajo **ya está en `main`/`master`** — y esperar el CI ahí es tiempo
-muerto: ese contenido ya pasó los checks que gatearon aquel merge. Peor: si su rama
-nunca tuvo PR propio, Phase 2 abriría un **PR nuevo y vacío**.
+**El hueco que cerraba (histórico, pre-2026-08-17):** varias sesiones abiertas sobre
+el MISMO repo compartían working tree y rama; la primera que mergeaba se llevaba
+puesto el trabajo de las demás, y las que seguían encontraban su trabajo ya en la
+base.
+
+Hoy cada sesión tiene su worktree, su rama y su PR, así que ese choque no existe. El
+caso vigente es otro: **una rama cuyo contenido ya aterrizó** (squash de
+[[merge-queue]] o del operador). Esperar el CI ahí es tiempo muerto — ese contenido
+ya pasó los checks que gatearon aquel merge — y si la rama nunca tuvo PR propio,
+Phase 2 abriría un **PR nuevo y vacío**. Este gate corta las dos cosas.
 
 Corre acá y no antes porque Phase 1 ya commiteó y pusheó lo pendiente — evaluar
 antes leería trabajo sin commitear como "no hay nada nuevo". Y corre acá y no
@@ -416,8 +433,12 @@ aquel merge, así que **saltá Phases 2-5** — ni PR, ni `--watch`, ni merge.
      la default a ciegas — en clones staging que deployan desde la release, un
      checkout de la default cambiaría el código del servicio corriendo:
      ```bash
+     # Escritura legítima del ORQUESTADOR sobre el clon principal: el prefijo
+     # FLEET_ALLOW_MAIN_CLONE_WRITE=1 es el escape del hook PreToolUse (que si no
+     # deniega checkout/pull ahí). Una SESIÓN nunca lo usa.
      OLD_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-     git checkout "$DEPLOY_BRANCH" && git pull --ff-only origin "$DEPLOY_BRANCH"
+     FLEET_ALLOW_MAIN_CLONE_WRITE=1 git checkout "$DEPLOY_BRANCH" \
+       && FLEET_ALLOW_MAIN_CLONE_WRITE=1 git pull --ff-only origin "$DEPLOY_BRANCH"
      [ "$OLD_BRANCH" != "$DEPLOY_BRANCH" ] && echo "⏭️  rama local obsoleta: $OLD_BRANCH (NO se borra)"
      ```
    La rama local obsoleta se **reporta, NO se borra** — borrarla es decisión del
@@ -519,6 +540,10 @@ Por cada check en `fail`, clasificalo:
 
 ## Phase 5 — Merge
 
+**Phase 5 es del operador.** Si llegaste acá por delegación desde una SESIÓN
+([[all-in-base]], [[pr-green]]), **PARÁ**: para las sesiones esta fase no existe — su
+entrega termina en el PR verde y el merge lo hace [[merge-queue]] o el operador.
+
 **Guard de release primero** (Phase 0.5). Si la rama es release sin
 autorización en projects.yml, acá termina el flujo: el trabajo ya está
 integrado y el CI ya dio su veredicto, que es lo que se venía a saber.
@@ -578,11 +603,17 @@ El cierre **nunca flipea el checkout del clon principal** (en VPS es el tree del
 servicio corriendo):
 
 - **En un worktree de sesión** (`git rev-parse --show-toplevel` bajo `.wt/`):
-  sólo `git fetch origin "$PR_BASE"` para dejar la ref al día. El worktree se
-  retira en el cierre de sesión ([[all-in-base]]) o lo limpia [[merge-queue]].
-- **En el clon principal** (transicional/legacy): volver al `branch:` de deploy
-  del proyecto (`deploy_branch=` del resolver) y `git pull --ff-only` — no a la
-  default a ciegas (clones staging deployan desde la release).
+  sólo `git fetch origin "$PR_BASE"` para dejar la ref al día. El worktree de la
+  **sesión dueña** lo retira ella misma con `/all-in-base` cuando ve su PR ya
+  mergeado (`session-worktree.sh remove <slug>`, sin `--force`); los huérfanos los
+  junta el **gc del operador**
+  (`bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh" gc --apply`).
+  Esta skill no retira worktrees ajenos.
+- **En el clon principal** (operador): volver al `branch:` de deploy del proyecto
+  (`deploy_branch=` del resolver) con el escape del hook —
+  `FLEET_ALLOW_MAIN_CLONE_WRITE=1 git checkout "$DEPLOY_BRANCH"` + `git pull
+  --ff-only` — nunca a la default a ciegas (los clones staging deployan desde la
+  release).
 
 Reportá el PR mergeado + el SHA del merge en la base del PR.
 
@@ -782,32 +813,44 @@ printf '   - %s\n' "${REPOS[@]}"
 
 ## Phase C1 — Integrar todos (rápido, sin esperas)
 
-Por cada repo en `REPOS`, con `cd "$HOME/webapps/<repo>"`:
+**Sobre qué opera C1:** los **PRs de sesión ya abiertos** y, si hace falta un tree,
+los **worktrees de sesión** de cada repo
+(`bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh" list --all`).
+El **clon principal** de un repo de proyecto es el checkout del servicio: se lee, no
+se commitea. Por cada repo en `REPOS` (lectura desde `$HOME/webapps/<repo>`, sin
+`checkout` ni `stash`):
 
 1. **Nada que hacer** — `git status --porcelain` vacío **y** sin commits sin
    pushear (`git log @{u}..HEAD`). No generes mensaje ni toques nada; antes de
    clasificar corré el chequeo de **Phase 1.5** (con su `git fetch` de la base):
    - la rama ya está contenida en la base → ⏭️ `skipped:ya-en-base`. Nombrá la
-     rama obsoleta (**no la borres**) y dejá ese clon en su **`branch:` de
-     deploy** (`deploy_branch=` del resolver) con `git pull --ff-only` — nunca
-     un checkout de la default a ciegas: en clones staging que deployan desde
-     la release cambiaría el código del servicio corriendo. Si el clon YA está
-     en su rama de deploy, sólo el pull.
+     rama obsoleta (**no la borres**); el clon principal se deja como está (si el
+     operador quiere alinearlo a su `deploy_branch=`, es la escritura de Phase 6
+     con `FLEET_ALLOW_MAIN_CLONE_WRITE=1` — nunca un checkout de la default a
+     ciegas: en clones staging que deployan desde la release cambiaría el código
+     del servicio corriendo).
    - no está → ⏭️ `skipped:sin-cambios`, como hasta ahora.
-2. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
+2. **Clon principal sucio sobre una rama base** (`main`/`master`/release con
+   `dirty>0`) → **⚠️ `skipped:anomalía-clon-principal`**: es trabajo de otra sesión
+   o del operador en el tree del servicio. Se **reporta con el conteo de archivos y
+   NO se commitea, ni se stashea, ni se revierte**. El trabajo de sesión vive en
+   `.wt/`.
+3. **Coordenada** (Phase 0.5). `host_status=wrong-host` → ⏭️
    `skipped:wrong-host:<vps_work>`; ese repo se trabaja en otro VPS.
-   Rama del clon = head de un PR abierto (la MISMA prueba de Phase 0.5 sobre
+   Rama del PR = head de un PR abierto (la MISMA prueba de Phase 0.5 sobre
    `open_pr`, no `pr_state=single`) → `release-hold`, salvo que `release_merge=`
    nombre exactamente esa rama (autorización de projects.yml) → `mergeable`.
-3. **Toolkit** → Path B completo (T1 green gate → T2 commit+push → T3
-   propagación). Un `GATE:RED` marca `failed:green-gate` para **ese** repo y
+4. **Toolkit** → Path B completo (T1 green gate → T2 commit+push → T3
+   propagación). Es el único repo donde C1 commitea, y lo hace en su `master`
+   (flujo trunk). Un `GATE:RED` marca `failed:green-gate` para **ese** repo y
    sigue con el resto.
-4. **Proyecto** → Path A Phases 1 → 1.5 → 2 (commit + push + short-circuit
-   ya-en-base + asegurar PR). Sin la 1.5, un repo limpio parado sobre una rama ya
-   mergeada llega a Phase 2 y abre un PR vacío. Sobre una
-   rama release **no se crea PR nuevo**: el del release ya existe y es el que
-   `gh pr view "$CURRENT"` encuentra.
-5. **Registrar** una fila: `repo · rama · PR# · clasificación`, con clasificación
+5. **Proyecto** → Path A Phases 1 → 1.5 → 2 sobre el **worktree de la sesión dueña**
+   (commit + push + short-circuit ya-en-base + asegurar PR); si no hay worktree ni
+   nada que commitear, C1 es sólo censo: el PR ya está abierto. Sin la 1.5, una rama
+   ya mergeada llega a Phase 2 y abre un PR vacío. Sobre una rama release **no se
+   crea PR nuevo**: el del release ya existe y es el que `gh pr view "$CURRENT"`
+   encuentra.
+6. **Registrar** una fila: `repo · rama · PR# · clasificación`, con clasificación
    en `mergeable` / `release-hold` / `skipped:<razón>` / `failed:<razón>`.
 
 Al cerrar C1, mostrá la tabla de integración antes de entrar a C2 — el operador
@@ -981,7 +1024,7 @@ Reemplazá ✅ por ⚠️/❌/⏸️ según corresponda y agregá `## Next steps
   | Trabajo vs <base> | ✅ | <señal>: 0 commits por delante / merge no-op · PR #<n> |
   | Commit + push | ⏭️ | working tree limpio, nada nuevo que commitear |
   | PR / CI / Merge | ⏭️ | no se crea PR, no se espera CI, no se mergea |
-  | Base local | ✅ | <base> al día (`pull --ff-only`) · rama obsoleta: <rama> |
+  | Clon principal | ⏭️ | intacto (no se hace checkout ni pull) · rama obsoleta: <rama> |
 
   `## Next steps` (la rama obsoleta **no** se borra sola):
   - `gh run list --branch <base> --limit 5` — mirar el CI de `<base>` igual, si querés.

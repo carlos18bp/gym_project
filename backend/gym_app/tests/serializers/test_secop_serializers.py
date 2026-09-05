@@ -34,7 +34,6 @@ def rf():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer user for serializer tests."""
     return User.objects.create_user(
@@ -47,7 +46,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def other_lawyer():
     """Other lawyer user for ownership tests."""
     return User.objects.create_user(
@@ -60,7 +58,6 @@ def other_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process():
     """SECOP process for serializer tests."""
     return SECOPProcess.objects.create(

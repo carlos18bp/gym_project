@@ -411,7 +411,11 @@ def _fingerprint_normalize(body: str) -> str:
             # what the pre-2026-07 global substitution hashed, so fingerprints
             # of bodies without pathological comments do not move.
             content = body[i + 1:j]
-            pieces.append("S" + hashlib.md5(content.encode("utf-8")).hexdigest()[:8])
+            digest = hashlib.md5(
+                content.encode("utf-8"),
+                usedforsecurity=False,
+            ).hexdigest()[:8]
+            pieces.append("S" + digest)
             i = j + 1
             continue
         if ch == "/" and i + 1 < n and body[i + 1] == "/":

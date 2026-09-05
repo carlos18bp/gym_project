@@ -22,7 +22,6 @@ from gym_app.models import (
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer(api_client):
     """Create authenticated lawyer user."""
     user = User.objects.create_user(
@@ -38,7 +37,6 @@ def lawyer(api_client):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def other_lawyer():
     """Another lawyer user (not authenticated by default)."""
     return User.objects.create_user(
@@ -51,7 +49,6 @@ def other_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user (non-lawyer)."""
     return User.objects.create_user(
@@ -64,7 +61,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process_open():
     """Open SECOP process."""
     return SECOPProcess.objects.create(
@@ -86,7 +82,6 @@ def process_open():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process_closed():
     """Create closed SECOP process."""
     return SECOPProcess.objects.create(
@@ -671,6 +666,34 @@ class TestSecopFiltersAndSyncViews:
 
         assert response.status_code == status.HTTP_200_OK
         assert 'triggered' in response.data['detail'].lower()
+
+    @pytest.mark.parametrize(
+        ('role', 'is_staff', 'is_superuser'),
+        [
+            ('admin', False, False),
+            ('basic', True, False),
+            ('basic', False, True),
+        ],
+    )
+    @patch('gym_app.secop_tasks.sync_secop_data')
+    def test_trigger_sync_allowed_for_administrator(
+        self, mock_task, api_client, role, is_staff, is_superuser
+    ):
+        """Verify every platform administrator can schedule a sync."""
+        user = User.objects.create_user(
+            email=f'secop-admin-{role}-{is_staff}-{is_superuser}@test.com',
+            password='testpassword',
+            role=role,
+            is_staff=is_staff,
+            is_superuser=is_superuser,
+        )
+        api_client.force_authenticate(user=user)
+        mock_task.schedule.return_value = None
+
+        response = api_client.post(reverse('secop-trigger-sync'))
+
+        assert response.status_code == status.HTTP_200_OK
+        mock_task.schedule.assert_called_once_with(delay=0)
 
     def test_export_excel_returns_xlsx_content_type(
         self, api_client, lawyer, process_open

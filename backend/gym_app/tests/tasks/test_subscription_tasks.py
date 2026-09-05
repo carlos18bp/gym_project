@@ -28,7 +28,6 @@ def wompi_settings(monkeypatch, settings):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def subscription_user():
     """Subscription user."""
     return User.objects.create_user(

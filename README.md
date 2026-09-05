@@ -85,7 +85,7 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 ### 9. **Dashboard & Activity Feed**
    - Centralized dashboard with recent processes, recent documents, and reports.
    - Activity feed tracking user actions across the platform.
-   - Report generation with PDF and Excel export (xhtml2pdf, openpyxl, XlsxWriter).
+   - Report generation with PDF and Excel export (WeasyPrint, openpyxl, XlsxWriter).
 
 ### 10. **Intranet**
    - Internal legal document library and user profiles for the firm.
@@ -103,12 +103,12 @@ The platform is built as a **Progressive Web App (PWA)** with a **Django REST AP
 
 | Category | Technology |
 |----------|-----------|
-| Framework | Django 5.0.6, Django REST Framework 3.15.2 |
+| Framework | Django 6.1, Django REST Framework 3.18.0 |
 | Authentication | SimpleJWT, Google OAuth (google-auth) |
-| Task queue | Huey 2.5.2 + Redis |
-| Database | SQLite (development) |
-| PDF generation | xhtml2pdf, PyMuPDF, reportlab |
-| Document processing | python-docx, PyPDF2, pypdf, openpyxl, XlsxWriter, pandas |
+| Task queue | Huey 3.3.4 + Redis 8.1.0 |
+| Database | SQLite (development), MySQL 8.4+ (production) |
+| PDF generation | WeasyPrint, PyMuPDF, ReportLab 5 |
+| Document processing | python-docx, pypdf, openpyxl, XlsxWriter, pandas |
 | Image processing | Pillow, opencv-python-headless |
 | Digital signatures | pyHanko |
 | QR codes | qrcode |
@@ -238,7 +238,8 @@ Create and activate a virtual environment, then install dependencies:
 ```bash
 python3 -m venv backend/venv
 source backend/venv/bin/activate
-pip install -r backend/requirements.txt
+python -m pip install --upgrade pip==26.2.1
+python -m pip install -r backend/requirements.txt
 ```
 
 Run migrations and create a superuser:
@@ -649,7 +650,7 @@ Project documentation lives in the `docs/` directory:
 
 ## AI Development Tools
 
-This project uses three AI coding assistants that coexist without interfering:
+This project uses two AI coding assistants that coexist without interfering:
 
 | Tool | Config | Skills/Workflows |
 |---|---|---|

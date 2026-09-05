@@ -146,6 +146,24 @@ async function installSignatureClientMocks(page, { userId, lawyerId, hasSignatur
       return { status: 200, contentType: "application/json", body: "[]" };
     }
 
+    // Signing — stateful: flips the signer's own signature entry to signed
+    // so the post-sign refetch (documentStore.init(true) -> "dynamic-documents/")
+    // reflects a real mutation, not just the unchanged fixture default.
+    const signMatch = apiPath.match(/^dynamic-documents\/(\d+)\/sign\/(\d+)\/$/);
+    if (signMatch && route.request().method() === "POST") {
+      const docId = Number(signMatch[1]);
+      const signerId = Number(signMatch[2]);
+      if (pendingDoc.id === docId) {
+        const signature = pendingDoc.signatures.find((s) => s.user === signerId);
+        if (signature) {
+          signature.signed = true;
+          signature.status = "signed";
+          signature.signed_at = nowIso;
+        }
+      }
+      return { status: 200, contentType: "application/json", body: JSON.stringify(pendingDoc) };
+    }
+
     return null;
   });
 }
@@ -247,4 +265,39 @@ test("client without signature is prompted to create one when signing", { tag: [
   await expect(page.getByRole("heading", { name: "Firma Electrónica", exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
+});
+
+test("client with a stored signature actually completes the sign action", { tag: ['@flow:sign-client-flow', '@module:signatures', '@priority:P1', '@role:client', '@outcome:success'] }, async ({ page }) => {
+  const userId = 8308;
+  const lawyerId = 8309;
+
+  await installSignatureClientMocks(page, { userId, lawyerId, hasSignature: true });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "client", is_gym_lawyer: false, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByText("Contrato de Arrendamiento")).toBeVisible({ timeout: 10_000 });
+  await page.getByText("Contrato de Arrendamiento").click();
+  await page.getByRole("button", { name: /Firmar documento/i }).click();
+
+  // Confirmation dialog (SweetAlert2 default confirm button is "Aceptar").
+  await expect(
+    page.getByText('¿Estás seguro de que deseas firmar el documento "Contrato de Arrendamiento"?')
+  ).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Aceptar" }).click();
+
+  // Blocking "processing" toast is awaited by the app — the sign POST does not
+  // fire until this is dismissed.
+  await expect(page.getByText("Procesando firma del documento...")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  // Outcome: the sign POST succeeded and the app confirms with the real title.
+  await expect(page.getByText('¡Documento "Contrato de Arrendamiento" firmado correctamente!')).toBeVisible({
+    timeout: 10_000,
+  });
 });

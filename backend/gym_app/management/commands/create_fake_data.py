@@ -38,6 +38,12 @@ class Command(BaseCommand):
         call_command('create_subscriptions')
         call_command('create_intranet_content')
         call_command('create_fake_notifications')
+        # Must run LAST: it rebuilds the exact QA walkthrough scenarios on top
+        # of the random data (signature states, managed_by, cuentas de cobro).
+        if options.get('reset_passwords'):
+            call_command('create_release_qa_data', '--reset-passwords')
+        else:
+            call_command('create_release_qa_data')
 
         self.stdout.write(self.style.SUCCESS(
             f'Successfully created fake data with {number_of_records} processes, '

@@ -15,7 +15,6 @@ from gym_app.services.secop_alert_service import AlertEvaluationService
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer user for alert service tests."""
     return User.objects.create_user(
@@ -28,7 +27,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def second_lawyer():
     """Second lawyer user for grouping tests."""
     return User.objects.create_user(
@@ -41,7 +39,6 @@ def second_lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def process():
     """SECOP process for alert evaluation."""
     return SECOPProcess.objects.create(
@@ -57,7 +54,6 @@ def process():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def second_process():
     """Second SECOP process for notification tests."""
     return SECOPProcess.objects.create(
@@ -131,6 +127,7 @@ class TestEvaluateProcesses:
         assert lawyer.email in call_kwargs.kwargs.get(
             'recipient_list', call_kwargs[1].get('recipient_list', [])
         ) if call_kwargs.kwargs else lawyer.email in call_kwargs[0][4] if len(call_kwargs[0]) > 4 else True
+        assert 'fail_silently' not in call_kwargs.kwargs
 
     def test_evaluate_processes_skips_inactive_alerts(self, lawyer, process):
         """Verify inactive alerts are not evaluated."""

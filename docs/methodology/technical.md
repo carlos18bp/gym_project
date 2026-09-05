@@ -7,27 +7,111 @@
 | Category | Technology | Version |
 |----------|-----------|---------|
 | Language | Python | 3.12 |
-| Framework | Django | 5.2.14 |
-| REST API | Django REST Framework | 3.17.1 |
+| Framework | Django | 6.1 |
+| REST API | Django REST Framework | 3.18.0 |
 | Authentication | SimpleJWT | 5.5.1 |
-| Task Queue | Huey | 2.5.2 |
-| Queue Backend | Redis | 5.2.1 |
+| Task Queue | Huey | 3.3.4 |
+| Queue Backend | Redis client | 8.1.0 |
 | Database (dev) | SQLite | built-in |
-| Database (prod) | MySQL | mysqlclient 2.2.7 |
-| Production Server | Gunicorn | 23.0.0 |
-| PDF Generation | WeasyPrint 63.1 (dynamic-document exports), xhtml2pdf 0.2.17 (service/trámite PDFs + fake-data command), PyMuPDF 1.25.3, reportlab 4.2.5 |
-| Document Processing | python-docx 1.1.2, PyPDF2 3.0.1, pypdf 5.3.0, openpyxl 3.1.5, XlsxWriter 3.2.0, pandas 2.2.2 |
-| Image Processing | Pillow 10.4.0, opencv-python-headless 4.11.0.86 |
-| Digital Signatures | pyHanko 0.25.3 |
-| QR Codes | qrcode 8.0 |
-| OAuth | google-auth 2.48.0 |
+| Database (prod) | MySQL 8.4+ | mysqlclient 2.2.8 |
+| Production Server | Gunicorn | 26.2.0 |
+| Native Bindings | cffi 2.1.1, pycparser 3.0 |
+| Compression | Brotli 1.2.0, zopfli 0.4.3 |
+| PDF Generation | WeasyPrint 69.0 + pydyf 0.12.1 + pyphen 0.18.1 (all HTML-to-PDF exports, including service/trámite), ReportLab 5.0.1 + svglib 2.2.0 (canvas/signature/watermark and SVG conversion), PyMuPDF 1.28.2 |
+| Document Processing | python-docx 1.2.0, pypdf 6.16.2, openpyxl 3.1.5, XlsxWriter 3.2.9, pandas 3.0.5 |
+| Image Processing | Pillow 12.3.0, opencv-python-headless 5.0.0.93 (installed; no direct repository imports) |
+| Digital Signatures | pyHanko 0.36.2, pyhanko-certvalidator 0.31.4, cryptography 50.0.1, uritools 6.1.3 |
+| QR Codes | qrcode 8.2 |
+| OAuth | google-auth 2.57.0 |
+| In-process Caching | cachetools 7.1.7 |
+| HTTP Trust Store | requests 2.34.2, certifi 2026.7.22 |
+| Encoding Utilities | chardet 7.6.0, webencodings 0.6.1 |
+| Document Styling | cssselect2 0.9.0, tinycss2 1.5.1, tinyhtml5 2.1.0 |
+| Time Zone Data | tzdata 2026.3, pytz 2026.3.post1 |
 | File Validation | python-magic 0.4.27 |
+| File Lifecycle | django-cleanup 9.0.0 (installed but not registered); application-specific cleanup signals |
 | Environment Config | python-decouple 3.8 |
-| Backups | django-dbbackup 4.2.1 |
-| Query Profiling | django-silk 5.3.2 |
-| Test Data | Faker 25.9.1 |
+| Backups | django-dbbackup 5.3.0 via Django `STORAGES["dbbackup"]` |
+| Query Profiling | django-silk 5.5.2 |
+| Test Data | Faker 40.37.0 |
+| Packaging Utilities | packaging 26.3 |
+| CLI Utilities | Fire 0.7.1, termcolor 3.3.0 |
 | Linting | Ruff |
-| Testing | pytest 8.3.5, pytest-django 4.12.0, pytest-cov 6.1.0, coverage 7.8.0 |
+| Testing | pytest 9.1.1, pytest-django 4.14.0, pytest-cov 7.1.0, coverage 7.15.4 |
+
+> **Backend dependency remediation (complete, 2026-08-27):** a clean Python
+> 3.12 environment with the pinned requirements and `pip==26.2.1` reports zero
+> known vulnerabilities. `PyPDF2` was removed, WeasyPrint resource fetching is
+> restricted, and the suite's inert fixture marks were migrated for pytest 9.
+> The initial svglib 1.6.0 hold was later cleared by svglib 2.2.0, which moved
+> Cairo support to the optional `bitmaps` extra. The subsequent
+> `pytest-cov` 7.1.0 upgrade preserves the CI coverage totals and report formats;
+> its removed subprocess instrumentation does not affect this repository because
+> Python subprocesses do not execute covered `gym_app` code. The isolated Faker
+> 40.37.0 upgrade preserves the provider APIs and `es_CO` locale used by the
+> fake-data management commands; no seeder implementation changes were needed.
+> The sequential major-upgrade campaign then advanced certifi to 2026.7.22;
+> Requests continues to use its bundled CA path and the SECOP client contract is
+> unchanged. The next isolated step advanced the packaged IANA fallback database
+> to tzdata 2026.3 and pytz to 2026.3.post1 without changing Django's time-zone
+> configuration. Packaging then advanced to 26.3 while preserving pytest's
+> requirement handling and Gunicorn's WSGI configuration validation. The Fire
+> command-line dependency chain also remains compatible with termcolor 3.3.0.
+> Chardet 7.6.0 then preserved the supported detection APIs and CLI; the
+> repository has no direct imports that require migration. Webencodings 0.6.1
+> preserves the HTML/CSS parsing consumers and both PDF rendering paths.
+> Uritools 6.1.3 preserves pyhanko-certvalidator's certificate URI name-tree
+> handling and the existing pyHanko validation paths.
+> Pycparser 3.0 preserves cffi declarations and the cryptography, WeasyPrint
+> and signature/PDF paths built on that native-interface chain.
+> Zopfli 0.4.3 preserves zlib/gzip compatibility, FontTools' optional WOFF
+> compression path and both application PDF-generation paths.
+> Cachetools 7.1.7 preserves TTL, LRU and memoization behavior; no repository
+> import or installed reverse dependency requires an application migration.
+> Pydyf 0.12.1 remains compatible with WeasyPrint 69.0 and preserves generated
+> PDF structure, metadata, link annotations and application rendering paths.
+> Pyphen 0.18.1 preserves the Spanish dictionary fallback, word splitting and
+> WeasyPrint's language-aware automatic hyphenation.
+> Cssselect2 0.9.0 preserves compound selector matching and the WeasyPrint and
+> svglib CSS-to-PDF rendering paths.
+> Gunicorn 26.2.0 accepts the existing three-worker Unix-socket systemd
+> configuration and loads `gym_project.wsgi:application` without changes.
+> Django-cleanup 9.0.0 also resolves cleanly, but remains intentionally inactive:
+> the repository neither registers `django_cleanup` in `INSTALLED_APPS` nor
+> imports it. Existing application-specific file deletion and replacement hooks
+> remain responsible for file lifecycle behavior.
+> Django-dbbackup 5.3.0 uses its required Django storage alias while preserving
+> the existing filesystem destination, retention, compression and scheduled
+> database/media command behavior. The default and staticfiles storage aliases
+> remain explicit and equivalent to Django's prior defaults.
+> Redis-py 8.1.0 remains compatible with the health endpoint and Huey 3.3.4;
+> direct client, pipeline, queue, result-store and scheduled-task Lua operations
+> passed against an isolated Redis server.
+> Huey 3.3.4 preserved the registered task/decorator, consumer, result-store and
+> lock APIs used by the application. `REDIS_URL` is now materialized once in
+> Django settings and shared by Huey and the health endpoint instead of probing
+> storage implementation attributes.
+> Pandas 3.0.5 preserved the project's Excel report generation and parsing with
+> both XlsxWriter and openpyxl, including text, missing values, timezone removal
+> and grouped summaries; no report code migration was required.
+> OpenCV headless 5.0.0.93 imports and interoperates with NumPy 2.5.2 on the
+> deployed Linux/Python 3.12 platform. No repository module currently imports
+> `cv2`, so the pin remains a candidate for later dependency cleanup.
+> PyHanko 0.36.2 and pyhanko-certvalidator 0.31.4 form the resolved
+> signature-validation compatibility unit required by pyHanko's package
+> metadata. Offline RSA trust-chain validation remains covered.
+> ReportLab 5.0.1 now resolves because the final service/trámite HTML-to-PDF
+> path moved from xhtml2pdf 0.2.17 to the existing restricted WeasyPrint
+> renderer. Xhtml2pdf was removed; ReportLab remains for direct canvas,
+> signature, watermark and SVG-backed PDF work.
+> Django 6.1 is pinned with the legacy email settings migrated to `MAILERS`.
+> CI now applies migrations and runs a health regression against a real MySQL
+> 8.4 service. The deployed host is still MySQL 8.0.46, so this release has a
+> hard pre-deploy requirement: upgrade the server database to MySQL 8.4 or
+> newer before installing the Django 6.1 environment or restarting services.
+> Svglib 2.2.0 installs without Cairo and remains compatible with ReportLab 5.
+> Its intentional SVG 2.x scale change (96 CSS px = 72 pt) remains covered by
+> direct SVG/ReportLab regression tests.
 
 ### Frontend
 
@@ -57,7 +141,9 @@
 
 | Category | Technology |
 |----------|-----------|
-| Pre-commit | pre-commit hooks with custom test quality gate |
+| Pre-commit | pre-commit 4.6.2 hooks with custom test quality gate |
+| Backend Linting | Ruff 0.16.4 with explicit curated selectors |
+| Dependency Audit | pip-audit 2.10.1 |
 | CI | GitHub Actions (`.github/workflows/test-quality-gate.yml`) |
 | Quality Gate | Custom Python analyzer (`scripts/test_quality_gate.py`) — backend, frontend-unit, frontend-e2e |
 | CORS | django-cors-headers 4.4.0 |
@@ -79,7 +165,8 @@ sudo apt install libpangocairo-1.0-0 libpangoft2-1.0-0 libffi-dev libcairo2
 ```bash
 python3 -m venv backend/venv
 source backend/venv/bin/activate
-pip install -r backend/requirements.txt
+python -m pip install --upgrade pip==26.2.1
+python -m pip install -r backend/requirements.txt
 python backend/manage.py migrate
 python backend/manage.py createsuperuser
 python backend/manage.py create_fake_data   # seed test data
@@ -130,8 +217,8 @@ All configuration via `python-decouple` reading from `backend/.env`. See `backen
 | `REDIS_URL` | `redis://localhost:6379/1` | Redis URL for Huey |
 | `BACKUP_STORAGE_PATH` | `/var/backups/gym_project` | Backup storage path |
 | `ENABLE_SILK` | `false` | Enable django-silk profiling |
-| `SECOP_DATASET_ID` | `bt96-ncis` | Socrata dataset ID for SECOP II |
-| `SECOP_APP_TOKEN` | (empty) | Optional Socrata app token for higher rate limits |
+| `SECOP_DATASET_ID` | `p6dx-8zbt` | Socrata dataset ID for SECOP II |
+| `SECOP_APP_TOKEN` | (empty) | Optional Socrata app token for higher rate limits; 401/403 responses retry once anonymously and keep the token out of logs |
 
 Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for client-side access.
 
@@ -151,7 +238,7 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **TailwindCSS + Flowbite** | Utility-first styling with pre-built component library |
 | **PWA via vite-plugin-pwa** | Offline-ready with minimal configuration; service worker auto-generation |
 | **Pre-commit + CI quality gate** | Automated test quality enforcement on every commit and PR |
-| **Socrata API (datos.gov.co)** | SECOP II public procurement data via `requests`; daily incremental sync; no SDK needed |
+| **Socrata API (datos.gov.co)** | SECOP II public procurement data via `requests`; daily incremental sync; optional app token with one-run anonymous fallback; no SDK needed |
 
 ---
 
@@ -163,10 +250,10 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | **Domain-split Models** | Models organized by domain in separate files under `models/` |
 | **Modular Views** | Views split into sub-packages (`dynamic_documents/`, `layouts/`) |
 | **Pinia Modular Stores** | Stores organized by domain with sub-modules (e.g., `dynamic_document/` has state, getters, actions, index) |
-| **Composables** | Vue composables for cross-cutting concerns (idle logout, PWA install, search, recent views, email) |
+| **Composables** | Vue composables for cross-cutting concerns (idle logout, PWA install, search, recent views, email, SECOP sync polling) |
 | **Route Guards** | Auth check + role-based access control in Vue Router `beforeEach` |
 | **Lazy Route Loading** | All routes use dynamic `import()` with webpack chunk names |
-| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM), SECOP sync (daily 6AM), alert summaries (daily 7AM / weekly Monday 7AM), purge closed processes (daily 3:30AM) |
+| **Huey Periodic Tasks** | Scheduled backups (daily 3AM), Silk GC (daily 4AM), slow query reports (weekly Monday 8AM), SECOP sync (daily 6AM, shared lock with manual runs), alert summaries (daily 7AM / weekly Monday 7AM), purge closed processes (daily 3:30AM) |
 | **Serializer Validation** | DRF serializers handle all input validation |
 | **Email Templates** | MJML/HTML templates for transactional emails |
 
@@ -177,11 +264,11 @@ Frontend environment: `frontend/.env` with `VITE_*` prefixed variables for clien
 | Layer | Tool | File Count | Location |
 |-------|------|------------|----------|
 | Backend (models, serializers, views, tasks, utils, services) | pytest + pytest-django | 101 test files | `backend/gym_app/tests/` |
-| Frontend Stores | Jest + Vue Test Utils | 207 test files (total unit) | `frontend/test/stores/` |
-| Frontend Components | Jest + Vue Test Utils | (included in 207) | `frontend/test/components/` |
-| Frontend Composables | Jest + Vue Test Utils | (included in 207) | `frontend/test/composables/` |
-| Frontend Views | Jest + Vue Test Utils | (included in 207) | `frontend/test/views/` |
-| Frontend E2E User Flows | Playwright | 204 spec files | `frontend/e2e/` |
+| Frontend Stores | Jest + Vue Test Utils | 208 test files (total unit) | `frontend/test/stores/` |
+| Frontend Components | Jest + Vue Test Utils | (included in 208) | `frontend/test/components/` |
+| Frontend Composables | Jest + Vue Test Utils | (included in 208) | `frontend/test/composables/` |
+| Frontend Views | Jest + Vue Test Utils | (included in 208) | `frontend/test/views/` |
+| Frontend E2E User Flows | Playwright | 205 spec files | `frontend/e2e/` |
 
 ### Test Execution Rules
 
@@ -223,9 +310,9 @@ gym_project/
 │   ├── gym_project/          # Django project config (settings, urls, tasks, wsgi/asgi)
 │   ├── gym_app/
 │   │   ├── models/           # 15 files → 56 model classes (55 models.Model subclasses + User via AbstractUser; UserManager is a manager, not a model)
-│   │   ├── views/            # 29 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/, notification)
+│   │   ├── views/            # 32 files (incl. dynamic_documents/, layouts/, secop, service_tramite, reports/, notification, admin_reassignment)
 │   │   ├── serializers/      # 13 files (incl. notification)
-│   │   ├── services/         # 7 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf, notification_service, signature_notification_service)
+│   │   ├── services/         # 8 files (secop_client, secop_sync_service, secop_alert_service, service_tramite_notifications, service_tramite_pdf, notification_service, signature_notification_service, payment_notification_service)
 │   │   ├── utils/            # 4 files (auth_utils, captcha, documents, email_notifications)
 │   │   ├── management/commands/ # 19 commands (fake data CRUD, silk GC, sync_secop, create_activity_logs)
 │   │   ├── templates/        # 21 email/PDF templates
@@ -238,19 +325,19 @@ gym_project/
 │   │   ├── urls.py           # 205 URL patterns
 │   │   └── admin.py          # Django admin configuration
 │   ├── requirements.txt      # production dependencies
-│   └── requirements-dev.txt  # Dev dependencies (pre-commit, ruff)
+│   └── requirements-dev.txt  # Dev tooling (pre-commit, Ruff, pip-audit)
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/       # 115 Vue components
 │   │   ├── views/            # 45 page-level components
 │   │   ├── stores/           # 46 store files (domain directories + root files; excl. services/request_http.js helper — 47 raw)
-│   │   ├── composables/      # 15 composable files (incl. usePendingSignatures)
+│   │   ├── composables/      # 16 composable files (incl. usePendingSignatures and useSecopSyncPolling)
 │   │   ├── router/           # 1 file, 69 route definitions
 │   │   ├── shared/           # Utilities (alerts, color palette, submit handler)
 │   │   └── animations/       # GSAP animation helpers
-│   ├── test/                 # 207 unit test files (11 subdirectories)
-│   ├── e2e/                  # 204 E2E spec files
+│   ├── test/                 # 208 unit test files (11 subdirectories)
+│   ├── e2e/                  # 205 E2E spec files
 │   ├── scripts/              # E2E helper scripts (modules, coverage, AST parser)
 │   └── package.json          # 78 lines
 │
