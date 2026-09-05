@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, master, 'release-*']
   push:
-    branches: [main, master, 'release-*']
+    branches: [main, master]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -77,7 +77,7 @@ jobs:
           retention-days: 1
 
   backend-coverage-merge:
-    if: always()
+    if: ${{ !cancelled() }}
     needs: backend-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -440,7 +440,7 @@ jobs:
   # E2E — Merge shard reports + flow coverage
   # ───────────────────────────────────────────
   e2e-merge-reports:
-    if: always()
+    if: ${{ !cancelled() }}
     needs: frontend-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -549,7 +549,7 @@ jobs:
   # Coverage Summary — aggregates all reports
   # ───────────────────────────────────────────
   coverage-summary:
-    if: always()
+    if: ${{ !cancelled() }}
     needs: [backend-coverage-merge, mysql-84-compatibility, frontend-unit-tests, e2e-merge-reports]
     runs-on: ubuntu-latest
     timeout-minutes: 5
