@@ -7,6 +7,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from faker import Faker
 from gym_app.models import Process, Stage, StageAlert, CaseFile, User, Case, RecentProcess
+from ._seeder_constants import QA_EXCLUDED_LAWYER_EMAILS
 
 class Command(BaseCommand):
     help = 'Create processes with random stages, files, and cases'
@@ -38,7 +39,11 @@ class Command(BaseCommand):
 
         # Get all clients and lawyers from the database
         clients = list(User.objects.filter(role='client'))
-        lawyers = list(User.objects.filter(role='lawyer'))
+        # QA-scenario lawyers are excluded: create_release_qa_data owns their
+        # process count exactly, so the "Procesos (4)" card stays readable.
+        lawyers = list(
+            User.objects.filter(role='lawyer').exclude(email__in=QA_EXCLUDED_LAWYER_EMAILS)
+        )
 
         # Preferred test users by email (if they already exist)
         # Note: Search by email only to handle role changes gracefully

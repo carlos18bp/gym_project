@@ -1,8 +1,11 @@
 -r requirements.txt
 
 # Developer tooling
-pre-commit==3.7.1
-ruff==0.6.8
+pre-commit==4.6.2
+ruff==0.16.4
+
+# Dependency security auditing
+pip-audit==2.10.1
 
 # Note: pytest, pytest-cov, pytest-django and pytest-xdist live in
 # requirements.txt (the CI job installs only that file).

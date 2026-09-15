@@ -195,6 +195,61 @@ class TestMinutaDeleteOwnership:
         assert response.status_code == status.HTTP_200_OK
 
 
+class TestManagerRights:
+    """The managing lawyer (post-reassignment) gets full minuta rights."""
+
+    @pytest.mark.integration
+    def test_manager_can_modify_transferred_minuta(self, other_lawyer, private_minuta):
+        """Manager can modify transferred minuta."""
+        # Simulate a reassignment: other_lawyer now manages a minuta they
+        # did not create; created_by stays untouched.
+        private_minuta.managed_by = other_lawyer
+        private_minuta.save(update_fields=['managed_by'])
+        assert can_modify_minuta(private_minuta, other_lawyer, {'state': 'Published'}) is True
+
+    @pytest.mark.integration
+    def test_manager_can_delete_transferred_minuta(self, api_client, other_lawyer, private_minuta):
+        """Manager can delete transferred minuta."""
+        private_minuta.managed_by = other_lawyer
+        private_minuta.save(update_fields=['managed_by'])
+        api_client.force_authenticate(user=other_lawyer)
+        url = reverse('delete_dynamic_document', args=[private_minuta.id])
+        response = api_client.delete(url)
+        assert response.status_code in (status.HTTP_200_OK, status.HTTP_204_NO_CONTENT)
+        assert not DynamicDocument.objects.filter(id=private_minuta.id).exists()
+
+    @pytest.mark.edge
+    def test_unrelated_lawyer_without_share_still_denied(self, other_lawyer, private_minuta):
+        """Unrelated lawyer without share still denied."""
+        # Not creator, not manager, shared edit off → denied.
+        assert can_modify_minuta(private_minuta, other_lawyer, {'title': 'x'}) is False
+
+
+class TestManagedByListScope:
+    """The `lawyer_id` list param scopes by the current manager."""
+
+    @pytest.mark.integration
+    def test_lawyer_id_filters_by_manager_not_creator(
+        self, api_client, creator_lawyer, other_lawyer
+    ):
+        """Lawyer id filters by manager not creator."""
+        doc = DynamicDocument.objects.create(
+            title='Doc gestionado por otro',
+            content='<p>x</p>',
+            state='Progress',
+            created_by=creator_lawyer,
+            managed_by=other_lawyer,
+        )
+        api_client.force_authenticate(user=other_lawyer)
+        url = reverse('list_dynamic_documents')
+
+        managed = api_client.get(url, {'lawyer_id': other_lawyer.id})
+        assert doc.id in [d['id'] for d in managed.data['items']]
+
+        by_creator = api_client.get(url, {'lawyer_id': creator_lawyer.id})
+        assert doc.id not in [d['id'] for d in by_creator.data['items']]
+
+
 class TestSharedFilter:
     """`shared=true` list param scopes to flagged minutas."""
 

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Ci Optimize"
+  short_description: "Mide, analiza y optimiza los tiempos del CI de un proyecto..."
+  default_prompt: "Use $ci-optimize to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: false

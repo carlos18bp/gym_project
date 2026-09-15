@@ -77,8 +77,37 @@ DISQUALIFYING_RULES: frozenset[str] = frozenset({
 DRAFT_MARKER_RE = re.compile(r"^\s*//\s*qa:\s*draft-unvalidated\b", re.MULTILINE)
 
 
-def load_flow_definitions(path: Path) -> dict:
-    """Read flow-definitions.json, tolerating the pre-outcomes schema."""
+def load_flow_definitions(e2e_root: Path, config=None) -> dict:
+    """
+    Read the flow registry, tolerating the pre-outcomes schema.
+
+    Two layouts (F46, 2026-08-17): the classic monolith
+    `<e2e>/flow-definitions.json` ({"flows": {...}}) and the sharded registry
+    `<e2e>/<flow_definitions_dir>/` — one `<flow-id>.json` per flow
+    ({"id": ..., <definition>}); `_meta.json` carries registry-level fields
+    (version) and is not a flow. Sharding exists so N parallel sessions adding
+    flows touch N different files instead of colliding on one. A declared but
+    absent shard dir falls back to the monolith, so a repo can declare the
+    layout one commit before migrating.
+    """
+    dir_name = getattr(config, "flow_definitions_dir", "") if config else ""
+    if dir_name:
+        flows_dir = e2e_root / dir_name
+        if flows_dir.is_dir():
+            flows: dict = {}
+            for shard in sorted(flows_dir.glob("*.json")):
+                if shard.name == "_meta.json":
+                    continue
+                try:
+                    data = json.loads(shard.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if not isinstance(data, dict):
+                    continue
+                fid = data.get("id") or shard.stem
+                flows[fid] = {k: v for k, v in data.items() if k != "id"}
+            return flows
+    path = e2e_root / "flow-definitions.json"
     if not path.is_file():
         return {}
     try:
@@ -113,7 +142,7 @@ def audit(repo_root: Path) -> dict:
     """Cross-reference declared flows against the tests that truly cover them."""
     config = load_project_config(repo_root)
     e2e_root = repo_root / "frontend" / config.frontend_e2e_dir
-    definitions = load_flow_definitions(e2e_root / "flow-definitions.json")
+    definitions = load_flow_definitions(e2e_root, config)
 
     # flow id -> outcome class -> counts of qualifying / disqualified /
     # unvalidated (drafted, never executed) tests

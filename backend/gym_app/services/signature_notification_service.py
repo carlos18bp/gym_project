@@ -403,7 +403,7 @@ def notify_daily_pending_reminders():
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        users_with_pending = User.objects.filter(id__in=user_ids).exclude(email__isnull=True).exclude(email='')
+        users_with_pending = User.objects.filter(id__in=user_ids).exclude(email__isnull=True).exclude(email='').exclude(is_archived=True)
 
         for user in users_with_pending:
             pending_signatures = (

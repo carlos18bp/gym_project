@@ -18,24 +18,25 @@ logger = logging.getLogger(__name__)
 
 
 @periodic_task(crontab(hour='7', minute='0'))
-@lock_task('secop-sync-lock')
 def sync_secop_daily():
     """
     Daily scheduled synchronization with SECOP API.
 
-    Runs at 2 AM Colombia time (07:00 UTC). Uses lock to prevent concurrent executions.
+    Runs at 2 AM Colombia time (07:00 UTC).
     """
     logger.info("Starting scheduled SECOP sync")
     sync_secop_data()
 
 
 @task(retries=3, retry_delay=60)
+@lock_task('secop-sync-lock')
 def sync_secop_data():
     """
     Main synchronization task.
 
     Can be called manually or by the scheduled task.
-    Handles the full sync workflow with error handling.
+    Handles the full sync workflow with error handling. The lock lives on this
+    task so scheduled and manual executions cannot overlap.
     """
     from gym_app.models import SyncLog
     from gym_app.services.secop_sync_service import SECOPSyncService

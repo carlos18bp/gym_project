@@ -1,0 +1,7 @@
+interface:
+  display_name: "Client Response"
+  short_description: "Analiza mensajes entrantes de clientes por correo o WhatsApp..."
+  default_prompt: "Use $client-response to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

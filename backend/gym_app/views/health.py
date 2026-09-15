@@ -37,10 +37,8 @@ def health_check(request):
 
     # Redis check
     try:
-        huey_conf = getattr(settings, "HUEY", None)
-        if huey_conf and hasattr(huey_conf, "storage") and hasattr(huey_conf.storage, "url"):
-            redis_conn_url = huey_conf.storage.url
-        else:
+        redis_conn_url = getattr(settings, "REDIS_URL", None)
+        if not redis_conn_url:
             from decouple import config as env_config
             redis_conn_url = env_config('REDIS_URL', default='redis://localhost:6379/1')
         r = Redis.from_url(redis_conn_url)

@@ -1254,6 +1254,7 @@ export async function installOrganizationsDashboardApiMocks(
         const expiresAtExpired = new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString();
         const isExpired = sentInvitationScenario === "expired";
         const isValidationError = sentInvitationScenario === "validation_error";
+        const isServerError = sentInvitationScenario === "server_error";
 
         if (isValidationError) {
           return {
@@ -1264,6 +1265,16 @@ export async function installOrganizationsDashboardApiMocks(
                 invited_user_email: ["Email del cliente no válido"],
               },
             }),
+          };
+        }
+
+        // Body has neither `.details` nor `.error`, so InviteMemberModal's
+        // catch block falls through to its final generic-failure branch.
+        if (isServerError) {
+          return {
+            status: 500,
+            contentType: "application/json",
+            body: JSON.stringify({ detail: "Internal server error" }),
           };
         }
 

@@ -27,7 +27,7 @@ except ImportError:
     PILImage = None
 
 try:
-    from PyPDF2 import PdfReader, PdfWriter
+    from pypdf import PdfReader, PdfWriter
 except ImportError:
     PdfWriter = PdfReader = None
 
@@ -45,7 +45,6 @@ from gym_app.views.dynamic_documents.signature_views import (
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def signer_user():
     """Signer user."""
     return User.objects.create_user(
@@ -58,7 +57,6 @@ def signer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -69,7 +67,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document_requiring_signature(lawyer_user, signer_user):
     """Document requiring signature."""
     doc = DynamicDocument.objects.create(
@@ -1618,7 +1615,6 @@ Targets uncovered lines:
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():  # noqa: F811
     """Lawyer user."""
     return User.objects.create_user(
@@ -1628,7 +1624,6 @@ def lawyer_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -1638,7 +1633,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc_fully_signed(lawyer_user, client_user):  # pragma: no cover – unused fixture
     """Doc fully signed."""
     doc = DynamicDocument.objects.create(
@@ -1841,6 +1835,7 @@ class TestPdfHelpers:
             with patch.object(rl_canvas.Canvas, 'setFont'):
                 result = signature_views.add_identifier_footer(buf, "ABCD-1234-EFGH-5678")
         assert isinstance(result, BytesIO)
+        assert len(PdfReader(result).pages) == 1
 
 
 # ===========================================================================
@@ -1887,7 +1882,6 @@ class TestSignatureViewExceptionPaths:
 # Fixtures (batch 9)
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():  # noqa: F811
     """Lawyer user."""
     return User.objects.create_user(
@@ -1897,7 +1891,6 @@ def lawyer_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():  # noqa: F811
     """Client user."""
     return User.objects.create_user(
@@ -1907,7 +1900,6 @@ def client_user():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Document."""
     return DynamicDocument.objects.create(

@@ -1,9 +1,20 @@
 ---
 name: full-audit
-description: "Auditoría integral one-shot del VPS (repo + servidor + proyectos). Orquesta 12 fases, emite veredicto 🟢/🟡/🔴 y deja reporte markdown en docs/audits/."
-argument-hint: "[--with-backup-test] [--send-email] [--quiet] [--skip-env-check] [--skip-memorymax] [--skip-timers]"
-allowed-tools: Bash
+description: "Auditoría integral one-shot del VPS (repo + servidor + proyectos). Orquesta 12 fases, emite veredicto 🟢/🟡/🔴 y deja reporte markdown en docs/audits/. Con --all corre en TODOS los VPS del fleet (via tailscale) y resume el veredicto por host."
+argument-hint: "[--all-vps (fleet completo; alias: --all)] [--with-backup-test] [--send-email] [--quiet] [--skip-env-check] [--skip-memorymax] [--skip-timers]"
+allowed-tools: Bash, AskUserQuestion
 ---
+
+## Cuándo usar cuál (familia de auditoría)
+
+| Skill | Úsala cuando | Cadencia típica |
+|---|---|---|
+| `/full-audit` | Veredicto integral 🟢/🟡/🔴 del VPS o del fleet (`--all`): configs, drift, envs, timers, health, email — 12 fases automatizadas, ~4 min | Post-cambio grande, post-incidente, trimestral |
+| `/server-diagnostic` | Informe profundo por las 15 buenas prácticas con score y recomendaciones por proyecto — más narrativo y granular que full-audit | Semanal automático (cron) / a demanda |
+| `/vuln-audit` | Dependencias y CVEs de UN proyecto (pip + npm), con updates aplicados | Por proyecto, mensual o ante CVE |
+
+No se orquestan entre sí (cada una es independiente); full-audit NO corre a las otras dos.
+
 
 # Auditoría integral — full-audit
 
@@ -28,6 +39,32 @@ Orquesta en secuencia los validadores del repo y consolida el resultado en un re
 11. `email-live-test.sh` — TEST vivo del pipeline (solo con `--send-email`)
 12. `test-backup-restore.sh` — solo con `--with-backup-test` (lento, ~5-10 min)
 
+## Cómo invocar este skill
+
+Gating ([[_output-protocol]] §4): (1) flags explícitos → ejecutar directo, sin
+menú; (2) intención clara por la sesión (p.ej. "auditá todo el fleet") →
+proponer el comando en una línea y esperar confirmación; (3) sin argumentos /
+intención difusa → UNA sola AskUserQuestion con Q1+Q2 fusionadas en una
+llamada; (4) nunca en modo fleet/headless/cron ni dentro de un barrido.
+
+**Q1 — Alcance** (`multiSelect: false`):
+
+| label | description | preview |
+|---|---|---|
+| Este VPS (Recommended) | audit rápido read-only (~3-4 min) del host actual, email en dry-run | `bash scripts/audits/full-audit.sh` |
+| --all-vps (fleet) | los 3 VPS vía tailscale (~10-12 min), exit = el PEOR de los hosts; reenvía los add-ons de Q2 a cada VPS | `bash scripts/audits/full-audit.sh --all-vps` |
+
+**Q2 — Add-ons** (`multiSelect: true` — se agregan al alcance elegido en Q1):
+
+| label | description | preview |
+|---|---|---|
+| --with-backup-test | restaura DE VERDAD un backup: crea y dropea DBs `_restoretest` (lento, ~5-10 min extra) | `bash scripts/audits/full-audit.sh --with-backup-test` |
+| --send-email | ENVÍA email real (heartbeat + live-test), cooldown 1h del pipeline — nunca Recommended | `bash scripts/audits/full-audit.sh --send-email` |
+
+**Qué NO se pregunta:** `--quiet` y los `--skip-env-check` /
+`--skip-memorymax` / `--skip-timers` — tuning simétrico al default (recortar
+output / saltear una fase es decisión que se tipea a propósito, no menú).
+
 ## Ejecución
 
 ```bash
@@ -35,7 +72,12 @@ bash scripts/audits/full-audit.sh $ARGUMENTS
 ```
 
 Flags útiles:
-- sin flags → audit rápido (~3-4 min), dry-run de email, sin backup test
+- sin flags → audit rápido (~3-4 min) de ESTE VPS, dry-run de email, sin backup test
+- **`--all-vps`** (alias: `--all`) → **fleet-wide**: corre la auditoría en TODOS los VPS (local directo, remotos
+  via `tailscale ssh`), reenvía el resto de flags, imprime un **resumen fleet** (VPS →
+  veredicto) y el exit es el PEOR de los hosts. ~3-4 min por VPS (⇒ ~10-12 min los 3).
+  Cada host deja su reporte en su propio `docs/audits/`. Si Tailscale pide auth, muestra el
+  link y hay que autorizar + re-correr. Combinable: `--all --quiet`, `--all --skip-timers`, etc.
 - `--with-backup-test` → incluye restore real (lento, ~10 min)
 - `--send-email` → heartbeat real + email-live-test (requiere cooldown 1h en el pipeline)
 - `--quiet` → solo veredicto final a stdout
@@ -51,6 +93,18 @@ veredicto canónico de [[_output-protocol]]:
 - `2` → 🔴 full-audit — N error(es), revisar arriba (al menos una con errores)
 
 ---
+
+## Acciones disponibles
+
+Tras el reporte, si la sesión es interactiva y NO hubo flags explícitos
+(reglas de gating de [[_output-protocol]] §4), ofrecer vía AskUserQuestion:
+
+| Opción (label) | description (costo/efecto) | preview (comando exacto) |
+|---|---|---|
+| --all-vps fleet completo (Recommended) | misma auditoría en los 3 VPS vía tailscale, read-only (~10-12 min) | `bash scripts/audits/full-audit.sh --all-vps` |
+| --with-backup-test | restore real: crea/dropea DBs `_restoretest` (~5-10 min) | `bash scripts/audits/full-audit.sh --with-backup-test` |
+| --send-email | ENVÍA email real (heartbeat + live-test); cooldown 1h — nunca Recommended | `bash scripts/audits/full-audit.sh --send-email` |
+| Abrir el reporte | leer el markdown que esta corrida dejó en docs/audits/ | `open docs/audits/<fecha>-<alias>-full-audit.md` |
 
 ## Output final
 

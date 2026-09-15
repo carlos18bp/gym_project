@@ -20,7 +20,7 @@
 | 14 | Automated Backups (daily, retention, manual trigger) | ✅ Complete | Huey periodic task |
 | 15 | Query Profiling (django-silk, opt-in, GC, weekly reports) | ✅ Complete | Huey periodic tasks + management command |
 | 16 | Test Quality Gate (backend + frontend + E2E, CI integration) | ✅ Complete | Custom analyzer + GitHub Actions |
-| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store. Backend: 120 tests passing. Frontend: 53 unit tests passing. E2E: 8 spec files with data-testid selectors. UI/UX redesign applied. Fake data command idempotent. |
+| 17 | SECOP Public Procurement (Socrata API, classifications, alerts, Excel export) | ✅ Complete — sync hardened 2026-08-21 | 6 models, 1 view file, 1 serializer, 3 services, 1 task file, 6 components, 2 views, 1 store, 1 sync-polling composable. Optional-token 401/403 fallback, shared manual/scheduled lock, lawyer-like manual authorization, and authoritative `SyncLog` UI state. Live staging recovery processed 20,129 records successfully. |
 | 18 | Servicios y Trámites (catálogo, formularios por etapas, radicado, PDF, bandejas por rol) | ✅ Complete | 9 models, 1 view file, 1 serializer, 2 services (PDF + notifications), 1 template PDF, 2 migrations (schema + seed Registro Marcario), 7 frontend views (incl. ServicesHub.vue), 1 store, 1 dashboard component, sidebar/router integration, backend tests passing. Sprint Abril 2026: 11 mejoras (admin icon preview, validación, errores, help_text UX, multi-file UI, PDF rediseño, tabs navigation, header corporativo, emails sin emojis, estado destacado, adjuntos automáticos) |
 
 ---
@@ -29,10 +29,10 @@
 
 | # | Requirement | Plan Document | Status |
 |---|------------|---------------|--------|
-| 1 | Process Reassignment | `Plan_01_reassignment.md` / `Requirement_01_reassignment.md` | 📋 Planned |
+| 1 | Process Reassignment | `Requirement_01_reassignment` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-07) | Módulo admin de reasignación de datos. Backend: `User.is_archived` + `archive()/unarchive()` (archive limpia `is_active` → simplejwt mata tokens vivos), bloqueo de login en los 3 métodos (sign_in/google/outlook), `Process.lawyer` CASCADE→PROTECT (migración 0069/0070), `DynamicDocument.managed_by` (SET_NULL, backfill=created_by; `lawyer_id` scope pasa a managed_by; `can_modify_minuta` extiende derechos al gestor; created_by inmutable). API `admin/reassignment/*` (summary + execute atómico con matriz de validación + archive/unarchive) gated por `is_platform_admin` (no incluye abogados); exclusión de archivados en 4 puntos de notificación. Frontend: getters lawyers/archivedLawyers/allLawyers (+ exclusión de archivados en selectores existentes), store `admin_reassignment`, selector de abogado en ProcessForm (default = usuario logueado; quita hardcodes), vista `DataReassignment.vue` (preview + select-all + no-elegibles con motivo + archivar + restaurar), ruta requiresAdmin + item SlideBar + quick action + `LawyerMetricsWidget`. Tests: 82 pytest F1 + 74 F2 + 16 F3 + ~22 Jest + 3 E2E (`admin-data-reassignment` P1, flow-definitions v1.11.0). Fake data: 1 abogado archivado seeded; migraciones aplicadas y backfill verificado (1190 docs managed_by=created_by). Decisiones del usuario: excluir también estado Vencido; minutas SÍ se transfieren. |
 | 2 | Minutas (Meeting Minutes) | `Plan_02_minutas.md` / `Requirement_02_minutas.md` | 📋 Planned |
 | 3 | Document Preview | `Plan_03_preview.md` / `Requirement_03_preview.md` | 📋 Planned |
-| 4 | Guided Tour | `Plan_04_guided_tour.md` / `Requirement_04_guided_tour.md` | 📋 Planned |
+| 4 | Guided Tour | `Requirement_04_guided_tour` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-06) | `TourProgress` model (`unique_together user+module`, 30-day staleness on backend, migration `0067`), `GET /api/tour-progress/?module=` + `POST /api/tour-progress/complete/` (JWT, user-scoped), driver.js ^1.6 tour: `useGuidedTour` composable + `shared/tours/` registry (lawyer 10 / client 7 steps, conditional pending-signatures closer, Spanish copy, brand-styled `tour.css`), `data-tour` attrs + "?" help button + `InfoTooltip.vue` in `Dashboard.vue`, auto-start on first visit / SweetAlert2 re-offer after 30 days / manual relaunch. Tests: 17 pytest + 28 Jest (composable, steps, InfoTooltip) + 6-test E2E spec. Flow `docs-guided-tour` (P2). User guide section `guided-tour`. Extensible to other modules via `tourRegistry`. |
 | 5 | Notification Center | `Plan_05_notification_center.md` / `Requirement_05_notification_center.md` | ✅ Complete | `Notification` model + `notification_service` (`create_notification`/`create_bulk_notifications`/`get_unread_count`), categories with `process_alert`/`signature_*`, snooze + archive |
 | 6 | Legal Files Alerts | `Plan_06_legal_files_alerts.md` / `Requirement_06_legal_files_alerts.md` | ✅ Complete (audited 2026-04-28) | `signature_reminder_task.py` (Huey periodic, 14:00 UTC = 9 AM Colombia). Audit closed 7 spec gaps: removed email from `notify_signature_reopened` (in-app only per matrix), added 24h-cutoff exclusion to daily reminder queries, fixed N+1 in user fetch loop, added 8s pulse timeout in `SignaturesListTable`, added `sessionStorage` cleanup on logout, exported `PENDING_SIGNATURES_ALERTED_KEY` constant, **respected explicit `?tab=`/`?lawyerTab=` URL params over auto-redirect in `Dashboard.vue` (bug surfaced by E2E spec)**. 12 backend tests + 6 composable tests + 1 logout test + 3 E2E specs (5 tests) added. Flows registered: `legal-files-menu-pulse` (P1), `legal-files-auto-redirect` (P2), `legal-files-table-pulse` (P2). |
 | 7 | Process Alerts | `Plan_07_process_alerts.md` / `Requirement_07_process_alerts.md` | ✅ Complete (audited 2026-04-28) | `StageAlert` (OneToOne with `Stage`), `process_alert_tasks.py` Huey task at 14:00 UTC, 3-day & 1-day reminders, configurable recipients (`notify_clients`); 25 backend tests + 3 E2E specs |
@@ -40,7 +40,7 @@
 | 8b | Minutas — Visibilidad compartida entre abogados (enhancement) | `Requirement_minutas_shared_visibility` | ✅ Complete (Release Agosto 2026, commit `d595ae0`) | Removed per-creator filter so all lawyers see/manage every minuta (Draft/Published). Serializer `created_by_name` (`select_related`, no N+1), "Creado por" column, "Todas / Solo mías" toggle (reuses backend `lawyer_id`), creator-name search; `allMinutas` getter replaces orphaned `getDocumentsByLawyerId`. Backend serializer/view tests + store/component unit tests. Flow `minutas-shared-visibility` (P2). |
 | 9 | Marketplace | `Plan_09_marketplace.md` / `Requirement_09_marketplace.md` | 📋 Planned |
 | 10 | Optional Signature | `Plan_10_firma_opcional.md` / `Requirement_10_firma_opcional.md` | 📋 Planned |
-| 11 | Contract Execution | `Plan_11_contract_execution.md` / `Requirement_11_contract_execution.md` | 📋 Planned |
+| 11 | Contract Execution | `Requirement_11_contract_execution` (Release Agosto 2026, branch `release-august-2026-c-v2`) | ✅ Complete (2026-07-07) | `DocumentPaymentRecord` (1 fila por doc+cuota, lazy — slots `pending` sintetizados; estados uploaded/accepted/rejected; re-upload sobre el MISMO registro conservando `rejection_reason` como historial; signal post_delete limpia archivos), summary type `payment_installments` ("Forma de pago (N cuotas)", parser estricto compartido modelo/serializer), migración `0068`. API: 5 endpoints `dynamic-documents/<pk>/payment-records/*` (shape único con `can_upload/can_review/next_uploadable` — el FE nunca calcula reglas; secuencial autoritativo con 409; archivos PDF/JPG/PNG/DOCX ≤20MB; download anti-IDOR). `payment_notification_service` (email+in-app, skip auto-notificación). FE: store `paymentRecords`, opción en DocumentVariablesConfig (auto number), fila en DocumentSummaryModal (`formatInstallments`), menú "Subir/Ver Cuentas de Cobro" en 3 configs, `PaymentRecordsModal` (progreso, contabilidad, panel aceptar/rechazar con motivo obligatorio) + `UploadPaymentRecordModal` (drag&drop). Tests: 22 modelo + 24 vistas + 3 serializer (pytest) + ~55 Jest + 5 E2E (`docs-contract-execution` P1, flow-definitions v1.10.0). Fake data: doc con progreso 1/3 + doc fresco; verificado ciclo delete/create en staging. Gotcha: emitir eventos ANTES de `showNotification` (SweetAlert resuelve al cerrar). |
 | 12 | In-Place Formalize | `Plan_12_in_place_formalize.md` / `Requirement_12_in_place_formalize.md` | ✅ Complete |
 
 ---
@@ -54,11 +54,65 @@
 | 3 | `debug.log` is 6.7MB — gitignored (rotated `debug.log.N` files also ignored since `6cba400`), but no `RotatingFileHandler` found in repo settings; rotation config still pending | Low | Operations |
 | 5 | Pre-registered flow `minutas-columns` (P2, documents) corresponds to planned feature #2 Minutas — not yet implemented. Will get its spec when feature lands. | Low | Testing / Planned features |
 
+### Completed Maintenance
+
+| Date | Task | Result |
+|------|------|--------|
+| 2026-08-27 | Final backend major resolution | Django 5.2.17→6.1 + `MAILERS`, ReportLab 4.5.1→5.0.1, service/trámite PDF migration to restricted WeasyPrint, xhtml2pdf removal and real MySQL 8.4 CI gate; clean full environment has zero outdated packages; live MySQL 8.0.46 must be upgraded before deploy |
+| 2026-08-27 | Backend developer-tooling refresh | pre-commit 3.7.1->4.6.2, Ruff 0.6.8->0.16.4 and pip-audit 2.10.1 pinned in dev tooling; clean full environment reduced outdated packages from ten to two temporary Django/ReportLab holds, later cleared by the final major resolution |
+| 2026-08-27 | Gradual backend major upgrades — svglib | svglib 1.5.1→2.2.0; Cairo is now optional, clean audit/checks passed, SVG/CSS 96 px→72 pt conversion + ReportLab/xhtml2pdf output and 17 focused PDF tests remained healthy |
+| 2026-08-27 | Gradual backend major upgrades — Django 6.1 | ✅ Resolved: Django 6.1 pinned, email configuration moved to `MAILERS`, and CI now exercises migrations/checks/health on MySQL 8.4; deploy remains gated on upgrading the live MySQL 8.0.46 host |
+| 2026-08-27 | Gradual backend major upgrades — ReportLab 5 | ✅ Resolved: service/trámite HTML-to-PDF moved to WeasyPrint, xhtml2pdf removed and ReportLab 5.0.1 pinned with direct/rendered-PDF regressions green |
+| 2026-08-27 | Gradual backend major upgrades — pyHanko validation stack | pyHanko 0.25.3→0.36.2 + `pyhanko-certvalidator` 0.26.8→0.31.4 as a resolver-required unit; clean audit, real xhtml2pdf output, offline RSA chain validation and 21 focused tests passed |
+| 2026-08-27 | Gradual backend major upgrades — OpenCV headless | `opencv-python-headless` 4.14.0.94→5.0.0.93; clean resolution/audit, NumPy-backed image operation smoke and 11 health tests passed; no direct repository imports found |
+| 2026-08-27 | Gradual backend major upgrades — pandas | pandas 2.3.3→3.0.5; clean resolution/audit, dual-engine Excel round-trip, string/missing/date/grouping smoke, 10 report-function and 19 report-view tests passed |
+| 2026-08-27 | Gradual backend major upgrades — Huey | Huey 2.6.0→3.3.4; shared explicit `REDIS_URL`, 14-task registry + consumer validation, real ephemeral-Redis queue/result/lock smoke, 11 health tests and 19 focused task tests passed |
+| 2026-08-27 | Gradual backend major upgrades — redis | `redis` 5.3.1→8.1.0; clean resolution/audit, real redis-py + Huey queue/result/schedule operations, real health endpoint, and 11 health tests passed against isolated services |
+| 2026-08-27 | Gradual backend major upgrades — django-dbbackup | `django-dbbackup` 4.3.0→5.3.0; migrated to `STORAGES["dbbackup"]`, preserved command scheduling, created a real compressed SQLite backup + metadata, and passed 11 health tests |
+| 2026-08-27 | Gradual backend major upgrades — django-cleanup | `django-cleanup` 8.1.0→9.0.0; clean resolution/audit, app intentionally remained inactive, and 6 application-specific file cleanup tests passed |
+| 2026-08-27 | Gradual backend major upgrades — gunicorn | `gunicorn` 23.0.0→26.2.0; clean resolution/audit, deployed WSGI/worker/socket config accepted, and 11 health tests passed without starting services |
+| 2026-08-27 | Gradual backend major upgrades — cssselect2 | `cssselect2` 0.8.0→0.9.0; clean resolution/audit, compound selector + WeasyPrint + svglib smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pyphen | `pyphen` 0.17.2→0.18.1; clean resolution/audit, Spanish fallback + splitting + WeasyPrint hyphenation smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pydyf | `pydyf` 0.11.0→0.12.1; clean resolution/audit, real PDF structure/metadata/link smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — cachetools | `cachetools` 5.5.2→7.1.7; clean resolution/audit, TTL + LRU + memoization smoke, 10 Google-login and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — zopfli | `zopfli` 0.2.3.post1→0.4.3; clean resolution/audit, zlib/gzip + FontTools compression smoke, 2 document-render and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pycparser | `pycparser` 2.23→3.0; clean resolution/audit, C parser + cffi + Ed25519 smoke, 4 signature PDF and 7 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — uritools | `uritools` 4.0.3→6.1.3; clean resolution/audit, HTTPS/LDAP + certificate name-tree smoke, 4 signature PDF and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — webencodings | `webencodings` 0.5.1→0.6.1; clean resolution/audit, encoding + HTML/CSS/PDF smoke, 2 document-render and 13 service/trámite PDF tests passed |
+| 2026-08-27 | Gradual backend major upgrades — chardet | `chardet` 5.2.0→7.6.0; clean resolution/audit, supported detector API + CLI smoke, and 11 health tests passed; no direct consumers required migration |
+| 2026-08-27 | Gradual backend major upgrades — termcolor | `termcolor` 2.5.0→3.3.0; clean resolution/audit, ANSI/no-color + Fire dispatch smoke, command-registry load, and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — packaging | `packaging` 24.2→26.3; clean resolution/audit, version and specifier smoke, Gunicorn WSGI config validation, and 11 health tests passed |
+| 2026-08-27 | Gradual backend major upgrades — pytz | `pytz` 2025.2→2026.3.post1; pandas/Bogotá conversion smoke, dbbackup command discovery and 10 report-model tests passed with clean resolution and audit |
+| 2026-08-27 | Gradual backend major upgrades — tzdata | `tzdata` 2025.3→2026.3; packaged Bogotá zone smoke, report models and process-alert scheduling passed under SQLite, with clean resolution and zero-finding audit |
+| 2026-08-27 | Gradual backend major upgrades — certifi | `certifi` 2024.12.14→2026.7.22; clean resolution, CA-bundle/Requests smoke, health and SECOP client regression, Django check and zero-finding `pip-audit` passed |
+| 2026-08-27 | Gradual backend major upgrades — Faker | `Faker` 25.9.2→40.37.0; clean Python 3.12 resolution, provider/locale smoke, 12 focused seeder tests, full collection and `pip-audit` all passed without changing fake-data logic |
+| 2026-08-27 | Gradual backend major upgrades — pytest-cov | `pytest-cov` 6.3.0→7.1.0; isolated install and `pip check` passed, 3,187 tests collected, health slice preserved identical coverage totals, and `pip-audit` remained at 0 findings |
+| 2026-08-26 | Backend dependency vulnerability remediation | 85 audit records reduced to 0; security-major pins applied, `PyPDF2` removed, WeasyPrint resource fetching restricted, and pytest 9 fixture compatibility completed |
+
 ---
 
 ## 4. Testing Status
 
-### Backend Tests (95 files / 3032 tests — verified 2026-07-16)
+### Test Quality Gate & CI Regime (adopted 2026-07-23/24)
+
+The canonical test-quality core was adopted (`7c3af01`) with a per-project `.testquality.yml`:
+thresholds `max_test_lines 50`, `max_assertions_per_test 7`, `min_test_lines 3`,
+`max_timeout_ms 100`, and `banned_tokens: batch/coverage/cov/deep`. Junk detectors classify
+weak assertions, missing user interaction, global-state leaks, flow-tag mismatches, etc.
+
+- **Grandfathered debt**: `.junk-baseline.json` holds **553** pre-existing findings
+  (frontend-unit **382**, frontend-e2e **171**, backend **0**). CI blocks any NEW junk while the
+  baseline stays warning-only and may only shrink (`7395579`).
+- **Testing skills** realigned to the new gate (`ed9eb07`); **merge-when-green** now guards
+  release branches (`ac17e4f`).
+- **Current gate score: 98** with **557 warnings** — weak_assertion 371, flow_tag_mismatch 81,
+  no_user_interaction 73, global_state_leak 60, no_data_assertion 14, duplicate_coverage 14,
+  too_many_assertions 4.
+
+### Backend Tests (101 files / 3176 test functions, 582 `Test*` classes — verified 2026-07-24)
+
+> Markers actually applied: `django_db` 995, `edge` 151, `contract` 64, `integration` 60.
+> Only 16 `parametrize` uses across the suite. `rest` is declared in `pytest.ini` but used **0** times.
 
 Latest additions (2026-04-28):
 - `tests/models/test_stage_alert.py` (9 tests)
@@ -78,7 +132,7 @@ Latest additions (2026-04-28):
 | `tests/services/` | Service layer tests (incl. `test_notification_service.py`) |
 | `tests/commands/` | Management command tests |
 
-### Frontend Unit Tests (194 files — verified 2026-07-16)
+### Frontend Unit Tests (208 files / 2296 test cases — updated 2026-08-21)
 
 | Directory | Purpose |
 |-----------|---------|
@@ -94,7 +148,9 @@ Latest additions (2026-04-28):
 | `test/utils/` | Utility tests |
 | `test/data_sample/` | Test data samples |
 
-### Frontend E2E Tests (198 spec files — verified 2026-07-16) — **150 flows registered, 150/150 covered (100%)**
+### Frontend E2E Tests (204 spec files / 633 test cases — verified 2026-07-24) — **164 flows registered in flow-definitions.json (v1.12.0)**
+
+> **Flow-map drift (Phase 3 of the 2026-07-24 campaign reconciles it):** USER_FLOW_MAP.md lists **168** flows, flow-definitions.json registers **164**, and the coverage snapshots report **150–153** — the three sources have drifted apart.
 
 Latest additions (2026-04-28):
 - `e2e/process/process-alert-recipients.spec.js` (3 tests)

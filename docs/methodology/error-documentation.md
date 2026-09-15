@@ -21,6 +21,11 @@
 
 ## Resolved Issues
 
+### [RESOLVED-024] Backend dependency audit reported 85 vulnerability records
+- **Context**: The 2026-08-26 backend audit found 85 records across `cryptography`, `lxml`, `pillow`, `pip`, `pypdf`, `PyPDF2`, `pytest`, `sqlparse`, and `weasyprint`. User-authored dynamic-document HTML also reached WeasyPrint's default resource fetcher.
+- **Resolution**: Upgraded the affected dependencies to fixed releases, removed `PyPDF2` and migrated imports to `pypdf`, introduced a deny-by-default WeasyPrint fetcher, and removed 170 inert `django_db` marks from fixtures for pytest 9 compatibility. Companion pins are `cffi==2.0.0` and `cssselect2==0.8.0`.
+- **Verification**: Fresh Python 3.12 environment installed cleanly; `pip check`, Django system check, targeted PDF/image/fixture tests, Ruff, and the test quality gate passed. `pip-audit` reported zero known vulnerabilities with separately bootstrapped `pip==26.2.1`.
+
 ### [RESOLVED-001] E2E bypassCaptcha relies on `window.__e2eCaptchaVerified` flag
 - **Context**: E2E tests needed to bypass Google reCAPTCHA during automated testing. Relying on Vue internals for captcha state was unreliable across versions.
 - **Resolution**: The `bypassCaptcha` helper sets `window.__e2eCaptchaVerified` flag via a `grecaptcha` stub. This is now the stable, version-independent approach.
@@ -183,6 +188,14 @@
 - **Resolution** (commit `17491a6`): `SyncStatus.vue` now declares and emits `trigger-sync`; the disabled window is kept intentionally as a re-trigger cooldown. Unit + E2E specs updated to assert the emit and the scheduled sync.
 - **Affected files**: `frontend/src/components/secop/SyncStatus.vue`, `frontend/test/components/secop/SyncStatus.test.js`, `frontend/e2e/secop/secop-admin-sync-flow.spec.js`
 
+### [RESOLVED-023] SECOP staging sync failed repeatedly with a rejected optional app token
+- **Context** (2026-08-21): staging had no successful live SECOP synchronization since 2026-08-11. Both scheduled and manual Huey attempts reached the official `p6dx-8zbt` dataset but returned 403, while the identical public query succeeded without credentials.
+- **Root Cause**: the configured optional `SECOP_APP_TOKEN` had become invalid. The client treated every authentication rejection as terminal, and the UI used a fixed 180-second spinner instead of following `SyncLog`, so operators could not see the real outcome.
+- **Operational recovery**: blanked the invalid staging token, restarted `gym-staging-huey`, and queued the normal incremental task. `SyncLog` 619 completed successfully: 20,129 processed, 17,115 created, 3,014 updated, and 1,143 stale processes closed.
+- **Resolution**: settings and `.env.example` now default to the verified `p6dx-8zbt` dataset with blank optional credentials; `SECOPClient` retries a token-authenticated 401/403 once without the token and stays anonymous for later pages; the real `sync_secop_data` task owns the shared lock; the manual endpoint uses the common lawyer-like predicate; and `useSecopSyncPolling` renders authoritative in-progress/success/failure state and refreshes SECOP data after success.
+- **Security**: the fallback warning never logs the token, and frontend failure text does not expose `SyncLog.error_message`.
+- **Affected files**: `backend/gym_project/settings.py`, `backend/.env.example`, `backend/gym_app/services/secop_client.py`, `backend/gym_app/secop_tasks.py`, `backend/gym_app/views/secop.py`, `frontend/src/composables/useSecopSyncPolling.js`, `frontend/src/components/secop/SyncStatus.vue`, `frontend/src/views/secop/SecopList.vue`
+
 ### [RESOLVED-022] Signature "clear" button had no accessible name (dead test locator)
 - **Context** (surfaced 2026-07-23 in the same audit): the signature "clear" control had no accessible name, so its E2E test locator never matched and the assertion was silently dead — a real a11y gap.
 - **Resolution** (commit `1092803`): added accessible names to the clear/upload controls in the electronic-signature components; the E2E spec now matches a real, named element.
@@ -197,7 +210,7 @@
 ### [RESOLVED-018] PDF export 500 on editor-created tables + editor/PDF rendering mismatch
 - **Context** (2026-07-07): Exporting a dynamic document to PDF returned HTTP 500 when the content contained tables created in the TinyMCE editor; exports also rendered differently from the editor (spacing, table borders).
 - **Root Cause**: xhtml2pdf could not handle the editor's table markup, and its CSS subset diverged from what the browser editor showed. The PDF stylesheet was additionally duplicated across `document_views.py` and `signature_views.py`, so fixes drifted apart.
-- **Resolution** (commits `2ba6d77`, `65c48ce`, `2d390fa`): dynamic-document PDF rendering migrated to **WeasyPrint 63.1** with a shared stylesheet/HTML builder consolidated in `backend/gym_app/utils/documents.py`; editor-created table markup is normalized before rendering. Both `document_views.py` and `signature_views.py` consume the shared builder. xhtml2pdf remains only for service/trámite PDFs (`services/service_tramite_pdf.py`).
+- **Resolution** (commits `2ba6d77`, `65c48ce`, `2d390fa`; dependency follow-up 2026-08-27): dynamic-document PDF rendering migrated to **WeasyPrint** with a shared stylesheet/HTML builder consolidated in `backend/gym_app/utils/documents.py`; editor-created table markup is normalized before rendering. Both `document_views.py` and `signature_views.py` consume the shared builder. The service/trámite generator now consumes the same restricted renderer, so xhtml2pdf has been removed and ReportLab 5 can be used by the remaining direct PDF paths.
 - **Affected files**: `backend/gym_app/utils/documents.py`, `backend/gym_app/views/dynamic_documents/document_views.py`, `backend/gym_app/views/dynamic_documents/signature_views.py`, `backend/requirements.txt`
 - **Tests**: `backend/gym_app/tests/utils/test_document_utils.py` (builder + table normalization), regression updates in `test_dynamic_document.py` / `test_dynamic_document_signatures.py`.
 

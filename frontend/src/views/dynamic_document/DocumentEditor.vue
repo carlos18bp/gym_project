@@ -539,9 +539,9 @@ const editorConfig = computed(() => ({
   paste_merge_formats: true,
   paste_as_text: false,
 
-  // Strip Word-specific noise that xhtml2pdf cannot render (mso-* styles
-  // and Mso* class names). Prevents formatting loss when the same tables
-  // are later exported to PDF.
+  // Strip Word-specific noise before export (mso-* styles and Mso* class
+  // names). Prevents formatting drift when the same tables are later
+  // exported to PDF or Word.
   paste_postprocess: (_plugin, args) => {
     if (!args?.node) return;
     args.node.querySelectorAll('[style]').forEach((el) => {

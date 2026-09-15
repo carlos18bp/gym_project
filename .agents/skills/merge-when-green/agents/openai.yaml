@@ -1,7 +1,7 @@
 interface:
   display_name: "Merge When Green"
-  short_description: "Usar cuando trabajo ya commiteado (o listo para commitear)..."
+  short_description: "Herramienta del OPERADOR (manual-only desde 2026-08-22): las..."
   default_prompt: "Use $merge-when-green to handle this task with its documented workflow."
 
 policy:
-  allow_implicit_invocation: true
+  allow_implicit_invocation: false

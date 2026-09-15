@@ -69,11 +69,9 @@ def test_health_check_returns_503_when_redis_fails(client):
 
 
 @pytest.mark.django_db
-def test_health_check_uses_huey_storage_url_when_available(client, settings):
-    """Use HUEY.storage.url for Redis connection when available."""
-    huey_conf = MagicMock()
-    huey_conf.storage.url = "redis://huey-host:6379/0"
-    settings.HUEY = huey_conf
+def test_health_check_uses_configured_redis_url(client, settings):
+    """Use the Redis URL shared by the health check and Huey."""
+    settings.REDIS_URL = "redis://configured-host:6379/0"
 
     mock_redis_instance = MagicMock()
     mock_redis_instance.ping.return_value = True
@@ -82,18 +80,22 @@ def test_health_check_uses_huey_storage_url_when_available(client, settings):
         response = client.get("/api/health/")
 
     assert response.status_code == 200
-    mock_from_url.assert_called_once_with("redis://huey-host:6379/0")
+    mock_from_url.assert_called_once_with("redis://configured-host:6379/0")
 
 
 @pytest.mark.django_db
-def test_health_check_falls_back_to_decouple_when_no_huey(client, settings):
-    """Fall back to decouple config when HUEY is not configured."""
-    settings.HUEY = None
+def test_health_check_falls_back_to_decouple_when_setting_missing(client, settings):
+    """Fall back to decouple when REDIS_URL is absent from settings."""
+    fake_settings = SimpleNamespace(
+        BASE_DIR=settings.BASE_DIR,
+        DJANGO_ENV=settings.DJANGO_ENV,
+    )
 
     mock_redis_instance = MagicMock()
     mock_redis_instance.ping.return_value = True
 
     with (
+        patch("gym_app.views.health.settings", fake_settings),
         patch("gym_app.views.health.Redis.from_url", return_value=mock_redis_instance) as mock_from_url,
         patch("decouple.config", return_value="redis://decouple-host:6379/1") as mock_decouple,
     ):
@@ -105,25 +107,23 @@ def test_health_check_falls_back_to_decouple_when_no_huey(client, settings):
 
 
 @pytest.mark.django_db
-def test_health_check_falls_back_to_decouple_when_huey_lacks_storage(client, settings):
-    """Fall back to decouple when HUEY exists but has no storage.url."""
-    huey_conf = MagicMock(spec=[])  # No attributes at all
-    settings.HUEY = huey_conf
+def test_health_check_does_not_depend_on_huey_storage_internals(client, settings):
+    """Keep the health check independent from Huey's storage attributes."""
+    settings.REDIS_URL = "redis://configured-host:6379/1"
+    settings.HUEY = MagicMock(spec=[])
 
     mock_redis_instance = MagicMock()
     mock_redis_instance.ping.return_value = True
 
     with (
         patch("gym_app.views.health.Redis.from_url", return_value=mock_redis_instance) as mock_from_url,
-        patch("decouple.config", return_value="redis://fallback:6379/1") as mock_decouple,
     ):
         response = client.get("/api/health/")
 
     assert response.status_code == 200
     data = response.json()
     assert data["redis"] == "ok"
-    mock_decouple.assert_called_once()
-    mock_from_url.assert_called_once()
+    mock_from_url.assert_called_once_with("redis://configured-host:6379/1")
 
 
 @pytest.mark.django_db

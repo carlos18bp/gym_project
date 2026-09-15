@@ -22,7 +22,7 @@ test.describe("SECOP Admin Sync Flow", () => {
   // used to live here guarded by `if (await syncBtn.isVisible())`, so it proved
   // nothing beyond the panel still rendering. It is covered by the assertions
   // below without the conditional.
-  test("triggering a manual sync puts the sync button in its in-flight state", {
+  test("triggering a manual sync refreshes the authoritative completion state", {
     tag: ['@flow:secop-trigger-sync', '@module:secop', '@priority:P4', '@role:lawyer', '@outcome:success'],
   }, async ({ page }) => {
     await page.goto("/secop");
@@ -32,6 +32,7 @@ test.describe("SECOP Admin Sync Flow", () => {
     await expect(syncBtn).toBeEnabled();
     await expect(syncBtn).toContainText("Sincronizar");
     await expect(syncBtn).toHaveAttribute("title", "Sincronizar ahora");
+    await expect(page.getByTestId("sync-status-text")).toHaveText("150 procesos");
 
     // Clicking fires the manual sync: the store POSTs secop/sync/trigger/,
     // which schedules the background job on the backend.
@@ -40,6 +41,11 @@ test.describe("SECOP Admin Sync Flow", () => {
         request.url().includes("/api/secop/sync/trigger/") &&
         request.method() === "POST"
     );
+    const completionStatus = page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/secop/sync/") &&
+        response.request().method() === "GET"
+    );
     await syncBtn.click();
     await triggerRequest;
 
@@ -47,5 +53,12 @@ test.describe("SECOP Admin Sync Flow", () => {
     await expect(syncBtn).toBeDisabled();
     await expect(syncBtn).toContainText("Sincronizando");
     await expect(syncBtn).toHaveAttribute("title", "Sincronizando...");
+
+    // The first status poll returns a newer successful SyncLog. The UI must
+    // stop its local in-flight state and refresh the authoritative count.
+    await completionStatus;
+    await expect(page.getByTestId("sync-status-text")).toHaveText("180 procesos");
+    await expect(syncBtn).toBeEnabled();
+    await expect(syncBtn).toContainText("Sincronizar");
   });
 });

@@ -494,6 +494,22 @@
         @close="showFolderPickerModal = false"
       />
 
+      <PaymentRecordsModal
+        :is-visible="showPaymentsModal"
+        :document="paymentsDocument"
+        @close="showPaymentsModal = false"
+        @updated="emit('refresh')"
+        @upload-requested="handlePaymentUploadRequested"
+      />
+
+      <UploadPaymentRecordModal
+        :is-visible="showUploadPaymentModal"
+        :document="paymentsDocument"
+        :slot-number="uploadPaymentSlot"
+        @close="showUploadPaymentModal = false"
+        @uploaded="handlePaymentUploaded"
+      />
+
       <DocumentRelationshipsModal
         v-if="activeModals.relationships.isOpen"
         :is-open="activeModals.relationships.isOpen"
@@ -629,6 +645,8 @@ import LetterheadModal from "@/components/dynamic_document/common/LetterheadModa
 import SelectFolderModal from "@/components/dynamic_document/common/SelectFolderModal.vue";
 import DocumentRelationshipsModal from "@/components/dynamic_document/modals/DocumentRelationshipsModal.vue";
 import DocumentSummaryModal from "@/components/dynamic_document/common/DocumentSummaryModal.vue";
+import PaymentRecordsModal from "@/components/dynamic_document/cards/modals/PaymentRecordsModal.vue";
+import UploadPaymentRecordModal from "@/components/dynamic_document/cards/modals/UploadPaymentRecordModal.vue";
 import { formatSummaryValue } from "@/components/dynamic_document/common/formatSummaryValue";
 
 // Props
@@ -1153,6 +1171,26 @@ const rejectComment = ref('');
 const showRejectionReasonModal = ref(false);
 const rejectionReasonText = ref('');
 
+// Contract execution (cuentas de cobro) modals
+const showPaymentsModal = ref(false);
+const showUploadPaymentModal = ref(false);
+const paymentsDocument = ref(null);
+const uploadPaymentSlot = ref(null);
+
+const handlePaymentUploadRequested = (slotNumber) => {
+  uploadPaymentSlot.value = slotNumber;
+  showPaymentsModal.value = false;
+  showUploadPaymentModal.value = true;
+};
+
+const handlePaymentUploaded = () => {
+  // Reopen the detail modal (it refetches on open) and refresh the list
+  // so payments_summary-driven menu options stay in sync.
+  showUploadPaymentModal.value = false;
+  showPaymentsModal.value = true;
+  emit('refresh');
+};
+
 const handleDocumentClick = (document) => {
   // Open actions modal instead of navigating
   selectedDocumentForActions.value = document;
@@ -1233,6 +1271,17 @@ const handleMenuAction = async (action, document) => {
       case "addToFolder":
         folderPickerDocument.value = document;
         showFolderPickerModal.value = true;
+        break;
+
+      case "viewPaymentRecords":
+        paymentsDocument.value = document;
+        showPaymentsModal.value = true;
+        break;
+
+      case "uploadPaymentRecord":
+        paymentsDocument.value = document;
+        uploadPaymentSlot.value = document.payments_summary?.next_uploadable ?? null;
+        showUploadPaymentModal.value = true;
         break;
 
       default:

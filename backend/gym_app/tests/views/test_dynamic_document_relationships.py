@@ -8,7 +8,6 @@ from gym_app.models import DocumentRelationship, DynamicDocument
 
 User = get_user_model()
 @pytest.fixture
-@pytest.mark.django_db
 def client_user():
     """Client user."""
     return User.objects.create_user(
@@ -19,7 +18,6 @@ def client_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def other_user():
     """Other user."""
     return User.objects.create_user(
@@ -30,7 +28,6 @@ def other_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(

@@ -76,9 +76,12 @@ async function fillSignInForm(page) {
 }
 
 test.describe("error handling: 404 not found", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, () => {
-  test("non-existent route shows 404 or redirects", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    // audit: load-only flow (router catch-all guard: loading the unknown URL is
-    // itself the behaviour under test)
+  // "shows 404 or redirects" promised two outcomes; the body only ever
+  // asserts the redirect (toHaveURL(/sign_in/) + heading) — name the one
+  // real outcome so a future change that actually renders a 404 page
+  // doesn't get treated as breaking a passing test.
+  test("non-existent route redirects to sign-in", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
+    // quality: allow-no-interaction (router catch-all guard: redirect on load IS the behavior)
     await page.goto("/non-existent-page-xyz");
 
     await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
@@ -123,7 +126,7 @@ test.describe("error handling: 401 unauthorized", { tag: ['@flow:misc-error-hand
       userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
     });
 
-    // audit: load-only flow (route guard: the redirect on load is the behaviour)
+    // quality: allow-no-interaction (route guard: redirect on load IS the behavior)
     await page.goto("/dashboard");
 
     await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });
@@ -131,7 +134,7 @@ test.describe("error handling: 401 unauthorized", { tag: ['@flow:misc-error-hand
   });
 
   test("missing token redirects to login", { tag: ['@flow:misc-error-handling', '@module:misc', '@priority:P3', '@role:shared'] }, async ({ page }) => {
-    // audit: load-only flow (route guard: the redirect on load is the behaviour)
+    // quality: allow-no-interaction (route guard: redirect on load IS the behavior)
     await page.goto("/dashboard");
 
     await expect(page).toHaveURL(/\/sign_in/, { timeout: 15_000 });

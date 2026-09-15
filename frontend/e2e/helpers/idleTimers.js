@@ -14,7 +14,7 @@
  *   requestAnimationFrame() but cleared with clearInterval()
  *
  * One of the rAF-driven libraries loaded on the dashboard (gsap, swiper,
- * flowbite, sweetalert2, headlessui, tinymce) does
+ * flowbite, sweetalert2, driver.js, canvas-confetti, headlessui, tinymce) does
  * exactly that, so `fastForward()` throws before advancing a single
  * millisecond and no application timer ever fires. The failure is
  * deterministic, not flaky.

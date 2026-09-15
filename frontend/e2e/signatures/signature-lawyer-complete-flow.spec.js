@@ -68,8 +68,12 @@ async function installSignatureLawyerMocks(page, { userId, clientId, hasSignatur
     state: "PendingSignatures",
     createdBy: userId,
     signatures: [
-      { user: userId, status: "pending", signed_at: null },
-      { user: clientId, status: "pending", signed_at: null },
+      // signer_email/signer_name/signed mirror the shape canSignDocument()
+      // actually reads (menuOptionsHelper.js) — without them the "Firmar
+      // documento" menu option never appears for this fixture (see
+      // signature-client-complete-flow.spec.js:57-60 for the correct shape).
+      { id: 1, user: userId, signer_email: lawyer.email, signer_name: `${lawyer.first_name} ${lawyer.last_name}`, signed: false, status: "pending", signed_at: null },
+      { id: 2, user: clientId, signer_email: client.email, signer_name: `${client.first_name} ${client.last_name}`, signed: false, status: "pending", signed_at: null },
     ],
   });
 
@@ -172,6 +176,24 @@ async function installSignatureLawyerMocks(page, { userId, clientId, hasSignatur
       return { status: 200, contentType: "application/json", body: "[]" };
     }
 
+    // Signing — stateful: flips the signer's own signature entry to signed
+    // so the post-sign refetch (documentStore.init(true) -> "dynamic-documents/")
+    // reflects a real mutation, not just the unchanged fixture default.
+    const signMatch = apiPath.match(/^dynamic-documents\/(\d+)\/sign\/(\d+)\/$/);
+    if (signMatch && route.request().method() === "POST") {
+      const docId = Number(signMatch[1]);
+      const signerId = Number(signMatch[2]);
+      if (pendingDoc.id === docId) {
+        const signature = pendingDoc.signatures.find((s) => s.user === signerId);
+        if (signature) {
+          signature.signed = true;
+          signature.status = "signed";
+          signature.signed_at = nowIso;
+        }
+      }
+      return { status: 200, contentType: "application/json", body: JSON.stringify(pendingDoc) };
+    }
+
     return null;
   });
 }
@@ -246,4 +268,39 @@ test("lawyer with no signature sees upload prompt in profile context", { tag: ['
   await expect(page.getByText("Añadir firma electrónica")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Dibujar firma" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Subir imagen" })).toBeVisible();
+});
+
+test("lawyer as a required signer completes the sign action", { tag: ['@flow:sign-document-flow', '@module:signatures', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
+  const userId = 8206;
+  const clientId = 8207;
+
+  await installSignatureLawyerMocks(page, { userId, clientId, hasSignature: true });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: { id: userId, role: "lawyer", is_gym_lawyer: true, is_profile_completed: true },
+  });
+
+  await page.goto("/dynamic_document_dashboard");
+
+  await page.getByRole("button", { name: "Dcs. Por Firmar" }).click();
+  await expect(page.getByTestId("signatures-list-row-502")).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId("signatures-list-row-502").click();
+  await page.getByRole("button", { name: /Firmar documento/i }).click();
+
+  // Confirmation dialog (SweetAlert2 default confirm button is "Aceptar").
+  await expect(
+    page.getByText('¿Estás seguro de que deseas firmar el documento "Poder Especial"?')
+  ).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Aceptar" }).click();
+
+  // Blocking "processing" toast is awaited by the app — the sign POST does not
+  // fire until this is dismissed.
+  await expect(page.getByText("Procesando firma del documento...")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  // Outcome: the sign POST succeeded and the app confirms with the real title.
+  await expect(page.getByText('¡Documento "Poder Especial" firmado correctamente!')).toBeVisible({
+    timeout: 10_000,
+  });
 });

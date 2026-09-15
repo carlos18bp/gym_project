@@ -9,7 +9,7 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from gym_app.utils.auth_utils import generate_auth_tokens
-from gym_app.models import User, Process, Stage, CaseFile, Case, StageAlert, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence, Notification
+from gym_app.models import User, Process, Stage, CaseFile, Case, StageAlert, LegalRequest, LegalRequestType, LegalDiscipline, LegalRequestFiles, LegalRequestResponse, CorporateRequest, CorporateRequestType, CorporateRequestFiles, CorporateRequestResponse, Organization, OrganizationInvitation, OrganizationMembership, OrganizationPost, LegalDocument, IntranetProfile, DynamicDocument, DocumentVariable, LegalUpdate, RecentDocument, RecentProcess, DocumentSignature, Tag, DocumentVisibilityPermission, DocumentUsabilityPermission, DocumentFolder, DocumentRelationship, Subscription, PaymentHistory, Service, ServiceStage, ServiceField, ServiceRequest, ServiceRequestAnswer, ServiceRequestFieldFile, ServiceRequestLawyerResponse, ServiceRequestLawyerResponseFile, ServiceRequestSequence, Notification, TourProgress, DocumentPaymentRecord
 from gym_app.models.user import UserSignature, ActivityFeed
 from gym_app.models.password_code import PasswordCode
 from gym_app.models.email_verification_code import EmailVerificationCode
@@ -23,10 +23,10 @@ class UserAdmin(BaseUserAdmin):
     """
     list_display = (
         'email', 'first_name', 'last_name', 'document_type', 'identification',
-        'role', 'is_staff', 'is_active', 'created_at'
+        'role', 'is_staff', 'is_active', 'is_archived', 'created_at'
     )
     search_fields = ('first_name', 'last_name', 'email', 'identification', 'role', 'document_type')
-    list_filter = ('role', 'document_type', 'is_staff', 'is_active', 'created_at')
+    list_filter = ('role', 'document_type', 'is_staff', 'is_active', 'is_archived', 'created_at')
     ordering = ('email',)
     filter_horizontal = ()
     
@@ -37,7 +37,7 @@ class UserAdmin(BaseUserAdmin):
                       'identification', 'document_type', 'photo_profile', 'letterhead_image')
         }),
         (_('Permissions'), {
-            'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 
+            'fields': ('role', 'is_active', 'is_archived', 'is_staff', 'is_superuser',
                       'is_gym_lawyer', 'is_profile_completed'),
         }),
         (_('Important dates'), {
@@ -77,6 +77,8 @@ class UserAdmin(BaseUserAdmin):
         if not request.user.is_superuser:
             return HttpResponseForbidden('Only superusers can use this feature.')
         user = get_object_or_404(User, pk=user_id)
+        if user.is_archived:
+            return HttpResponseForbidden('Cannot impersonate an archived user.')
         tokens = generate_auth_tokens(user)
         access_token = tokens['access']
         user_data = json.dumps(tokens['user'])
@@ -540,10 +542,11 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     Custom admin configuration for the DynamicDocument model.
     Provides comprehensive management of dynamic documents with variable support.
     """
-    list_display = ('title', 'state', 'created_by', 'assigned_to', 'is_public', 'fully_signed', 'requires_signature', 'created_at')
-    search_fields = ('title', 'content', 'created_by__email', 'assigned_to__email', 'tags__name')
+    list_display = ('title', 'state', 'created_by', 'managed_by', 'assigned_to', 'is_public', 'fully_signed', 'requires_signature', 'created_at')
+    search_fields = ('title', 'content', 'created_by__email', 'managed_by__email', 'assigned_to__email', 'tags__name')
     list_filter = ('state', 'is_public', 'requires_signature', 'fully_signed', 'created_at', 'updated_at', 'tags')
     filter_horizontal = ('tags',)
+    raw_id_fields = ('created_by', 'managed_by', 'assigned_to')
     inlines = [DocumentVariableInline]
 
     fieldsets = (
@@ -551,8 +554,8 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
             'fields': ('title', 'content', 'state', 'letterhead_image')
         }),
         ('Access Control', {
-            'fields': ('is_public', 'created_by', 'assigned_to'),
-            'description': 'Control document visibility and ownership. When is_public=True, all users can view and use this document as a template.'
+            'fields': ('is_public', 'created_by', 'managed_by', 'assigned_to'),
+            'description': 'Control document visibility and ownership. created_by is the immutable author (audit); managed_by is the current responsible lawyer (changes on reassignment). When is_public=True, all users can view and use this document as a template.'
         }),
         ('Tags & Organization', {
             'fields': ('tags',),
@@ -571,7 +574,7 @@ class DynamicDocumentAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         """Optimize queryset to reduce database queries."""
-        return super().get_queryset(request).select_related('created_by', 'assigned_to').prefetch_related('tags')
+        return super().get_queryset(request).select_related('created_by', 'managed_by', 'assigned_to').prefetch_related('tags')
 
 class LegalUpdateAdmin(admin.ModelAdmin):
     """
@@ -626,6 +629,17 @@ class DocumentSignatureAdmin(admin.ModelAdmin):
     list_filter = ['signed', 'signed_at']
     search_fields = ['document__title', 'signer__email', 'signer__first_name', 'signer__last_name']
     ordering = ['signed_at']
+
+class DocumentPaymentRecordAdmin(admin.ModelAdmin):
+    """
+    Custom admin configuration for the DocumentPaymentRecord model.
+    Manages cuentas de cobro uploaded per contract installment.
+    """
+    list_display = ('document', 'installment_number', 'status', 'amount', 'uploaded_by', 'uploaded_at')
+    list_filter = ('status', 'uploaded_at')
+    search_fields = ('document__title', 'uploaded_by__email')
+    readonly_fields = ('uploaded_at', 'created_at')
+    raw_id_fields = ('document', 'uploaded_by')
 
 class TagAdmin(admin.ModelAdmin):
     """
@@ -845,6 +859,14 @@ class NotificationAdmin(admin.ModelAdmin):
     raw_id_fields = ('user',)
 
 
+class TourProgressAdmin(admin.ModelAdmin):
+    list_display = ('user', 'module_name', 'completed_at', 'created_at')
+    search_fields = ('user__email',)
+    list_filter = ('module_name', 'completed_at')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('user',)
+
+
 class StageAlertAdmin(admin.ModelAdmin):
     list_display = ('stage', 'is_active', 'notify_clients', 'notified_3_days', 'notified_1_day', 'created_at')
     list_filter = ('is_active', 'notify_clients', 'notified_3_days', 'notified_1_day')
@@ -951,9 +973,10 @@ class GyMAdminSite(admin.AdminSite):
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
                     if model['object_name'] in [
-                        'DynamicDocument', 'DocumentSignature', 'DocumentVariable', 
-                        'Tag', 'DocumentFolder', 'DocumentVisibilityPermission', 
-                        'DocumentUsabilityPermission', 'DocumentRelationship'
+                        'DynamicDocument', 'DocumentSignature', 'DocumentVariable',
+                        'Tag', 'DocumentFolder', 'DocumentVisibilityPermission',
+                        'DocumentUsabilityPermission', 'DocumentRelationship',
+                        'DocumentPaymentRecord'
                     ]
                 ]
             },
@@ -973,7 +996,7 @@ class GyMAdminSite(admin.AdminSite):
                 'app_label': 'notifications',
                 'models': [
                     model for model in app_dict.get('gym_app', {}).get('models', [])
-                    if model['object_name'] in ['Notification', 'StageAlert']
+                    if model['object_name'] in ['Notification', 'StageAlert', 'TourProgress']
                 ]
             },
             {
@@ -1023,6 +1046,7 @@ admin_site.register(LegalDocument, LegalDocumentAdmin)
 admin_site.register(IntranetProfile, IntranetProfileAdmin)
 admin_site.register(DynamicDocument, DynamicDocumentAdmin)
 admin_site.register(DocumentSignature, DocumentSignatureAdmin)
+admin_site.register(DocumentPaymentRecord, DocumentPaymentRecordAdmin)
 admin_site.register(Tag, TagAdmin)
 admin_site.register(DocumentFolder, DocumentFolderAdmin)
 admin_site.register(DocumentVisibilityPermission, DocumentVisibilityPermissionAdmin)
@@ -1043,4 +1067,5 @@ admin_site.register(AlertNotification, AlertNotificationAdmin)
 admin_site.register(SyncLog, SyncLogAdmin)
 admin_site.register(SavedView, SavedViewAdmin)
 admin_site.register(Notification, NotificationAdmin)
+admin_site.register(TourProgress, TourProgressAdmin)
 admin_site.register(StageAlert, StageAlertAdmin)

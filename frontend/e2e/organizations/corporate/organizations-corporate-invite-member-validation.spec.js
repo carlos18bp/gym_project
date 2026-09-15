@@ -53,3 +53,51 @@ test("corporate_client invite member: validation error shows inline and stats do
   // Stats should not change
   await expect(pendingInvitesStat).toHaveText("1");
 });
+
+// quality: allow-fragile-test-data (seeded fake data from generate_fake_data command)
+test("corporate_client invite member: server error shows generic notice and stats do not change", { tag: ['@flow:org-invite-members', '@module:organizations', '@priority:P1', '@role:corporate', '@outcome:failure'] }, async ({ page }) => {
+  test.setTimeout(60_000);
+
+  const userId = 4901;
+
+  await installOrganizationsDashboardApiMocks(page, {
+    userId,
+    role: "corporate_client",
+    startWithOrganizations: true,
+    sentInvitationScenario: "server_error",
+  });
+
+  await setAuthLocalStorage(page, {
+    token: "e2e-token",
+    userAuth: {
+      id: userId,
+      role: "corporate_client",
+      is_gym_lawyer: false,
+      is_profile_completed: true,
+      first_name: "E2E",
+      last_name: "Corporate",
+      email: "corp2@example.com",
+    },
+  });
+
+  await page.goto("/organizations_dashboard");
+  await expect(page.locator('h1:has-text("Panel Corporativo")')).toBeVisible();
+
+  const pendingInvitesStat = page.locator('dt:has-text("Invitaciones Pendientes") + dd');
+  await expect(pendingInvitesStat).toHaveText("1");
+
+  await page.getByRole("button", { name: "Invitar Miembro" }).click();
+  const inviteDialog = page.locator('[role="dialog"]').filter({ hasText: "Invitar Nuevo Miembro" });
+  await expect(page.getByRole("heading", { name: "Invitar Nuevo Miembro" })).toBeVisible();
+
+  await inviteDialog.locator("#email").fill("valid@example.com"); // quality: allow-fragile-selector (stable DOM id)
+  await inviteDialog.getByRole("button", { name: "Enviar Invitación" }).click();
+
+  // A 500 with a body that has neither `.details` nor `.error` hits the
+  // generic-failure branch, not the inline field-validation path.
+  await expect(page.getByText("Error al enviar la invitación")).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("button", { name: "OK" }).click();
+
+  // Stats should not change
+  await expect(pendingInvitesStat).toHaveText("1");
+});

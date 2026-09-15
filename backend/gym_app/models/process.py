@@ -106,7 +106,7 @@ class Process(models.Model):
     case_files = models.ManyToManyField('CaseFile', help_text="The case files associated with the process.")
     case = models.ForeignKey(Case, on_delete=models.CASCADE, help_text="The case type being processed.")
     subcase = models.CharField(max_length=100, help_text="The subcase classification.")
-    lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.CASCADE, help_text="The lawyer handling the case.")
+    lawyer = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="lawyer_processes", on_delete=models.PROTECT, help_text="The lawyer handling the case. PROTECT prevents deleting a lawyer who still owns processes; archive them instead.")
     progress = models.PositiveSmallIntegerField(
         default=0,
         validators=[MinValueValidator(0), MaxValueValidator(100)],

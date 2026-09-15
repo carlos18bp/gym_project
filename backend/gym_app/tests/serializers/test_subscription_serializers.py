@@ -17,7 +17,6 @@ FIXED_FUTURE_BILLING_DATE = FIXED_BILLING_DATE + datetime.timedelta(days=30)
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def subscription_user():
     """Subscription user."""
     return User.objects.create_user(

@@ -20,7 +20,11 @@ from gym_app.models import (
     DocumentUsabilityPermission,
     RecentDocument,
 )
-from ._seeder_constants import SPECIAL_LAWYER_EMAIL, SPECIAL_NON_LAWYER_EMAILS
+from ._seeder_constants import (
+    QA_EXCLUDED_LAWYER_EMAILS,
+    SPECIAL_LAWYER_EMAIL,
+    SPECIAL_NON_LAWYER_EMAILS,
+)
 
 _OBJETOS = [
     "Prestación de servicios de asesoría jurídica en materia contractual y litigios ante entidades del Estado.",
@@ -64,8 +68,12 @@ class Command(BaseCommand):
         num_documents = options.get('num_documents', 10)
         self.stdout.write(f'Creating {num_documents} dynamic documents...')
 
-        # Get all lawyers and potential client-side users (client, basic, corporate_client)
-        lawyers = list(User.objects.filter(role='lawyer'))
+        # Get all lawyers and potential client-side users (client, basic, corporate_client).
+        # The QA-scenario lawyers are excluded: create_release_qa_data owns their
+        # dataset exactly, and random minutas would bury the reassignment screen.
+        lawyers = list(
+            User.objects.filter(role='lawyer').exclude(email__in=QA_EXCLUDED_LAWYER_EMAILS)
+        )
         clients = list(User.objects.filter(role__in=['client', 'basic', 'corporate_client']))
 
         if not lawyers or not clients:
@@ -97,8 +105,6 @@ class Command(BaseCommand):
             if user not in client_candidates:
                 client_candidates.extend([user] * 4)
 
-        states = [choice[0] for choice in DynamicDocument.STATE_CHOICES]
-        
         # Document template titles and content patterns
         document_templates = [
             {
@@ -206,6 +212,7 @@ class Command(BaseCommand):
                 content=content,
                 state=document_state,
                 created_by=lawyer,
+                managed_by=lawyer,
                 assigned_to=client,
                 created_at=created_at,
                 updated_at=updated_at,
@@ -456,6 +463,7 @@ class Command(BaseCommand):
                 content=content,
                 state=state,
                 created_by=created_by_user,
+                managed_by=created_by_user,
                 assigned_to=assigned,
                 created_at=created_at,
                 updated_at=created_at,
@@ -648,6 +656,7 @@ class Command(BaseCommand):
                 content=template_doc.content,
                 state=state,
                 created_by=template_doc.created_by,
+                managed_by=template_doc.created_by,
                 assigned_to=assigned_to_user,
                 created_at=created_at,
                 updated_at=created_at,
@@ -1095,7 +1104,7 @@ class Command(BaseCommand):
                     ).exists()
                     
                     if not existing:
-                        rel = DocumentRelationship.objects.create(
+                        DocumentRelationship.objects.create(
                             source_document=completed_doc,
                             target_document=other_doc,
                             created_by=created_by_for_rel
@@ -1143,7 +1152,7 @@ class Command(BaseCommand):
                     ).exists()
                     
                     if not existing:
-                        rel = DocumentRelationship.objects.create(
+                        DocumentRelationship.objects.create(
                             source_document=signed_doc,
                             target_document=ref_doc,
                             created_by=created_by_for_rel
@@ -1166,5 +1175,13 @@ class Command(BaseCommand):
                 f'✓ Created {relationships_created} document relationships simulating signature workflow scenarios'
             )
         )
+
+        # Cuentas de cobro are NOT seeded here. They live in
+        # create_release_qa_data, which runs last and owns the four payment
+        # scenarios the QA guide walks through — with real PDFs and the client
+        # signature plus visibility permission the flow needs. This block used
+        # to attach a plan to whichever two FullySigned documents happened to
+        # sort first, which made the fixture non-deterministic and wrote
+        # 31-byte files that would not open.
 
         self.stdout.write(self.style.SUCCESS(f'Successfully created dynamic documents (base={num_documents}, extras={EXTRA_PER_USER})'))

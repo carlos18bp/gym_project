@@ -92,7 +92,6 @@ class AlertEvaluationService:
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[alert.user.email],
                 html_message=html_message,
-                fail_silently=False,
             )
 
             notification.is_sent = True
@@ -174,7 +173,6 @@ class AlertEvaluationService:
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user.email],
                 html_message=html_message,
-                fail_silently=False,
             )
 
             # Mark all as sent in a single query

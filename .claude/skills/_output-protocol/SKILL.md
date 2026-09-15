@@ -156,6 +156,10 @@ ejecutaría.
 - Merge de una rama release: no se ofrece ni se tipea — lo decide
   `release_merge:` en projects.yml (fuente de verdad, consultada por
   [[merge-when-green]] en cada invocación).
+- Merge del PR de la sesión (`gh pr merge`, `/merge-when-green`): ninguna
+  skill lo ofrece como fila — el DoD de sesión es PR abierto + CI verde; el
+  merge es de `/merge-queue` o del operador (sólo como texto `(operador)` en
+  Next steps).
 - `migrate-project --cutover` (exige `--confirm-downtime` TIPEADO — un click no
   es una confirmación de downtime).
 - `--include-projects` de bootstrap/init-fleet como Recommended (es

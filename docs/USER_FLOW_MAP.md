@@ -2,8 +2,8 @@
 
 Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede realizar en la plataforma, organizados por rol, con ramificaciones para cada variante de formulario o camino alternativo.
 
-**Fecha:** July 7, 2026
-**Versión:** 1.11.0
+**Fecha:** August 21, 2026
+**Versión:** 1.12.1
 **Fuentes:** `src/router/index.js`, `src/views/`, `src/components/`, `e2e/flow-definitions.json`, `docs/FUNCTIONAL_GUIDE_BY_ROLE.md`
 
 ---
@@ -400,6 +400,26 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 ---
 
 ## Flujos — Admin
+
+### admin-data-reassignment: Reasignación de datos de abogado
+- **Módulo:** admin | **Prioridad:** P1 | **Ruta:** `/data_reassignment` | **E2E:** ✅ (`data-reassignment-flow.spec.js` — 5 tests: transferencia+archivado, restauración, entrada por quick action del dashboard, error de backend en execute, guard no-admin)
+- **Descripción:** Módulo exclusivo de administradores para transferir procesos y documentos de un abogado a otro y archivar cuentas de abogados. Acceso desde el menú lateral "Reasignación de Datos" (solo admin) y el botón rápido del dashboard. La transferencia es atómica: los procesos pasan al destino, la gestión de documentos (`managed_by`) también, y `assigned_to` migra solo cuando era el abogado origen; `created_by` nunca cambia (auditoría). Los documentos en estados de firma (Pendiente/Firmado/Rechazado/Vencido) no son transferibles. Archivar un abogado bloquea su login por todos los métodos, lo excluye de listados y notificaciones, y es reversible.
+
+**Pasos:**
+1. El administrador entra a `/data_reassignment` (guard `requiresAdmin`; los no-admin son redirigidos al dashboard)
+2. Selecciona el abogado origen → el sistema carga la vista previa (procesos + documentos elegibles + no elegibles con motivo)
+3. Selecciona el abogado destino (excluye al origen y a los archivados)
+4. Marca procesos/documentos (o "Seleccionar todos"); opcionalmente "Archivar abogado origen al finalizar"
+5. Confirma en el modal → transferencia atómica → toast de éxito con el resumen (y aviso de archivado si aplica)
+6. Los abogados archivados pueden restaurarse desde la card "Abogados archivados"
+
+**Ramificaciones:**
+- ├── **Documentos en firma:** listados como no transferibles con motivo (En proceso de firma / Firmado / Rechazado / Vencido); excluidos del "Seleccionar todos"
+- ├── **Documentos personales del abogado (assigned_to = origen):** su `assigned_to` migra al destino; los asignados a clientes conservan su cliente
+- ├── **Minutas:** su gestión (`managed_by`) migra, por lo que aparecen en el scope "Mías" del destino y desaparecen del origen
+- ├── **Archivar origen:** bloqueo total de login (tradicional + Google/Outlook), exclusión de listados y notificaciones; reversible vía "Restaurar"
+- ├── **Error en la transferencia:** si el backend rechaza (400), el modal se cierra y el toast de error muestra el motivo devuelto
+- └── **No-admin:** el guard redirige al dashboard; el ítem de menú y el botón rápido no se muestran
 
 ---
 
@@ -1066,7 +1086,47 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ---
 
+### docs-contract-execution: Ejecución del contrato — cuentas de cobro
+- **Módulo:** documents | **Prioridad:** P1 | **Ruta:** `/dynamic_document_dashboard` (tab Dcs. Formalizados) | **E2E:** ✅ (`contract-execution-flow.spec.js`)
+- **Descripción:** Los documentos completamente firmados con una variable clasificada como "Forma de pago (N cuotas)" habilitan el submódulo de ejecución del contrato: registro secuencial de cuentas de cobro por cuota. El menú del documento firmado gana "Subir Cuenta de Cobro" (cuando hay cuota disponible) y "Ver Cuentas de Cobro" (modal con barra de progreso X/N, total de montos aceptados, estado por cuota — Pendiente/Cargada/Aceptada/Rechazada — descarga de comprobantes y panel de revisión del abogado). Reglas autoritativas en backend: la cuota N+1 se habilita solo cuando N fue aceptada; una cuota en revisión bloquea nuevas cargas (409); el rechazo exige motivo y reabre el mismo slot conservando el historial.
+
+**Pasos:**
+1. Abogado clasifica una variable de la minuta como "Forma de pago (N cuotas)" (field_type number, valor entero ≥1); el dato aparece en el resumen del documento
+2. Con el documento `FullySigned`, cliente asignado (o abogado creador) abre "Subir Cuenta de Cobro": cuota auto-seleccionada, archivo PDF/JPG/PNG/DOCX ≤20MB, monto y notas opcionales
+3. El abogado recibe notificación (correo + campana) y revisa en "Ver Cuentas de Cobro": descarga el archivo y acepta o rechaza con motivo obligatorio
+4. Aceptar habilita la siguiente cuota; rechazar notifica al cliente con el motivo y reabre el mismo slot para re-carga
+5. Ambas partes consultan el historial (progreso, contabilidad de montos, quién cargó y cuándo) y descargan comprobantes
+
+**Ramificaciones:**
+- ├── **Cliente asignado:** puede cargar y consultar; nunca revisar
+- ├── **Abogado creador:** puede cargar en nombre del cliente (sin auto-notificación), revisar y consultar
+- ├── **Cuota en revisión:** nadie puede cargar hasta la decisión (409 en backend, CTA oculto en UI)
+- ├── **Cuota rechazada:** re-carga sobre el MISMO registro; el motivo anterior queda visible como historial
+- ├── **Documento sin forma de pago:** el submódulo no aparece (fail-safe, docs existentes intactos)
+- └── **Terceros:** 403 en API y sin acciones en el menú
+
 ---
+
+### docs-guided-tour: Tour guiado del módulo Archivos Jurídicos
+- **Módulo:** documents | **Prioridad:** P2 | **Ruta:** `/dynamic_document_dashboard` | **E2E:** ✅ (`docs-guided-tour-flow.spec.js`)
+- **Descripción:** Tour interactivo (driver.js) que orienta al usuario paso a paso por el dashboard: overlay tintado de marca con spotlight redondeado, popover con eyebrow "Guía · Archivos Jurídicos", barra de progreso animada + conteo "Paso X de Y", botones "Siguiente"/"Anterior"/"Omitir guía" y navegación por teclado (← →). Abre con una tarjeta de bienvenida ("Comenzar recorrido" / "Ahora no") y cierra resaltando el botón "?" del header ("Entendido"), con una breve celebración de confetti solo al completarlo. Diferenciado por rol (abogado 10 pasos de contenido, cliente/basic/corporate 7) con cambio automático de pestaña cuando el paso vive en otra sección. El progreso se persiste en backend (`TourProgress`): auto-inicio si nunca se completó, re-oferta vía modal brandeado a los 30 días, re-lanzamiento manual con el botón "?" (que muestra un ping azul mientras la guía esté pendiente).
+
+**Pasos:**
+1. Usuario entra a `/dynamic_document_dashboard` por primera vez (status `never`); el botón "?" muestra un ping azul
+2. Tras cargar la página aparece la tarjeta de bienvenida centrada; "Comenzar recorrido" inicia (o "Ahora no" declina y registra la vista)
+3. "Siguiente" recorre pestañas y botones ("Nueva Minuta", "Nuevo Documento", "Firma Electrónica", "Membrete Global") con barra de progreso "Paso X de 10/7"; el tour cambia de pestaña automáticamente cuando el elemento vive en otra tab
+4. El último paso resalta el botón "?" del header; "Entendido" cierra con confetti y registra la completación (`POST /api/tour-progress/complete/`)
+5. Omitir ("Omitir guía"/✕/"Ahora no") también registra la completación, sin confetti; el ping del "?" desaparece
+6. En visitas posteriores (<30 días, status `recent`) el tour no se auto-inicia; el botón "?" lo relanza a demanda desde la bienvenida
+7. Pasados 30 días (status `stale`) aparece el modal brandeado "¿Quieres ver la guía del módulo de Archivos Jurídicos?" ("Ver la guía" / "Ahora no"); rechazar también resetea el reloj de 30 días
+
+**Ramificaciones:**
+- ├── **Abogado/Admin:** 10 pasos de contenido (incluye Minutas, Dcs. Clientes, Nueva Minuta) + bienvenida y cierre
+- ├── **Cliente/Basic/Corporate:** 7 pasos de contenido (Carpetas, Mis Documentos, Por Firmar, Formalizados) + bienvenida y cierre
+- ├── **Móvil (<md):** pasos de pestañas individuales se omiten (viven en dropdown colapsado) — 3 pasos de contenido + bienvenida y cierre
+- ├── **Con firmas pendientes:** paso de contenido extra resaltando "Dcs. Por Firmar" antes del cierre
+- ├── **prefers-reduced-motion:** sin animaciones (pop-in, barra, ping, confetti)
+- └── **Deep link (?tab=/?lawyerTab=):** el auto-inicio se suprime (el usuario llegó con un propósito)
 
 ---
 
@@ -1286,19 +1346,21 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 **Pasos:**
 1. Navigate to `/secop`
 2. View sync status indicator in the header bar
-3. Indicator shows last successful sync time
+3. The indicator shows the authoritative latest attempt: in progress, success freshness, or failure
+4. **Failure:** a failed attempt shows a safe message and the relative time of the last success without exposing diagnostics
 
 ---
 
-### secop-trigger-sync: Admin triggers manual sync
+### secop-trigger-sync: Lawyer-like user triggers manual sync
 - **Módulo:** secop | **Prioridad:** P4 | **Ruta:** `/secop` | **E2E:** ✅
-- **Descripción:** Lawyer triggers a manual synchronization with SECOP API via the sync button in the header
+- **Descripción:** Lawyer/admin/staff/superuser triggers a manual synchronization with SECOP API via the sync button in the header; other roles still see status but not the trigger
 
 **Pasos:**
 1. Navigate to `/secop`
 2. Click "Sincronizar" button in the sync status bar
 3. Button disables and shows spinner while syncing
-4. Sync runs asynchronously in background
+4. The page polls the server-side sync history while Huey runs asynchronously
+5. A successful newer SyncLog refreshes the opportunity count and re-enables the button
 
 ---
 
@@ -1703,7 +1765,9 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 
 ## Flujos — SECOP (Contratación Estatal)
 
-> Módulo exclusivo para **Lawyer**. Permite navegar, filtrar, clasificar y monitorear procesos de contratación pública del portal SECOP.
+> El módulo es completo para usuarios lawyer-like. Los usuarios Basic pueden
+> consultar el listado y el estado de sincronización, pero ven bloqueados los
+> filtros/alertas premium y no reciben el control de sincronización manual.
 
 > **Nota de reconciliación (2026-07-24):** las definiciones detalladas de los 17 flujos SECOP
 > (con **Pasos** y **Ramificaciones**) viven de forma canónica en la sección **Flujos — Lawyer**,
@@ -1712,29 +1776,29 @@ Expired → PendingSignatures (abogado corrige y reenvía)
 > abreviadas; se consolidó para evitar definiciones divergentes. La tabla resume el inventario y su
 > estado según `scripts/flow_coverage_audit.py`.
 
-| Flow id | Prioridad | Estado (audit 2026-07-24) |
+| Flow id | Prioridad | Estado (audit 2026-08-21) |
 |---------|-----------|---------------------------|
 | `secop-list-browse` | P2 | ✅ covered |
 | `secop-process-detail` | P2 | ✅ covered |
 | `secop-classify-process` | P2 | ✅ covered |
-| `secop-create-alert` | P2 | 🟠 junk-only |
+| `secop-create-alert` | P2 | ✅ covered |
 | `secop-manage-alerts` | P3 | ✅ covered |
 | `secop-export-excel` | P3 | ✅ covered |
 | `secop-add-notes` | P3 | ✅ covered |
-| `secop-save-view` | P3 | 🟠 junk-only |
-| `secop-apply-saved-view` | P3 | 🟠 junk-only |
+| `secop-save-view` | P3 | ✅ covered |
+| `secop-apply-saved-view` | P3 | ✅ covered |
 | `secop-view-in-portal` | P3 | ✅ covered |
-| `secop-sync-status` | P3 | 🟠 junk-only |
+| `secop-sync-status` | P3 | ✅ covered (display + failure) |
 | `secop-trigger-sync` | P4 | ✅ covered |
 | `secop-filter-classifications` | P3 | ✅ covered |
-| `secop-saved-view-favorites` | P3 | 🟠 junk-only |
-| `secop-keyword-tags` | P3 | 🟠 junk-only |
+| `secop-saved-view-favorites` | P3 | ✅ covered |
+| `secop-keyword-tags` | P3 | ✅ covered |
 | `secop-edit-saved-view` | P3 | ✅ covered |
-| `secop-list-error-retry` | P4 | ✅ covered |
+| `secop-list-error-retry` | P4 | ⚠️ partial (failure ✅ · display ❌) |
 
-> 🟠 `junk-only` = existen tests etiquetados `@flow:<id>` pero **ninguno ejercita el flujo**
-> (descalificados por `no_user_interaction` / `flow_tag_mismatch`): reportan verde pero no cubren.
-> Reescribir esos specs es prioritario frente a cualquier flujo `missing`.
+> El audit 2026-08-21 confirma 16 flujos SECOP cubiertos y 1 parcial. La única brecha
+> del módulo es el outcome `display` de `secop-list-error-retry`; su recuperación por
+> interacción sí está cubierta.
 
 ---
 
@@ -2007,13 +2071,13 @@ The following forms and modals have dedicated unit and/or E2E tests covering fie
 | Misc | 4 | 3 | 1 | 0 |
 | User Guide | 1 | 1 | 0 | 0 |
 | Admin | 1 | 1 | 0 | 0 |
-| **Total** | **161** | **140** | **20** | **4** |
+| **Total** | **164** | **140** | **20** | **4** |
 
 > **Tabla derivada de `e2e/flow-definitions.json`** (campo `module`) y del estado reportado por `scripts/flow_coverage_audit.py` (2026-07-24). Los flujos por rol (p. ej. `basic-restrictions`) se agrupan bajo su módulo funcional, por lo que no hay fila "Basic" separada.
 >
 > **Semántica de columnas (nueva):** `Cubierto` = existe un test que ejercita el flujo; `Junk-only` = existen tests etiquetados pero **ninguno califica** (descalificados por `no_user_interaction` o `flow_tag_mismatch`) — reportan verde pero no cubren, por eso son la prioridad; `Sin cobertura` = ningún test referencia el flujo.
 >
-> **Total reconciliado 153 → 164 (2026-07-24):** la tabla anterior no había incorporado los 11 flujos añadidos en la auditoría 2026-07-22 (v1.12.0); `flow-definitions.json` (161) es la fuente autoritativa. Ver nota de reconciliación al pie de esta sección.
+> **Total reconciliado 153 → 164 (2026-07-24):** la tabla anterior no había incorporado los 11 flujos añadidos en la auditoría 2026-07-22 (v1.12.0); `flow-definitions.json` (164) es la fuente autoritativa. Ver nota de reconciliación al pie de esta sección.
 >
 > **Regresión detectada — `process-alert-configure` y `process-alerts`:** la nota previa los daba por cerrados el 16-07-2026, pero el audit 2026-07-24 no encuentra evidencia calificada (0 tests que los ejerciten) → hoy figuran `missing`. Junto a `minutas-columns` y `minutas-shared-visibility` (documents) forman los 4 flujos sin cobertura. Requieren re-verificar si el spec perdió su tag `@flow:<id>` o fue renombrado.
 >
@@ -2104,7 +2168,7 @@ Los 159 se reescribieron para ejecutar la acción y asertar la transición. Vali
 ## Reconciliación mapa ↔ flow-definitions.json — 2026-07-24 (v1.12.1)
 
 Auditoría estática de flujos (`scripts/flow_coverage_audit.py`) sobre el registro v1.12.0.
-Fuente autoritativa: **`frontend/e2e/flow-definitions.json` (161 flujos)** — es el inventario que
+Fuente autoritativa: **`frontend/e2e/flow-definitions.json` (164 flujos)** — es el inventario que
 consume el audit y es superconjunto exacto del mapa (0 flujos huérfanos solo-en-mapa).
 
 **Drift de conteo resuelto (168 headings brutos → 164 conformes únicos = 164 en JSON):**
@@ -2146,6 +2210,20 @@ requisitos no revisados.
 
 ---
 
-**Documento generado:** July 22, 2026
-**Versión:** 1.12.0
-**Estado:** 164 flujos declarados (≡ `flow-definitions.json`). Cobertura por `scripts/flow_coverage_audit.py` (2026-07-24): **140 covered · 20 junk-only · 4 missing**. Ver "Reconciliación mapa ↔ flow-definitions.json — 2026-07-24". Nota: el conteo previo "164/164 cubiertos" reflejaba el reporter antiguo (verde con un solo test tagged), no el audit por-outcome.
+## Actualización de cobertura — 2026-08-21
+
+La auditoría actual revisó 205 specs y 650 tests contra los 164 flujos:
+128 `covered`, 32 `partial`, 0 `junk-only`, 1 `missing` (`docs-summary`) y
+3 `exempt`. Ya declaran outcomes 161/164 flujos. En SECOP,
+`secop-sync-status` cubre `display` + `failure` y `secop-trigger-sync` cubre
+`success`; ambos tests ejecutan la interacción real. La única brecha SECOP es
+el outcome `display` de `secop-list-error-retry` (el outcome `failure` está
+cubierto).
+
+Los módulos `directory`, `notifications`, `schedule` y `user-guide` aún no
+declaran outcomes `error`/`failure`; corresponden al backlog general y no al
+flujo SECOP modificado en esta sesión.
+
+**Documento actualizado:** August 21, 2026
+**Versión:** 1.12.1
+**Estado:** 164 flujos declarados (≡ `flow-definitions.json`); los dos flujos SECOP modificados están cubiertos por outcome.

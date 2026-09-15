@@ -154,14 +154,19 @@ const FETCH_STUB_RE = /\bfetch\s*=(?!=)|stubGlobal\(\s*['"]fetch['"]|spyOn\(\s*[
 // describe's subtree; elsewhere -> whole file. Position-based attribution is
 // what prevents a test-scoped marker from silently suppressing the rule for
 // its sibling tests (the slice-regex approach leaked exactly that way).
+// The reason may wrap onto immediately-following `//` comment lines (F102,
+// parity with the gate's _join_comment_continuations): the group consumes
+// either non-`)` chars on the marker's line or a newline that lands on
+// another `//` line, so a wrap interrupted by code can never reach a `)`
+// and an unclosed marker still refuses to register.
 const ALLOW_RE = {
-  multiRender: /quality:\s*allow-multi-render\s*\(.+\)/i,
-  fragileSelector: /quality:\s*allow-fragile-selector\s*\(.+\)/i,
-  implementationCoupling: /quality:\s*allow-implementation-coupling\s*\(.+\)/i,
-  fragileTestData: /quality:\s*allow-fragile-test-data\s*\(.+\)/i,
-  tooManyAssertions: /quality:\s*allow-too-many-assertions\s*\(.+\)/i,
-  testTooLong: /quality:\s*allow-test-too-long\s*\(.+\)/i,
-  serial: /quality:\s*allow-serial\s*\(.+\)/i,
+  multiRender: /quality:\s*allow-multi-render\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  fragileSelector: /quality:\s*allow-fragile-selector\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  implementationCoupling: /quality:\s*allow-implementation-coupling\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  fragileTestData: /quality:\s*allow-fragile-test-data\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  tooManyAssertions: /quality:\s*allow-too-many-assertions\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  testTooLong: /quality:\s*allow-test-too-long\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
+  serial: /quality:\s*allow-serial\s*\((?:[^)\n]|\n\s*\/\/)+\)/i,
 };
 const ALLOW_KEYS = Object.keys(ALLOW_RE);
 

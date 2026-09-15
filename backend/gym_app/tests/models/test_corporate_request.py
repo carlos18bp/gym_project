@@ -16,7 +16,6 @@ from gym_app.models.user import User
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_client():
     """Corporate client."""
     return User.objects.create_user(
@@ -29,7 +28,6 @@ def corporate_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def normal_client():
     """Create a normal client."""
     return User.objects.create_user(
@@ -42,7 +40,6 @@ def normal_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def organization(corporate_client):
     """Organization."""
     return Organization.objects.create(
@@ -53,14 +50,12 @@ def organization(corporate_client):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_request_type():
     """Corporate request type."""
     return CorporateRequestType.objects.create(name="Consulta")
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def corporate_request_file():
     """Corporate request file."""
     test_file = SimpleUploadedFile(

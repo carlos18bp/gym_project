@@ -319,7 +319,10 @@ class ExternalLintRunner:
             return None
 
         normalized = "\n".join(" ".join(item.strip().split()) for item in snippet)
-        digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:16]
+        digest = hashlib.sha1(
+            normalized.encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()[:16]
         return digest
 
     def _read_cached(self, relative_file: str) -> list[str] | None:

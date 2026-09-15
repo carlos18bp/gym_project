@@ -222,6 +222,42 @@ class TestDynamicDocumentSerializer:
         assert document.content == document_data['content']
         assert document.state == document_data['state']
         assert document.created_by == user
+        # New documents are managed by their creator (auto-init)
+        assert document.managed_by == user
+
+    def test_create_document_defaults_managed_by_to_explicit_creator(self, document_data, user):
+        """When created_by is passed explicitly, managed_by follows it."""
+        other = User.objects.create_user(email="explicit-creator@test.com", password="x")
+        document_data['created_by'] = other.id
+
+        class MockRequest:
+            def __init__(self, user):
+                self.user = user
+
+        serializer = DynamicDocumentSerializer(
+            data=document_data, context={'request': MockRequest(user)}
+        )
+        assert serializer.is_valid(), serializer.errors
+        document = serializer.save()
+        assert document.created_by == other
+        assert document.managed_by == other
+
+    def test_create_document_preserves_explicit_managed_by(self, document_data, user):
+        """An explicitly provided managed_by is kept, not overwritten by the creator default."""
+        manager = User.objects.create_user(email="explicit-manager@test.com", password="x")
+        document_data['managed_by'] = manager.id
+
+        class MockRequest:
+            def __init__(self, user):
+                self.user = user
+
+        serializer = DynamicDocumentSerializer(
+            data=document_data, context={'request': MockRequest(user)}
+        )
+        assert serializer.is_valid(), serializer.errors
+        document = serializer.save()
+        assert document.created_by == user
+        assert document.managed_by == manager
 
     def test_create_document_variables(self, document_data, document_variable_data, user):
         """Test creating a document with variables - variables creation."""
@@ -1009,6 +1045,99 @@ class TestDynamicDocumentSerializerExtras:
         data = serializer.data
 
         assert data["summary_subscription_date"] == "2025-06-13"
+
+    def test_dynamic_document_serializer_summary_payment_installments(self):
+        """Verify the payment installments summary parses to an int."""
+        creator = User.objects.create_user(
+            email="installments@example.com",
+            password="testpassword",
+        )
+        document = DynamicDocument.objects.create(
+            title="Installments Doc",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=creator,
+        )
+        DocumentVariable.objects.create(
+            document=document,
+            name_en="payment",
+            field_type="number",
+            value="3",
+            summary_field="payment_installments",
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["summary_payment_installments"] == 3
+        # Draft document: contract execution not active yet
+        assert data["payments_summary"] is None
+
+    def test_dynamic_document_serializer_summary_payment_installments_invalid(self):
+        """An invalid installments value serializes as None."""
+        creator = User.objects.create_user(
+            email="installments-invalid@example.com",
+            password="testpassword",
+        )
+        document = DynamicDocument.objects.create(
+            title="Installments Invalid",
+            content="<p>x</p>",
+            state="Draft",
+            created_by=creator,
+        )
+        DocumentVariable.objects.create(
+            document=document,
+            name_en="payment",
+            field_type="input",
+            value="tres",
+            summary_field="payment_installments",
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["summary_payment_installments"] is None
+        assert data["payments_summary"] is None
+
+    def test_dynamic_document_serializer_payments_summary_when_fully_signed(self):
+        """Verify the payments_summary shape on a fully signed contract."""
+        from decimal import Decimal
+
+        from gym_app.models import DocumentPaymentRecord
+
+        creator = User.objects.create_user(
+            email="payments-summary@example.com",
+            password="testpassword",
+        )
+        document = DynamicDocument.objects.create(
+            title="Signed With Payments",
+            content="<p>x</p>",
+            state="FullySigned",
+            fully_signed=True,
+            created_by=creator,
+        )
+        DocumentVariable.objects.create(
+            document=document,
+            name_en="payment",
+            field_type="number",
+            value="3",
+            summary_field="payment_installments",
+        )
+        DocumentPaymentRecord.objects.create(
+            document=document,
+            installment_number=1,
+            file=SimpleUploadedFile("cuota1.pdf", b"pdf"),
+            original_name="cuota1.pdf",
+            status=DocumentPaymentRecord.STATUS_ACCEPTED,
+            amount=Decimal("2500000.00"),
+        )
+
+        data = DynamicDocumentSerializer(document).data
+
+        assert data["payments_summary"] == {
+            "accepted_count": 1,
+            "in_review": False,
+            "next_uploadable": 2,
+            "total_amount_accepted": "2500000.00",
+        }
 
 
 @pytest.mark.django_db

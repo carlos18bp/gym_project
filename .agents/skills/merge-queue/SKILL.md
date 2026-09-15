@@ -582,8 +582,14 @@ requieren contexto ajeno. (El aviso post-merge de Phase 6 usa esta misma
 resolución de dueña pero **no** es una delegación: no pide trabajo ni espera
 señal.)
 
+**Qué se le pide exactamente:** la **Phase 4 de $pr-green** sobre SU rama —
+resolver el conflicto o el rojo en su worktree, commitear y **pushear al head del
+PR**. Nada más: la dueña **no mergea** (el merge es de esta queue o del operador) ni
+toca el clon principal.
+
 1. `SendMessage` a la dueña con: rama y PR, el problema exacto (archivos y
-   markers, o tests rojos con su output), qué se le pide, y el compromiso:
+   markers, o tests rojos con su output), qué se le pide (`$pr-green` — commit + push
+   al head, sin merge), y el compromiso:
    *«la queue no toca tu head hasta las <T> o tu push — lo que llegue primero»*.
 2. **La señal de resuelto es el push al head del PR** — no una respuesta:
    pollear `gh pr view <n> --json headRefOid` (c/60s, comparando contra el OID
@@ -605,10 +611,14 @@ REPO_NAME="$(basename "$PWD")"
 DEPLOY="$(bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh" \
    --check "$REPO_NAME" 2>/dev/null | sed -n 's/^deploy_branch=//p')"
 CUR="$(git rev-parse --abbrev-ref HEAD)"
+# Escritura legítima del ORQUESTADOR sobre el clon principal: el prefijo
+# FLEET_ALLOW_MAIN_CLONE_WRITE=1 es el escape del hook PreToolUse (que si no deniega
+# checkout/pull ahí). Una SESIÓN nunca lo usa.
 if [ -n "$DEPLOY" ] && [ "$CUR" = "$DEPLOY" ]; then
-    git pull --ff-only origin "$DEPLOY" 2>/dev/null || true
+    FLEET_ALLOW_MAIN_CLONE_WRITE=1 git pull --ff-only origin "$DEPLOY" 2>/dev/null || true
 elif [ -n "$DEPLOY" ] && [ -z "$(git status --porcelain)" ]; then
-    git checkout "$DEPLOY" && { git pull --ff-only origin "$DEPLOY" 2>/dev/null || true; }
+    FLEET_ALLOW_MAIN_CLONE_WRITE=1 git checkout "$DEPLOY" \
+      && { FLEET_ALLOW_MAIN_CLONE_WRITE=1 git pull --ff-only origin "$DEPLOY" 2>/dev/null || true; }
 else
     echo "⚠️ el clon se queda en '$CUR' (tree sucio o deploy_branch irresoluble) — se reporta"
 fi
@@ -622,9 +632,12 @@ gh run list --branch "$DEFAULT" --limit 3
 rm -rf "/tmp/merge-queue-${REPO_NAME}"
 ```
 
-Los **worktrees de sesión** cuyo PR quedó mergeado se reportan como retirables
-(`git worktree remove <path>` — lo corre la sesión dueña o el operador; la
-queue sólo retira los `queue-*` propios).
+Los **worktrees de sesión** cuyo PR quedó mergeado se reportan como **retirables**:
+los retira la **sesión dueña** con `$all-in-base` al ver su PR ya mergeado
+(`session-worktree.sh remove <slug>`, sin `--force`); los **huérfanos** los junta el
+gc del operador
+(`bash "$HOME/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh" gc --apply`).
+La queue sólo retira los `queue-*` propios.
 
 **Cierre asíncrono** — regla completa en $merge-when-green § «Cierre
 asíncrono de CI»; instancia de esta skill, en este orden:
@@ -666,9 +679,10 @@ del body del PR (misma resolución que la sección «Delegación»: `Sesión:` p
 fallback `ListAgents` + solapamiento de tokens nombre-de-sesión ↔ nombre-de-rama):
 
 > 🚂 merge-queue: tu trabajo ya está en `<base>`. Mergeadas: `<rama>` (PR #N,
-> squash `<sha7>`)… Tu worktree quedó retirable: `git worktree remove <path>`.
-> **Verificalo vos y dame tu veredicto: corré `$all-in-base --check-only`.**
-> Si seguís trabajando en este repo, `$git-sync` primero (la base se movió).
+> squash `<sha7>`)… **Tu worktree quedó retirable: corré `$all-in-base`** (lo retira
+> al ver tu PR mergeado). **Verificalo vos y dame tu veredicto: corré
+> `$all-in-base --check-only`.** Si seguís trabajando en este repo, `$git-sync`
+> primero (la base se movió).
 
 **(b) Sesión activa que no es dueña de nada mergeado** — informativo:
 
@@ -684,9 +698,10 @@ fallback `ListAgents` + solapamiento de tokens nombre-de-sesión ↔ nombre-de-r
   head, timeout 15 min): ahí se pide trabajo, acá sólo se informa y se sugiere
   una verificación. No confundir los dos mecanismos.
 - **El `--check-only` es obligatorio en el pedido.** Sin el flag, un veredicto NO
-  hace que $all-in-base delegue en $merge-when-green y se ponga a mergear
-  en paralelo con esta queue, que puede seguir drenando otros repos/unidades. Con
-  el flag responde SÍ/NO y no toca git.
+  hace que $all-in-base delegue en $pr-green (commit/push/PR/CI) — ya **no**
+  mergea, pero igual se pondría a tocar git y a empujar commits en paralelo con esta
+  queue, que puede seguir drenando otros repos/unidades. Con el flag responde SÍ/NO
+  y no toca git.
 - **Dueña declarada pero sin sesión viva** (no aparece en `ListAgents`) → no se
   manda nada, se anota `⚠️ sesión no alcanzable` en el Tablero y se sigue.
 - **PR sin línea `Sesión:`** → `— (sin dueño)`, sin mensaje (el advisory para

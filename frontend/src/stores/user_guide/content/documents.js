@@ -28,6 +28,48 @@ export const documentsContent = {
   `,
   sections: [
     {
+      id: 'guided-tour',
+      name: 'Guía interactiva del módulo',
+      description: 'Tour guiado paso a paso sobre la interfaz de Archivos Jurídicos',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>El módulo cuenta con un <strong>tour guiado interactivo</strong> que resalta cada elemento de la pantalla (pestañas y botones) con un foco visual y una explicación breve, para que aprendas a usarlo sin leer manuales.</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Tarjeta de bienvenida:</strong> en tu primer ingreso aparece una invitación al centro de la pantalla; elige "Comenzar recorrido" o "Ahora no".</li>
+          <li><strong>Contenido según tu rol:</strong> los abogados ven 10 pasos (minutas, documentos de clientes, firma, membrete); los clientes 7 pasos (carpetas, documentos, firmas).</li>
+          <li><strong>Avance visible:</strong> cada paso muestra una barra de progreso y el conteo "Paso X de Y"; el tour cambia de pestaña automáticamente cuando lo necesita.</li>
+          <li><strong>Navegación:</strong> usa "Siguiente" y "Anterior" (o las flechas ← → del teclado); "Omitir guía" lo cierra en cualquier momento.</li>
+          <li><strong>Cierre útil:</strong> el último paso te muestra el botón <strong>"?"</strong> del encabezado, desde donde puedes repetir la guía cuando quieras. Mientras la guía esté pendiente, ese botón muestra un punto azul parpadeante.</li>
+          <li><strong>Repaso mensual:</strong> si pasaron más de 30 días desde la última vez, el sistema pregunta si quieres ver la guía de nuevo (nunca se fuerza).</li>
+        </ul>
+        <p class="mt-2">Además, junto a los botones principales hay <strong>iconos de información (ⓘ)</strong>: pasa el cursor sobre ellos para ver una descripción rápida sin ejecutar el tour completo.</p>
+      `,
+      steps: [
+        {
+          title: 'Inicia sesión y entra a Archivos Jurídicos',
+          description: 'En tu primer ingreso aparece la tarjeta de bienvenida; elige "Comenzar recorrido"'
+        },
+        {
+          title: 'Recorre los pasos con "Siguiente"',
+          description: 'Cada paso resalta una pestaña o botón, explica para qué sirve y muestra tu avance en la barra de progreso'
+        },
+        {
+          title: 'Termina en el botón de ayuda',
+          description: 'El último paso te muestra el botón "?" y al finalizar verás una breve celebración; el sistema recuerda que ya viste la guía'
+        },
+        {
+          title: 'Relánzalo cuando lo necesites',
+          description: 'Haz clic en el botón "?" del encabezado para repetir el tour desde la bienvenida'
+        }
+      ],
+      tips: [
+        'Si tienes documentos pendientes de firma, el tour agrega un paso final que te lleva directo a esa pestaña',
+        'En el celular el tour es más corto: las pestañas se explican sobre el menú desplegable',
+        'Los iconos ⓘ quedan siempre disponibles como referencia rápida después del tour',
+        'Omitir la guía también cuenta como vista: el punto azul del botón "?" desaparece y no se te vuelve a ofrecer hasta dentro de 30 días'
+      ]
+    },
+    {
       id: 'editor-toolbar-by-role',
       name: 'Botones del Editor según tu Rol',
       description: 'Qué ves en el editor TinyMCE y por qué',
@@ -629,6 +671,47 @@ export const documentsContent = {
           'El histórico de rechazos queda registrado'
         ]
       }
+    },
+    {
+      id: 'contract-execution',
+      name: 'Ejecución del Contrato — Cuentas de Cobro',
+      description: 'Seguimiento de pagos por cuotas en documentos formalizados',
+      roles: ['lawyer', 'client', 'corporate_client', 'basic', 'admin'],
+      content: `
+        <p>Los documentos <strong>completamente firmados</strong> que tengan configurada una variable de tipo <strong>"Forma de pago (N cuotas)"</strong> habilitan el submódulo de ejecución del contrato: un registro ordenado de las cuentas de cobro de cada cuota pactada.</p>
+        <ul class="list-disc list-inside mt-2 space-y-1">
+          <li><strong>Configuración (abogado):</strong> al clasificar las variables de la minuta, marca una como "Forma de pago (N cuotas)" e indica el número de cuotas. El dato aparece en el resumen del documento junto al valor y el plazo.</li>
+          <li><strong>Carga secuencial:</strong> la cuota 1 siempre está disponible; cada cuota siguiente se habilita cuando la anterior es <strong>aceptada</strong> por el abogado. Mientras una cuenta esté en revisión no se puede cargar otra.</li>
+          <li><strong>Subir Cuenta de Cobro:</strong> desde el menú del documento firmado, adjunta el archivo (PDF, JPG, PNG o DOCX, máx. 20 MB) y opcionalmente el monto y notas. El abogado recibe una notificación por correo y en la campana.</li>
+          <li><strong>Revisión del abogado:</strong> en "Ver Cuentas de Cobro" puede descargar el archivo y <strong>Aceptar</strong> (habilita la siguiente cuota) o <strong>Rechazar</strong> con un motivo obligatorio. El cliente es notificado en ambos casos.</li>
+          <li><strong>Cuota rechazada:</strong> el cliente ve el motivo y puede volver a cargar el archivo corregido para la misma cuota.</li>
+          <li><strong>Seguimiento:</strong> la vista muestra el progreso (X/N aceptadas), el total de montos aceptados y el estado de cada cuota: Pendiente, Cargada (en revisión), Aceptada o Rechazada.</li>
+        </ul>
+        <p class="mt-2">Los documentos firmados sin forma de pago configurada no muestran estas opciones.</p>
+      `,
+      steps: [
+        {
+          title: 'Configura la forma de pago',
+          description: 'El abogado clasifica una variable como "Forma de pago (N cuotas)" con el número de cuotas pactadas'
+        },
+        {
+          title: 'Carga la cuenta de cobro',
+          description: 'Con el documento firmado, usa "Subir Cuenta de Cobro" y adjunta el archivo de la cuota disponible'
+        },
+        {
+          title: 'El abogado revisa',
+          description: 'Acepta la cuenta (habilita la siguiente cuota) o la rechaza con un motivo'
+        },
+        {
+          title: 'Consulta el historial',
+          description: '"Ver Cuentas de Cobro" muestra el progreso, los montos y el estado de cada cuota, con descarga de comprobantes'
+        }
+      ],
+      tips: [
+        'El monto es opcional pero ayuda a llevar la contabilidad del contrato en la vista de detalle',
+        'La carga puede hacerla el cliente asignado o el abogado creador en su nombre',
+        'Ambas partes pueden descargar los comprobantes en cualquier momento'
+      ]
     },
     {
       id: 'document-key-fields',

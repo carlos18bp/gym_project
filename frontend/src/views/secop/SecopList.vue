@@ -3,7 +3,12 @@
     <ModuleHeader title="Contratación Estatal" subtitle="Oportunidades de contratación SECOP II">
       <template #menu-button><slot></slot></template>
       <template #actions>
-        <SyncStatus :sync-status="secopStore.syncStatus" @trigger-sync="secopStore.triggerSync()" />
+        <SyncStatus
+          :sync-status="secopStore.syncStatus"
+          :syncing="syncPolling"
+          :can-trigger="userStore.isLawyerLike"
+          @trigger-sync="handleTriggerSync"
+        />
       </template>
     </ModuleHeader>
 
@@ -640,10 +645,11 @@ import {
   BookmarkIcon,
   TrashIcon,
 } from "@heroicons/vue/24/outline";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useSecopStore } from "@/stores/secop/index";
 import { useUserStore } from "@/stores/auth/user";
+import { useSecopSyncPolling } from "@/composables/useSecopSyncPolling";
 import ModuleHeader from "@/components/layouts/ModuleHeader.vue";
 import TabsCard from "@/components/layouts/TabsCard.vue";
 import MultiSelectDropdown from "@/components/secop/MultiSelectDropdown.vue";
@@ -658,6 +664,17 @@ import SavedViewModal from "@/components/secop/SavedViewModal.vue";
 const router = useRouter();
 const secopStore = useSecopStore();
 const userStore = useUserStore();
+const {
+  syncPolling,
+  resumeRunningSync,
+  stopSyncPolling,
+  triggerSync: handleTriggerSync,
+} = useSecopSyncPolling(secopStore, {
+  onSuccess: () => Promise.all([
+    loadProcesses(),
+    secopStore.fetchAvailableFilters(),
+  ]),
+});
 
 // Role-based filter access
 const filtersDisabled = computed(() => userStore.currentUser?.role === 'basic');
@@ -820,6 +837,13 @@ onMounted(async () => {
   if (fav) {
     handleApplyView(fav);
   }
+
+  resumeRunningSync();
+});
+
+onUnmounted(() => {
+  stopSyncPolling();
+  clearTimeout(debounceTimer);
 });
 
 // Watch filters/ordering/pageSize for auto-reload with debounce to prevent double-fetch

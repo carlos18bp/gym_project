@@ -49,8 +49,8 @@ test.describe("SlideBar navigation links", { tag: ['@flow:docs-profile-navigatio
   });
 
   test("sidebar hides the Directorio link from clients", { tag: ['@flow:docs-profile-navigation', '@module:documents', '@priority:P4', '@role:shared'] }, async ({ page }) => {
-    // audit: load-only flow (role restriction — the assertion IS the absence of
-    // a nav entry, so there is nothing for the client to interact with)
+    // quality: allow-no-interaction (role restriction; positive Inicio link
+    // asserted alongside toHaveCount(0))
     const userId = 10001;
     await setupDashboard(page, { userId, role: "client" });
     await page.goto("/dynamic_document_dashboard");

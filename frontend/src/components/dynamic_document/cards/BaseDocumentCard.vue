@@ -198,10 +198,27 @@
     @close="closeModal('relationships')"
     @refresh="handleRefresh"
   />
+
+  <!-- Contract execution (cuentas de cobro) modals -->
+  <PaymentRecordsModal
+    :is-visible="showPaymentsModal"
+    :document="paymentsDocument"
+    @close="showPaymentsModal = false"
+    @updated="handleRefresh"
+    @upload-requested="handlePaymentUploadRequested"
+  />
+
+  <UploadPaymentRecordModal
+    :is-visible="showUploadPaymentModal"
+    :document="paymentsDocument"
+    :slot-number="uploadPaymentSlot"
+    @close="showUploadPaymentModal = false"
+    @uploaded="handlePaymentUploaded"
+  />
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Menu, MenuButton, MenuItem, MenuItems } from "@headlessui/vue";
 import { 
@@ -232,6 +249,8 @@ import LetterheadModal from '../common/LetterheadModal.vue';
 
 // Import hierarchical menu components
 import HierarchicalMenu from './HierarchicalMenu.vue';
+import PaymentRecordsModal from './modals/PaymentRecordsModal.vue';
+import UploadPaymentRecordModal from './modals/UploadPaymentRecordModal.vue';
 import { organizeMenuIntoGroups, shouldUseHierarchicalMenu } from './menuGroupHelpers.js';
 import { getMinutaPermissions } from './menuOptionsHelper.js';
 
@@ -357,6 +376,24 @@ const handleCardClick = (e) => {
 // Handle refresh
 const handleRefresh = () => {
   emit('refresh');
+};
+
+// Contract execution (cuentas de cobro) modals
+const showPaymentsModal = ref(false);
+const showUploadPaymentModal = ref(false);
+const paymentsDocument = ref(null);
+const uploadPaymentSlot = ref(null);
+
+const handlePaymentUploadRequested = (slotNumber) => {
+  uploadPaymentSlot.value = slotNumber;
+  showPaymentsModal.value = false;
+  showUploadPaymentModal.value = true;
+};
+
+const handlePaymentUploaded = () => {
+  showUploadPaymentModal.value = false;
+  showPaymentsModal.value = true;
+  handleRefresh();
 };
 
 // ===== CONFIGURACIÓN DE TIPOS DE CARD =====
@@ -833,7 +870,18 @@ const handleMenuAction = async (action, document) => {
       case "letterhead":
         openModal('letterhead', document);
         break;
-        
+
+      case "viewPaymentRecords":
+        paymentsDocument.value = document;
+        showPaymentsModal.value = true;
+        break;
+
+      case "uploadPaymentRecord":
+        paymentsDocument.value = document;
+        uploadPaymentSlot.value = document.payments_summary?.next_uploadable ?? null;
+        showUploadPaymentModal.value = true;
+        break;
+
       default:
         console.warn("Unknown action:", action);
     }

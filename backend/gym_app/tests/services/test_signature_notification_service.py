@@ -23,7 +23,6 @@ User = get_user_model()
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def signer_user():
     """Extra user who acts as a signer."""
     return User.objects.create_user(
@@ -36,7 +35,6 @@ def signer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def sig_document(lawyer_user):
     """Document in PendingSignatures state."""
     return DynamicDocument.objects.create(
@@ -215,7 +213,6 @@ def test_notify_signature_reopened_creates_in_app_only(
 # ── notify_daily_pending_reminders ────────────────────────────────
 
 @pytest.fixture
-@pytest.mark.django_db
 def aged_pending_doc(lawyer_user):
     """Pending document created >24h ago — eligible for daily reminder."""
     doc = DynamicDocument.objects.create(
@@ -233,7 +230,6 @@ def aged_pending_doc(lawyer_user):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def fresh_pending_doc(lawyer_user):
     """Pending document created within the last 24h — should be excluded."""
     return DynamicDocument.objects.create(

@@ -1,7 +1,21 @@
 {
-  "version": "1.12.0",
-  "lastUpdated": "2026-07-27",
+  "version": "1.12.1",
+  "lastUpdated": "2026-08-21",
   "flows": {
+    "admin-data-reassignment": {
+      "name": "Reasignación de datos de abogado (admin)",
+      "module": "admin",
+      "roles": [
+        "admin"
+      ],
+      "priority": "P1",
+      "description": "Módulo admin para transferir procesos y documentos de un abogado a otro: selectores origen/destino (destino excluye origen y archivados), vista previa con checkboxes y select-all, documentos en firma marcados como no transferibles con motivo, opción de archivar el origen, transferencia atómica con registro de actividad, y restauración de abogados archivados. created_by nunca cambia (auditoría); managed_by y assigned_to (cuando era el origen) migran al destino.",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error"
+      ]
+    },
     "auth-login-email": {
       "name": "Login con email/password",
       "module": "auth",
@@ -971,6 +985,40 @@
         "success"
       ]
     },
+    "docs-contract-execution": {
+      "name": "Ejecución del contrato — cuentas de cobro",
+      "module": "documents",
+      "roles": [
+        "lawyer",
+        "client",
+        "basic",
+        "corporate_client"
+      ],
+      "priority": "P1",
+      "description": "Submódulo de ejecución sobre documentos FullySigned con variable 'Forma de pago (N cuotas)': carga secuencial de cuentas de cobro por cuota (cliente asignado o abogado creador; PDF/JPG/PNG/DOCX ≤20MB, monto y notas opcionales), revisión del abogado con aceptar (habilita la siguiente cuota) o rechazar con motivo obligatorio (re-carga del mismo slot), notificaciones email+in-app, modal de detalle con progreso X/N, total aceptado, estados por cuota y descarga de comprobantes. Documentos sin forma de pago no muestran las acciones",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success",
+        "error",
+        "failure"
+      ]
+    },
+    "docs-guided-tour": {
+      "name": "Tour guiado del módulo Archivos Jurídicos",
+      "module": "documents",
+      "roles": [
+        "lawyer",
+        "client",
+        "basic",
+        "corporate_client"
+      ],
+      "priority": "P2",
+      "description": "Tour interactivo (driver.js) del dashboard de Archivos Jurídicos: auto-inicio en primera visita (status never), pasos diferenciados por rol (abogado 10 / cliente 7), cambio automático de pestañas, omitir/cerrar/finalizar registran completación (POST tour-progress/complete/), re-oferta vía modal SweetAlert2 a los 30 días (status stale) y re-lanzamiento manual con el botón '?' del header",
+      "expectedSpecs": 1,
+      "outcomes": [
+        "success"
+      ]
+    },
     "sign-client-flow": {
       "name": "Firmar documento (cliente)",
       "module": "signatures",
@@ -1630,7 +1678,8 @@
       "name": "Browse SECOP processes",
       "module": "secop",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "basic"
       ],
       "priority": "P2",
       "description": "Browse, search, filter (department, entity, status, budget range, dates, UNSPSC), sort, and paginate SECOP opportunities with page size control",
@@ -1766,19 +1815,21 @@
       ],
       "priority": "P3",
       "description": "View the last synchronization time and status indicator in the header",
-      "expectedSpecs": 1,
+      "expectedSpecs": 2,
       "outcomes": [
-        "display"
+        "display",
+        "failure"
       ]
     },
     "secop-trigger-sync": {
-      "name": "Admin triggers manual sync",
+      "name": "Lawyer-like user triggers manual sync",
       "module": "secop",
       "roles": [
-        "lawyer"
+        "lawyer",
+        "admin"
       ],
       "priority": "P4",
-      "description": "Lawyer triggers a manual synchronization with SECOP API via the sync button in the header",
+      "description": "A lawyer, admin, staff user, or superuser triggers a manual synchronization with SECOP API via the sync button in the header; other roles can view status but do not see the trigger",
       "expectedSpecs": 1,
       "outcomes": [
         "success"

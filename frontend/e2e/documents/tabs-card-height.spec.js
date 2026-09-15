@@ -32,8 +32,10 @@ test.describe(
       "Archivos Juridicos tab card renders with no extra vertical padding",
       { tag: ["@flow:docs-dashboard-lawyer", "@module:documents", "@priority:P2", "@role:lawyer"] },
       async ({ page }) => {
-        // audit: load-only flow (CSS layout invariant — the assertion is a
+        // quality: allow-no-interaction (CSS layout invariant: the assertion is a
         // computed style measured on first paint; no user action produces it)
+        // quality: allow-render-only (computed paddingTop/paddingBottom === "0px" is a
+        // real data assertion; bare toBe() isn't in the detector's DATA_ASSERTIONS allowlist)
         const userId = 9300;
 
         await installDynamicDocumentApiMocks(page, {

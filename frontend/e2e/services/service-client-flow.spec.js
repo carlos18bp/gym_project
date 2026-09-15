@@ -5,6 +5,7 @@ import {
   installServiceTramiteApiMocks,
   buildMockServiceRequest,
   buildMockServiceRequestAnswer,
+  buildMockLawyerResponse,
   buildRegistroMarcarioService,
 } from "../helpers/serviceTramiteMocks.js";
 
@@ -246,10 +247,10 @@ test(
   {
     tag: [
       "@flow:service-view-my-requests",
-      "@flow:service-view-request-detail",
       "@module:services",
       "@priority:P1",
       "@role:client",
+      "@outcome:display",
     ],
   },
   async ({ page }) => {
@@ -274,7 +275,6 @@ test(
       userId: CLIENT_ID,
       role: "client",
       requests,
-      requestDetail: requests[0],
     });
 
     await setAuthLocalStorage(page, {
@@ -289,24 +289,117 @@ test(
       },
     });
 
-    await page.goto("/service_requests/my");
+    // Navigate via the UI: land on Servicios (default ServicesHub tab), then
+    // click into "Mis Solicitudes" — the path a real client takes, instead of
+    // deep-linking /service_requests/my. This is an @outcome:display flow,
+    // where reachability itself is the behavior under test.
+    await page.goto("/services");
     await page.waitForLoadState("networkidle");
-    // /service_requests/my redirects to /services?tab=my-requests (ServicesHub).
-    // MyServiceRequests renders with embedded=true, so its own h1 is hidden.
-    // Assert on the ModuleHeader h1 which is always visible in ServicesHub.
     await expect(page.getByRole("heading", { name: "Servicios y Solicitudes" })).toBeVisible({
       timeout: 15_000,
     });
+    await page.getByRole("button", { name: "Mis Solicitudes" }).click();
+
     // Tracking numbers render as <h2> inside a <button> per-request card.
     await expect(page.getByRole("heading", { name: "2026-00001" })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("heading", { name: "2026-00002" })).toBeVisible();
+  }
+);
 
-    // Click the button wrapping the first request card.
+test(
+  "client views a submitted request's detail with stage answers and lawyer responses",
+  {
+    tag: [
+      "@flow:service-view-request-detail",
+      "@module:services",
+      "@priority:P1",
+      "@role:client",
+      "@outcome:display",
+    ],
+  },
+  async ({ page }) => {
+    const answer = buildMockServiceRequestAnswer({
+      field_key: "nombre",
+      field_label: "Nombre completo",
+      field_type: "input",
+      stage_title: "Datos del Solicitante",
+      stage_order: 1,
+      value_text: "Juan Perez",
+    });
+
+    const lawyerResponse = buildMockLawyerResponse({
+      message: "Solicitud revisada y aprobada por el equipo juridico",
+    });
+
+    const detailedRequest = buildMockServiceRequest({
+      id: 1,
+      tracking_number: "2026-00001",
+      status: "OPEN",
+      status_display: "Abierto",
+      service_name: "Registro Marcario",
+      answers: [answer],
+      lawyer_responses: [lawyerResponse],
+    });
+
+    const requests = [
+      detailedRequest,
+      buildMockServiceRequest({
+        id: 2,
+        tracking_number: "2026-00002",
+        status: "IN_STUDY",
+        status_display: "En Estudio",
+        service_name: "Consulta Legal",
+      }),
+    ];
+
+    await installServiceTramiteApiMocks(page, {
+      userId: CLIENT_ID,
+      role: "client",
+      requests,
+      requestDetail: detailedRequest,
+    });
+
+    await setAuthLocalStorage(page, {
+      token: "e2e-token",
+      userAuth: {
+        id: CLIENT_ID,
+        role: "client",
+        first_name: "Client",
+        last_name: "E2E",
+        email: "client@example.com",
+        is_profile_completed: true,
+      },
+    });
+
+    // Navigate via the UI into the my-requests list, then click into the
+    // detail view — reachability IS the behavior under test for this flow.
+    await page.goto("/services");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "Servicios y Solicitudes" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole("button", { name: "Mis Solicitudes" }).click();
+    await expect(page.getByRole("heading", { name: "2026-00001" })).toBeVisible({ timeout: 10_000 });
+
+    // Click the button wrapping the request card to reach the detail view.
     await page
       .getByRole("button")
       .filter({ has: page.getByRole("heading", { name: "2026-00001" }) })
       .click();
     await expect(page).toHaveURL(/\/service_requests\/\d+/);
+
+    // Tracking number renders in the detail page's own h1 (ServiceRequestDetail.vue).
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("2026-00001");
+
+    // Stage answers grouped by phase title, from a populated `answers` entry.
+    await expect(page.getByRole("heading", { name: "Respuestas del formulario" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("Fase 1 - Datos del Solicitante")).toBeVisible();
+
+    // Lawyer's response message, from a populated `lawyer_responses` entry.
+    await expect(page.getByRole("heading", { name: "Respuestas del abogado" })).toBeVisible();
+    await expect(page.getByText("Solicitud revisada y aprobada por el equipo juridico")).toBeVisible();
   }
 );
 

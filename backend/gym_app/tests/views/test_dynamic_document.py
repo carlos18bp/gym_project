@@ -172,12 +172,14 @@ class TestDynamicDocumentViews:
             content="<p>x</p>",
             state="Draft",
             created_by=lawyer_1,
+            managed_by=lawyer_1,
         )
         doc2 = DynamicDocument.objects.create(
             title="L1 Published",
             content="<p>x</p>",
             state="Published",
             created_by=lawyer_1,
+            managed_by=lawyer_1,
         )
         # Documento de otro abogado que no debería aparecer
         _doc_other = DynamicDocument.objects.create(
@@ -185,6 +187,7 @@ class TestDynamicDocumentViews:
             content="<p>x</p>",
             state="Draft",
             created_by=lawyer_2,
+            managed_by=lawyer_2,
         )
 
         url = reverse('list_dynamic_documents')
@@ -825,7 +828,6 @@ def api():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():
     """Lawyer."""
     return User.objects.create_user(
@@ -835,7 +837,6 @@ def lawyer():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc(lawyer):
     """Doc."""
     return DynamicDocument.objects.create(
@@ -845,7 +846,6 @@ def doc(lawyer):
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc_with_var(doc):
     """Doc with var."""
     DocumentVariable.objects.create(document=doc, name_en="var1", value="World")
@@ -1018,7 +1018,6 @@ def api():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer():  # noqa: F811
     """Lawyer."""
     return User.objects.create_user(
@@ -1028,7 +1027,6 @@ def lawyer():  # noqa: F811
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def doc(lawyer):  # noqa: F811
     """Doc."""
     return DynamicDocument.objects.create(
@@ -1271,8 +1269,8 @@ class TestListDynDocEdges:
     def test_filter_by_lawyer_id(self, api, law):
         """Verify filter by lawyer id."""
         law2 = User.objects.create_user(email="law31b@t.com", password="pw", role="lawyer")
-        DynamicDocument.objects.create(title="Mine", content="<p>x</p>", state="Draft", created_by=law)
-        DynamicDocument.objects.create(title="Other", content="<p>x</p>", state="Draft", created_by=law2)
+        DynamicDocument.objects.create(title="Mine", content="<p>x</p>", state="Draft", created_by=law, managed_by=law)
+        DynamicDocument.objects.create(title="Other", content="<p>x</p>", state="Draft", created_by=law2, managed_by=law2)
         api.force_authenticate(user=law)
         resp = api.get(reverse("list_dynamic_documents"), {"lawyer_id": law.id})
         assert resp.status_code == 200
@@ -1373,7 +1371,6 @@ and get_letterhead_for_document helper.
 # Fixtures
 # ---------------------------------------------------------------------------
 @pytest.fixture
-@pytest.mark.django_db
 def lawyer_user():
     """Lawyer user."""
     return User.objects.create_user(
@@ -1386,7 +1383,6 @@ def lawyer_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def basic_user():
     """Create a basic user."""
     return User.objects.create_user(
@@ -1397,7 +1393,6 @@ def basic_user():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def document(lawyer_user):
     """Document."""
     return DynamicDocument.objects.create(

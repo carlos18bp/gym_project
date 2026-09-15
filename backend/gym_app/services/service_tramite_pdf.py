@@ -1,8 +1,8 @@
-import io
-
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
-from xhtml2pdf import pisa
+
+from gym_app.utils.documents import render_html_to_pdf
 
 
 class ServiceRequestPDFError(Exception):
@@ -68,17 +68,17 @@ def generate_service_request_pdf(service_request):
     }
 
     html = render_to_string("service_request_pdf.html", context)
-    buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(html.encode("utf-8"), dest=buffer)
+    try:
+        pdf_content = render_html_to_pdf(html, base_url=settings.BASE_DIR)
+    except Exception as exc:
+        raise ServiceRequestPDFError(
+            "No se pudo generar el PDF del tramite"
+        ) from exc
 
-    if pisa_status.err:
-        raise ServiceRequestPDFError("No se pudo generar el PDF del tramite")
-
-    buffer.seek(0)
     filename = f"solicitud_{service_request.tracking_number or service_request.id}.pdf"
     service_request.generated_document.save(
         filename,
-        ContentFile(buffer.getvalue()),
+        ContentFile(pdf_content),
         save=False,
     )
 

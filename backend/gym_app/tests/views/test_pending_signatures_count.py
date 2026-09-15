@@ -14,7 +14,6 @@ def api_client():
 
 
 @pytest.fixture
-@pytest.mark.django_db
 def pending_doc(lawyer_user):
     """Document in PendingSignatures state."""
     return DynamicDocument.objects.create(

@@ -5,8 +5,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
 
-# Console email backend for development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Console mailer for development
+MAILERS = {
+    'default': {
+        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+        'OPTIONS': {},
+    },
+}
 
 # CORS / CSRF — relaxed for local development
 CORS_ALLOWED_ORIGINS = [

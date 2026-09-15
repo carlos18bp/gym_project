@@ -149,15 +149,15 @@ def _build_recipients(process, alert):
     """Return list of dicts ``{'user': <User>, 'email': <str>}``."""
     recipients = []
 
-    # Always include the lawyer
+    # Always include the lawyer (unless archived)
     lawyer = process.lawyer
-    if lawyer and lawyer.email:
+    if lawyer and lawyer.email and not lawyer.is_archived:
         recipients.append({'user': lawyer, 'email': lawyer.email})
 
-    # Optionally include clients
+    # Optionally include clients (archived accounts are excluded)
     if alert.notify_clients:
         for client in process.clients.all():
-            if client.email and client.id != lawyer.id:
+            if client.email and client.id != lawyer.id and not client.is_archived:
                 recipients.append({'user': client, 'email': client.email})
 
     return recipients

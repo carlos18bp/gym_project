@@ -23,10 +23,10 @@ class UserSerializer(serializers.ModelSerializer):
             # Auth/admin flags kept for backward-compatibility with the SPA.
             # Server-side authorization MUST NOT trust these fields from the
             # client; they are exposed read-only here for UI rendering only.
-            'is_staff', 'is_superuser', 'is_active', 'last_login', 'date_joined',
+            'is_staff', 'is_superuser', 'is_active', 'is_archived', 'last_login', 'date_joined',
             'password',
         ]
-        read_only_fields = ('is_staff', 'is_superuser', 'is_active', 'last_login', 'date_joined')
+        read_only_fields = ('is_staff', 'is_superuser', 'is_active', 'is_archived', 'last_login', 'date_joined')
         extra_kwargs = {'password': {'write_only': True}}  # Additional kwargs, setting 'password' as write-only
 
 

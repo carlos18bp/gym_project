@@ -40,8 +40,22 @@ sys.path.insert(0, str(_CORE))
 
 from quality.base import load_project_config  # noqa: E402
 from quality.junk_detectors import extract_test_blocks, resolve_flow_ids  # noqa: E402
+from flow_coverage_audit import load_flow_definitions  # noqa: E402  (dual-layout loader, F46)
 
 OUTCOME_CLASSES = ("success", "error", "failure", "display")
+
+
+def _registry_files(repo: Path, e2e_dir: str, flow_dir: str) -> list[Path]:
+    """Files that constitute the flow registry in the active layout (F46)."""
+    e2e = repo / "frontend" / e2e_dir
+    if flow_dir and (e2e / flow_dir).is_dir():
+        return sorted((e2e / flow_dir).glob("*.json"))
+    mapf = e2e / "flow-definitions.json"
+    return [mapf] if mapf.is_file() else []
+
+
+def _registry_label(e2e_dir: str, flow_dir: str) -> str:
+    return f"frontend/{e2e_dir}/" + (f"{flow_dir}/" if flow_dir else "flow-definitions.json")
 
 
 # ---------------------------------------------------------------------------
@@ -83,12 +97,13 @@ def _source_paths(repo: Path) -> list[str]:
     return paths
 
 
-def freshness(repo: Path, e2e_dir: str) -> tuple[int, list[str]]:
+def freshness(repo: Path, e2e_dir: str, flow_dir: str = "") -> tuple[int, list[str]]:
     """(exit, reasons). exit 1 = the map is stale relative to the source."""
-    mapf = repo / "frontend" / e2e_dir / "flow-definitions.json"
-    if not mapf.is_file():
-        return 1, [f"missing {mapf.relative_to(repo)}"]
-    map_t = max(_git_ctime(repo, str(mapf.relative_to(repo))), _mtime(mapf))
+    reg = _registry_files(repo, e2e_dir, flow_dir)
+    if not reg:
+        return 1, [f"missing {_registry_label(e2e_dir, flow_dir)}"]
+    rels = [str(p.relative_to(repo)) for p in reg]
+    map_t = max(_git_ctime(repo, *rels), max(_mtime(p) for p in reg))
     srcs = _source_paths(repo)
     if not srcs:
         return 0, []
@@ -155,10 +170,16 @@ def infer_outcomes(flow_id: str, flow: dict, tagged: set[str]) -> list[str]:
     return [o for o in OUTCOME_CLASSES if o in out]
 
 
-def migrate_outcomes(repo: Path, e2e_dir: str):
+def migrate_outcomes(repo: Path, e2e_dir: str, flow_dir: str = ""):
     """Return (migrated_data, diff_rows, migrated_count, sentinel_skipped)."""
-    mapf = repo / "frontend" / e2e_dir / "flow-definitions.json"
-    data = json.loads(mapf.read_text(encoding="utf-8"))
+    if flow_dir and (repo / "frontend" / e2e_dir / flow_dir).is_dir():
+        # Sharded layout (F46): aggregate the shards in memory; the proposal is
+        # still ONE reviewable file — applying it re-distributes per shard.
+        cfg = load_project_config(repo)
+        data = {"flows": load_flow_definitions(repo / "frontend" / e2e_dir, cfg)}
+    else:
+        mapf = repo / "frontend" / e2e_dir / "flow-definitions.json"
+        data = json.loads(mapf.read_text(encoding="utf-8"))
     tagged = _spec_outcomes(repo, e2e_dir)
     diff: list[tuple] = []
     migrated = 0
@@ -220,24 +241,26 @@ def main() -> int:
     repo = args.repo_root.resolve()
     cfg = load_project_config(repo)
     e2e_dir = getattr(cfg, "frontend_e2e_dir", "e2e") or "e2e"
+    flow_dir = getattr(cfg, "flow_definitions_dir", "") or ""
+    reg_label = _registry_label(e2e_dir, flow_dir)
 
     if args.mode == "freshness":
-        rc, reasons = freshness(repo, e2e_dir)
+        rc, reasons = freshness(repo, e2e_dir, flow_dir)
         if rc == 0:
-            print(f"flow-map fresh (frontend/{e2e_dir}/flow-definitions.json up to date with routes/components/endpoints)")
+            print(f"flow-map fresh ({reg_label} up to date with routes/components/endpoints)")
         else:
-            print(f"flow-map STALE — source changed after the map (frontend/{e2e_dir}/flow-definitions.json):")
+            print(f"flow-map STALE — source changed after the map ({reg_label}):")
             for r in reasons:
                 print(f"  - {r}")
             print("  → refresh via /e2e-user-flows-check before auditing coverage")
         return rc
 
     # migrate-outcomes
-    mapf = repo / "frontend" / e2e_dir / "flow-definitions.json"
-    if not mapf.is_file():
-        print(f"no flow-definitions.json at frontend/{e2e_dir}/ — nothing to migrate", file=sys.stderr)
+    if not _registry_files(repo, e2e_dir, flow_dir):
+        print(f"no flow registry at {reg_label} — nothing to migrate", file=sys.stderr)
         return 2
-    data, diff, migrated, sentinel = migrate_outcomes(repo, e2e_dir)
+    data, diff, migrated, sentinel = migrate_outcomes(repo, e2e_dir, flow_dir)
+    mapf = repo / "frontend" / e2e_dir / "flow-definitions.json"
     out = args.out or mapf.with_suffix(".proposed.json")
     out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"outcomes proposal: {migrated} flow(s) migrated, {sentinel} expectedSpecs:0 sentinel(s) left untouched")

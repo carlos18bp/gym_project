@@ -372,7 +372,7 @@ test.describe("correct rejected/expired document (single endpoint)", { tag: ['@f
     await expect(page.getByTestId("correction-signature-due-date")).toHaveValue(dueDate);
   });
 
-  test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
+  test("correction endpoint returns same document with PendingSignatures state", { tag: ['@flow:correct-document', '@flow:sign-reopen', '@module:documents', '@priority:P1', '@role:lawyer', '@outcome:success'] }, async ({ page }) => {
     const userId = 9212;
 
     const docs = [

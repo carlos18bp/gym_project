@@ -71,217 +71,148 @@ per-stash y con la evidencia OBSOLETO/VIEJO de esta corrida (ya están en
 
 ## Phase 0 — Resolución de la lista de repos
 
+> **Post-`EnterWorktree`: UN comando simple por llamada.** En un worktree nativo,
+> Claude rechaza el comando con `$(...)`, `{a,b}`, `for`/`while` o heredoc con
+> sustitución, y el que apunta al clon compartido (`git -C <clon principal>`,
+> `cd <clon principal>`) — se cae el bloque entero. Por eso el flujo single-repo de
+> esta skill **no computa nada en bash**: los valores salen de `session-worktree.sh
+> status` y se escriben **literales**. Convención completa: `git-branch-protocol` §1
+> del CLAUDE.md del repo. (Los ejes `--all-repos` / `--all-vps` corren desde el clon
+> del toolkit, donde esos gates no existen.)
+
+**Flags** — los parseás vos leyendo `$ARGUMENTS`; un bucle de parseo sería rechazado.
+Los dos ejes son ortogonales y combinables:
+
+| Token | Efecto |
+|---|---|
+| (ninguno) | el repo del cwd, en este host |
+| `--all-repos` | `LOCAL_PROJECTS` + toolkit de ESTE host |
+| `--all-vps` | sólo `vps-ops-toolkit`, en TODOS los VPS (Phase 8) |
+| `--all` | **ERROR**: ambiguo y retirado. ¿Todos los repos de ESTE host? → `--all-repos` · ¿El toolkit en TODOS los VPS? → `--all-vps` · ¿Ambos ejes? → los dos flags |
+| cualquier otro | **ERROR**: argumento desconocido |
+
+**Modo default** — hay un solo repo, el del cwd, y **no hay `cd`**: el cwd ya es el
+repo (o tu worktree). No hay loop real: las Phases 1-7 corren una vez.
+
+**Modo `--all-repos` / `--all-vps`** — desde el clon del toolkit:
+
 ```bash
-ARGS_RAW="${ARGUMENTS:-}"
+# pre-entry: corre en el clon principal, antes de EnterWorktree
 OPS_ROOT="$HOME/webapps/vps-ops-toolkit"
-
-# Dos ejes ortogonales, combinables y en orden libre.
-ALL_REPOS=0
-ALL_VPS=0
-for tok in $ARGS_RAW; do
-    case "$tok" in
-        --all-repos) ALL_REPOS=1 ;;
-        --all-vps)   ALL_VPS=1 ;;
-        --all)
-            echo "❌ ERROR: --all es ambiguo y quedó retirado de git-sync."
-            echo "   ¿Todos los repos de ESTE host?   → /git-sync --all-repos"
-            echo "   ¿El toolkit en TODOS los VPS?    → /git-sync --all-vps"
-            echo "   ¿Ambos ejes?                     → /git-sync --all-repos --all-vps"
-            exit 2
-            ;;
-        *)
-            echo "❌ ERROR: argumento desconocido '$tok'."
-            echo "   Válidos: --all-repos (repos de este host) | --all-vps (todos los VPS). Combinables."
-            exit 2
-            ;;
-    esac
+source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
+PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
+REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")   # con --all-vps solo: sólo el toolkit
+VALID_REPOS=()
+for r in "${REPOS[@]}"; do
+    if [ -d "$HOME/webapps/$r/.git" ]; then VALID_REPOS+=("$r"); else echo "⏭️  $r — skip"; fi
 done
-
-if (( ALL_REPOS == 1 )); then
-    source "$OPS_ROOT/scripts/lib/bootstrap-common.sh"
-    PROJECT_DEFS_QUIET=1 source "$OPS_ROOT/scripts/lib/project-definitions.sh"
-    REPOS=("${LOCAL_PROJECTS[@]}" "vps-ops-toolkit")
-    MODE_LABEL="--all-repos (${#REPOS[@]} repos)"
-elif (( ALL_VPS == 1 )); then
-    # --all-vps solo: el repo con el mismo path en todo el fleet es el toolkit.
-    cd "$OPS_ROOT"
-    REPOS=("vps-ops-toolkit")
-    REPO_DIR_OVERRIDE="$OPS_ROOT"
-    MODE_LABEL="--all-vps (toolkit, local + fleet)"
-else
-    # Repo actual — el del cwd (donde se lanzó Claude Code)
-    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-        echo "❌ ERROR: el directorio actual no es un repo git."
-        echo "   Lanzá Claude Code desde el repo a sincronizar (o cd a él), o usá --all-repos."
-        exit 2
-    }
-    cd "$REPO_ROOT"                        # anclar el cwd al top del repo
-    REPOS=("$(basename "$REPO_ROOT")")
-    REPO_DIR_OVERRIDE="$REPO_ROOT"
-    MODE_LABEL="default (repo actual: ${REPOS[0]} → $REPO_ROOT)"
-fi
-(( ALL_VPS == 1 )) && MODE_LABEL+=" | fleet: ON (Phase 8)"
-export ALL_REPOS ALL_VPS
-
-if [ -n "${REPO_DIR_OVERRIDE:-}" ]; then
-    # Modo default: el repo actual ya fue validado por git rev-parse
-    VALID_REPOS=("${REPOS[@]}")
-else
-    VALID_REPOS=()
-    for r in "${REPOS[@]}"; do
-        if [ -d "$HOME/webapps/$r/.git" ]; then
-            VALID_REPOS+=("$r")
-        else
-            echo "⏭️  $r — dir no existe o no es repo git (skip)"
-        fi
-    done
-fi
-
-echo "🔧 Modo: $MODE_LABEL — repos a procesar: ${#VALID_REPOS[@]}"
+echo "🔧 repos a procesar: ${#VALID_REPOS[@]}"
 printf '   - %s\n' "${VALID_REPOS[@]}"
 ```
 
+Las Phases 1-7 corren **una vez por repo** de `VALID_REPOS`, con `git -C
+"$HOME/webapps/$REPO"` en cada comando — **nunca** con `cd` a un worktree ajeno.
+
+**Política de errores**: si una iteración termina en conflicto, error de fetch o de
+rebase, reportá el error con el comando exacto para resolverlo
+(`git -C <repo> rebase --abort` o similar), marcá el repo como FALLO en el summary y
+**continuá con el siguiente**. No abortes el loop completo. Un rebase a medio resolver
+se registra como "⚠️ con conflictos pendientes" y se notifica al cierre.
+
 ---
 
-## Iteración sobre `VALID_REPOS`
+## Phase 0.1 — ¿Dónde estás parado? (guard del clon principal)
 
-Las Phases 1-7 siguientes se ejecutan **una vez por cada repo** en
-`VALID_REPOS`. Antes de empezar cada iteración, resolver `REPO_DIR` según el
-modo — **las variables de Phase 0 no persisten entre bloques bash, así que el
-modo default se reancla al cwd en vez de leer una variable perdida**:
-
-**Modo default (sin `--all`)** — hay un solo repo, el del cwd:
+Antes de tocar nada, clasificá el tree de ESTE repo. Se aplica **por repo**, también
+dentro de `--all-repos`.
 
 ```bash
-# Reanclar SIEMPRE desde el cwd. Es robusto entre bloques bash (el cwd
-# persiste y el modo default nunca sale del repo) y NO cae al fallback
-# ~/webapps/ ni al toolkit si una variable se perdió.
-REPO_DIR="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-    echo "❌ ERROR: el cwd dejó de ser un repo git — abortando (no asumo ~/webapps ni el toolkit)."
-    exit 2
-}
-cd "$REPO_DIR"
-echo ""
-echo "═══════════════════════════════════════════════"
-echo "  🎯 Repo objetivo: $REPO_DIR  ($(git -C "$REPO_DIR" branch --show-current))"
-echo "═══════════════════════════════════════════════"
+bash ~/webapps/vps-ops-toolkit/scripts/maintenance/session-worktree.sh status
 ```
 
-**Modo `--all`** — Claude itera `VALID_REPOS` y entra a cada repo bajo
-`~/webapps/<repo>`:
+- **rc 0** → **worktree de sesión**. Flujo normal (Phases 0.3 → 7) sobre TU rama; es
+  el caso esperado en un repo de proyecto. Del registro salen `repo` `branch` `base`
+  `default_branch` `resolved_branch` `deploy_branch` `open_pr` `pr_state`
+  `pr_number` `release_merge` `host_status` `dirty` `unpushed` `upstream` — **no los
+  recalcules**.
+  `host_status=wrong-host` ⇒ ⏭️ terminá para ese repo; el VPS correcto (`vps_work=`)
+  sale de
+  `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <project literal>`.
+- **rc 2** → no hay worktree: estás en un clon principal (o fuera de un repo git).
+  Identificá cuál y en qué rama:
 
-```bash
-REPO_DIR="$HOME/webapps/$REPO"
-cd "$REPO_DIR"
-echo ""
-echo "═══════════════════════════════════════════════"
-echo "  🎯 Repo objetivo: $REPO_DIR  ($(git -C "$REPO_DIR" branch --show-current))"
-echo "═══════════════════════════════════════════════"
-```
+  ```bash
+  git rev-parse --show-toplevel
+  ```
+  ```bash
+  git status -sb
+  ```
 
-**Política de errores**: si una iteración termina en conflicto, error de
-fetch o de rebase, reportar el error con el comando exacto para resolverlo
-(`cd $REPO_DIR && git rebase --abort` o similar), marcar el repo como FALLO
-en el summary final, y **continuar con el siguiente repo**. No abortar el
-loop completo. Si un rebase queda a medio resolver, registrar el repo como
-"⚠️ con conflictos pendientes" y notificar al operador al cierre.
+  - **`vps-ops-toolkit` y los scaffolds `base_*`** → flujo normal: commitean directo a
+    `master` y se sincronizan como siempre.
+  - **Clon principal guardado** (cualquier otro clon colgado del root de proyectos) →
+    **nunca se stashea y nunca se rebasea un tree sucio**; es el checkout del servicio
+    corriendo:
+    - **sucio** → **⚠️ anomalía: trabajo de otra sesión o del operador — no se toca.**
+      Reportá el conteo y **terminá para ese repo** (sin fetch destructivo, sin stash,
+      sin rebase, sin checkout).
+    - limpio y en la rama de deploy (el `deploy_branch=` del resolver:
+      `bash ~/webapps/vps-ops-toolkit/scripts/maintenance/resolve-work-coordinate.sh --check <repo>`)
+      → lo único permitido: `git fetch` + `git pull --ff-only`.
+    - limpio y en OTRA rama → **reportá y no hagas checkout**: mover la rama del clon
+      de deploy es del operador (o de `migrate-project`), no de un sync.
 
-En modo default (sin `--all`), `VALID_REPOS` contiene solo el repo
-actual (resuelto desde el cwd) y no hay loop real — las phases corren una vez.
+En los casos de clon principal **guardado**, esta skill **no corre** las Phases 0.5-6
+(stash inspection, rebase, absorción de la base, resolución de conflictos): pasa
+directo al Output final con su fila por repo.
 
 ---
 
 ## Phase 0.3 — Verificar `gh` CLI (dependencia obligatoria)
 
 ```bash
-if ! command -v gh >/dev/null 2>&1; then
-    echo "❌ ERROR: gh CLI no instalada — dependencia obligatoria para PR detection."
-    echo "   Instalar con:"
-    echo "     sudo bash $HOME/webapps/vps-ops-toolkit/scripts/bootstrap/install-github-cli.sh --apply"
-    echo "   Y luego: gh auth login"
-    exit 2
-fi
+gh auth status
+```
 
-if ! gh auth status >/dev/null 2>&1; then
-    echo "❌ ERROR: gh CLI no autenticada."
-    echo "   Correr: gh auth login"
-    echo "   Selección recomendada: GitHub.com → HTTPS → Login with web browser."
-    exit 2
-fi
+Falla ⇒ **ERROR** y salida: `gh` es dependencia obligatoria para la detección de PRs.
+Sin la CLI: `sudo bash ~/webapps/vps-ops-toolkit/scripts/bootstrap/install-github-cli.sh --apply`.
+Sin auth: `gh auth login` (GitHub.com → HTTPS → Login with web browser).
 
-GH_VERSION="$(gh --version 2>/dev/null | head -1 | awk '{print $3}')"
-echo "✅ gh CLI ${GH_VERSION} — autenticado"
+```bash
+gh --version
 ```
 
 ---
 
 ## Phase 0.5 — Stash inspection (visibilidad + obsoletos + viejos)
 
-Antes de tocar el working tree, listar y clasificar los stashes existentes.
-El operador debe saber qué hay acumulado **antes** de que la skill cree su
-propio stash en Phase 1.
+Antes de tocar el working tree, listar y clasificar los stashes existentes. El
+operador debe saber qué hay acumulado **antes** de que la skill cree su propio stash
+en Phase 1.
 
 ```bash
-STASH_COUNT=$(git stash list | wc -l)
-
-if [[ "$STASH_COUNT" -eq 0 ]]; then
-    echo "✅ Phase 0.5 — Sin stashes existentes"
-else
-    echo "🔍 Phase 0.5 — ${STASH_COUNT} stash(es) existente(s):"
-    echo ""
-
-    OBSOLETE_STASHES=()
-    OLD_STASHES=()
-
-    for i in $(seq 0 $((STASH_COUNT - 1))); do
-        STASH_REF="stash@{$i}"
-        STASH_MSG=$(git stash list --format='%gs' | sed -n "$((i+1))p")
-        STASH_DATE=$(git log -1 --format='%ci' "$STASH_REF" 2>/dev/null || echo "?")
-        STASH_REL=$(git log -1 --format='%cr' "$STASH_REF" 2>/dev/null || echo "?")
-        STASH_FILES=$(git stash show --stat "$STASH_REF" 2>/dev/null | tail -1 || true)
-
-        echo "  ${STASH_REF}: ${STASH_MSG}"
-        echo "    Fecha: ${STASH_DATE} (${STASH_REL})"
-        echo "    Archivos: ${STASH_FILES:-(sin diff disponible)}"
-
-        # Heurística — stash viejo (>30 días)
-        STASH_EPOCH=$(git log -1 --format='%ct' "$STASH_REF" 2>/dev/null || echo 0)
-        NOW_EPOCH=$(date +%s)
-        AGE_DAYS=$(( (NOW_EPOCH - STASH_EPOCH) / 86400 ))
-        if [[ "$AGE_DAYS" -gt 30 ]]; then
-            echo "    ⚠️  VIEJO — ${AGE_DAYS} días, considerar drop"
-            OLD_STASHES+=("$STASH_REF")
-        fi
-
-        # Heurística — stash obsoleto (cambios ya aplicados upstream)
-        # `git stash apply --check` exit !=0 cuando todos los hunks chocarían
-        # con el árbol actual — fuerte indicio de que el contenido ya vive
-        # en commits.
-        if ! git stash apply --check "$STASH_REF" >/dev/null 2>&1; then
-            echo "    ⚠️  OBSOLETO probable — apply --check falla (cambios ya commiteados?)"
-            OBSOLETE_STASHES+=("$STASH_REF")
-        fi
-
-        echo ""
-    done
-
-    # Reportar candidatos a drop al cierre de la fase
-    if [[ "${#OBSOLETE_STASHES[@]}" -gt 0 || "${#OLD_STASHES[@]}" -gt 0 ]]; then
-        echo "📋 Candidatos a drop (revisar antes de ejecutar):"
-        for s in "${OBSOLETE_STASHES[@]}"; do
-            echo "    git stash drop ${s}    # OBSOLETO"
-        done
-        for s in "${OLD_STASHES[@]}"; do
-            echo "    git stash drop ${s}    # VIEJO (>30d)"
-        done
-        echo ""
-        echo "    NO se borran automáticamente — copy-paste manual cuando el operador apruebe."
-    fi
-fi
+git stash list --format='%gd|%ci|%cr|%gs'
 ```
 
+- Salida vacía → ✅ sin stashes: saltá el resto de la fase.
+- Con líneas → clasificá **vos** cada una a partir de la fecha (`%ci`) y la relativa
+  (`%cr`): **VIEJO** = más de 30 días. Y por cada stash, DOS llamadas con la ref
+  literal (`stash@{0}`, `stash@{1}`, … — un comando por stash, nunca un bucle):
+
+```bash
+git stash show --stat stash@{0}
+```
+```bash
+git stash apply --check stash@{0}
+```
+
+`apply --check` con exit ≠ 0 = todos los hunks chocarían con el árbol actual ⇒
+**OBSOLETO probable** (el contenido ya vive en commits).
+
 **Reglas:**
-- La skill **nunca** ejecuta `git stash drop` por su cuenta — solo sugiere.
+- La skill **nunca** ejecuta `git stash drop` por su cuenta — sólo reporta los
+  candidatos (`git stash drop stash@{N}    # OBSOLETO` / `# VIEJO (>30d)`) en
+  `## Next steps`, para copy-paste manual cuando el operador apruebe.
 - Estados posibles en el Output final:
   - ✅ — sin stashes o todos legítimos (no obsoletos, no >30d)
   - ⚠️ — N candidatos a drop reportados en `## Next steps`
@@ -298,141 +229,99 @@ git log --oneline -5
 ```
 
 **Rules:**
-- If `git status` shows uncommitted changes: **warn the user** and offer to stash first with `git stash`, then `git stash pop` after syncing. Do not proceed without their confirmation.
+- If `git status` shows uncommitted changes: **warn the user**. La oferta de
+  `git stash` + `git stash pop` vale **sólo en TU worktree de sesión o en el
+  toolkit**, y aun ahí se prefiere **commitear en tu rama** (el trabajo de una
+  sesión vive en commits, no en stashes). En el **clon principal de un repo de
+  proyecto NUNCA** se ofrece: Phase 0.1 ya cortó ahí. Do not proceed without their
+  confirmation.
 - Note the current branch name and its upstream (if any).
 
 ---
 
 ## Phase 2 — Detect parent branch + resolve PR-aware rebase target
 
-Esta fase resuelve **dos cosas**: el parent default (master/main) y el
-`TARGET` real contra el que se va a rebasear, que puede ser:
+Esta fase resuelve **dos cosas**: el parent default (`main`/`master`) y el `TARGET`
+real contra el que se va a rebasear, que puede ser:
 
 - `origin/<parent>` (default, comportamiento clásico)
-- `origin/<base-de-integración>` para una rama local sin PR (la release en
-  repos que participan del flujo release)
-- **vacío** para una rama pusheada con PR: sin rebase de base — Phase 4 (su
+- `origin/<base-de-integración>` para una rama local sin PR (la release en repos que
+  participan del flujo release)
+- **ninguno** para una rama pusheada con PR: sin rebase de base — Phase 4 (su
   upstream) + merge opcional de la base en Phase 5 Case C
 
-### Sub-fase 2a — Parent default
+### Sub-fase 2a — Parent y base, del registro (sin recalcular nada)
+
+Ya los tenés del `session-worktree.sh status` de Phase 0.1:
+
+| Clave del registro | Qué es |
+|---|---|
+| `default_branch` | el **parent** (`main`/`master`), resuelto sin red desde `origin/HEAD` |
+| `branch` | la rama actual |
+| `base` | la base de integración de ESTA rama: la del PR abierto si tiene, si no la release (`pr_state_coord=single`), si no la default |
+| `pr_state` / `pr_number` | si la rama actual ya tiene PR, y cuál |
+| `open_pr` | los candidatos a release (PRs abiertos con base=default), separados por comas |
+
+En un clon principal (rc 2 de `status`) el parent sale de un comando simple:
 
 ```bash
-PARENT=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
-
-# Fallbacks ordenados
-if [[ -z "$PARENT" ]]; then
-    if git show-ref --verify --quiet refs/remotes/origin/main; then
-        PARENT=main
-    elif git show-ref --verify --quiet refs/remotes/origin/master; then
-        PARENT=master
-    else
-        echo "❌ ERROR: no se puede determinar el parent branch (no hay origin/main ni origin/master)."
-        exit 2
-    fi
-fi
-
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo "Parent: ${PARENT}  |  Current: ${CURRENT_BRANCH}"
+git symbolic-ref --short refs/remotes/origin/HEAD
 ```
+
+Sin él, probá `git show-ref --verify --quiet refs/remotes/origin/main` y después
+`refs/remotes/origin/master`; si ninguna existe, **ERROR**: no se puede determinar el
+parent branch.
 
 ### Sub-fase 2b — PRs abiertos (vía gh CLI)
 
 ```bash
-# Listar PRs abiertos del repo actual. gh resuelve el repo desde origin.
-PR_JSON=$(gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt 2>/dev/null || echo "[]")
-PR_COUNT=$(echo "$PR_JSON" | jq 'length')
-echo "PRs abiertos detectados: ${PR_COUNT}"
-
-if [[ "$PR_COUNT" -gt 0 ]]; then
-    echo "$PR_JSON" | jq -r '.[] | "  #\(.number) [\(if .isDraft then "DRAFT" else "OPEN" end)] \(.headRefName) → \(.baseRefName)  — \(.title)"'
-fi
+gh pr list --state open --json number,title,headRefName,baseRefName,isDraft,updatedAt -q '.[] | "#\(.number) [\(if .isDraft then "DRAFT" else "OPEN" end)] \(.headRefName) → \(.baseRefName)  — \(.title)"'
 ```
 
-**Política del operador (protocolo por sesión, 2026-08-17):** N PRs de sesión
-abiertos son **estado normal** (1 sesión = 1 rama = 1 PR); el conteo total ya no
-dispara warnings. Lo que sí se vigila: que haya a lo sumo **1 candidato a
-release** (PR con base=default) y que los PRs de sesión no envejezcan sin drenar.
+**Política del operador (protocolo por sesión, 2026-08-17):** N PRs de sesión abiertos
+son **estado normal** (1 sesión = 1 rama = 1 PR); el conteo total ya no dispara
+warnings. Lo que sí se vigila, contando **vos** sobre esa salida (y contra el
+`open_pr=` del registro):
+
+- **Candidatos a release** = los PRs con `→ <default_branch>`. Más de 1 ⇒
+  ⚠️ release ambigua: en repos con release activa los PRs de sesión van con
+  `base=<release>` (stacked); re-basar los mal abiertos con
+  `gh pr edit <n> --base <release>`.
+- **PRs de sesión fríos** = los que NO apuntan a la default y llevan >48 h sin
+  actividad (`updatedAt`) ⇒ deuda de drenaje: sugerí `/merge-queue`. Un candidato a
+  release viejo NO es un PR de sesión frío, por eso el filtro excluye la default. Si
+  querés el filtro hecho por gh (con la default **literal**):
 
 ```bash
-RELEASE_CANDIDATES=$(echo "$PR_JSON" | jq --arg d "$PARENT" '[.[] | select(.baseRefName==$d)] | length')
-SESSION_PRS=$(echo "$PR_JSON" | jq --arg d "$PARENT" '[.[] | select(.baseRefName!=$d)] | length')
-echo "Candidatos a release (base=${PARENT}): ${RELEASE_CANDIDATES}  |  PRs de sesión: ${SESSION_PRS}"
-
-if [[ "$RELEASE_CANDIDATES" -gt 1 ]]; then
-    echo "⚠️  ${RELEASE_CANDIDATES} PRs con base=${PARENT}: release ambigua. En repos con"
-    echo "    release activa los PRs de sesión van con base=<release> (stacked) —"
-    echo "    re-basar los mal abiertos: gh pr edit <n> --base <release>."
-fi
-# PRs de sesión >48h sin actividad = deuda de drenaje (sugerir /merge-queue)
-echo "$PR_JSON" | jq -r --arg d "$PARENT" \
-  '.[] | select(.baseRefName!=$d) | select((now - (.updatedAt|fromdateiso8601)) > 172800) | "⚠️  PR de sesión frío (>48h): #\(.number) \(.headRefName) — drenar con /merge-queue"'
+gh pr list --state open --json number,headRefName,baseRefName,updatedAt -q '.[] | select(.baseRefName != "<default_branch literal>") | select((now - (.updatedAt|fromdateiso8601)) > 172800) | "⚠️  frío >48h: #\(.number) \(.headRefName) → \(.baseRefName)"'
 ```
 
-### Sub-fase 2c — Resolver `TARGET` del rebase
+### Sub-fase 2c — Resolver el `TARGET` del rebase
 
-Regla del protocolo por sesión: **una rama pusheada con PR jamás se rebasea
-sobre su base** (el force push está denegado en el fleet — el rebase la dejaría
-imposible de pushear). Su sync es contra su **propio upstream** (Phase 4), y una
-base movida se absorbe con **merge** (Phase 5, Case C). El "rebase apilado sobre
-el PR abierto" del protocolo viejo (todas las sesiones sobre una rama) quedó
-retirado: parado en `main`/`master` ya no se adopta la rama de ningún PR.
+Regla del protocolo por sesión: **una rama pusheada con PR jamás se rebasea sobre su
+base** (el force push está denegado en el fleet — el rebase la dejaría imposible de
+pushear). Su sync es contra su **propio upstream** (Phase 4), y una base movida se
+absorbe con **merge** (Phase 5, Case C). El "rebase apilado sobre el PR abierto" del
+protocolo viejo (todas las sesiones sobre una rama) quedó retirado: parado en
+`main`/`master` ya no se adopta la rama de ningún PR.
+
+Se decide leyendo el registro, sin bash:
+
+| Situación | `TARGET` | Razón |
+|---|---|---|
+| `branch` = `default_branch` | `origin/<default_branch>` | **Case A** — parado en el parent: `pull --rebase` clásico |
+| `pr_state` = `OPEN` (rama pusheada con PR, de sesión o release) | **ninguno** | **Case C** — sync sólo contra su upstream; la base (`base` del registro) se absorbe con merge, nunca con rebase |
+| resto (rama local sin PR) | `origin/<base>` | **Case B** — rebase contra su base de integración (la release en repos participantes, el parent en prod-directos) |
+
+Asegurá que el ref existe localmente antes de usarlo (sólo Cases A y B):
 
 ```bash
-# Lista de heads de PRs abiertos (las ramas en review)
-PR_HEADS=$(echo "$PR_JSON" | jq -r '.[].headRefName' 2>/dev/null || true)
-
-# Base de integración del repo: default, o la RELEASE si el repo participa del
-# flujo release (resolver del toolkit; pr_state=single → resolved_branch).
-# OJO worktrees: el nombre del proyecto sale del git-common-dir (el clon
-# principal), no del toplevel — en un worktree el toplevel es ~/.../.wt/<slug>.
-BASE_INT="${PARENT}"
-OPS=~/webapps/vps-ops-toolkit
-RESOLVER="$OPS/scripts/maintenance/resolve-work-coordinate.sh"
-PROJ=$(basename "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")")
-if [[ -x "$RESOLVER" ]]; then
-    RB=$(bash "$RESOLVER" --check "$PROJ" 2>/dev/null | awk -F= '$1=="pr_state"{ps=$2} $1=="resolved_branch"{rb=$2} END{if(ps=="single") print rb}')
-    [[ -n "$RB" ]] && BASE_INT="$RB"
-fi
-
-TARGET="origin/${PARENT}"
-TARGET_REASON="default (parent branch)"
-
-if [[ "$CURRENT_BRANCH" == "$PARENT" ]]; then
-    # Case A — parado en el parent: pull --rebase clásico.
-    TARGET="origin/${PARENT}"
-    TARGET_REASON="current branch ES el parent (Case A)"
-
-elif echo "$PR_HEADS" | grep -qxF "$CURRENT_BRANCH"; then
-    # Case C — rama pusheada con PR (de sesión o release): SIN rebase de base.
-    TARGET=""
-    PR_BASE=$(echo "$PR_JSON" | jq -r --arg h "$CURRENT_BRANCH" '[.[] | select(.headRefName==$h)][0].baseRefName')
-    TARGET_REASON="rama pusheada con PR (base=${PR_BASE}) — sync sólo contra su upstream; base movida se absorbe con merge, nunca rebase"
-
-else
-    # Rama local sin PR (aún no pusheada): rebase contra su base de integración
-    # (la release en repos participantes, el parent en prod-directos).
-    TARGET="origin/${BASE_INT}"
-    TARGET_REASON="rama local sin PR — rebase contra su base de integración (${BASE_INT})"
-fi
-
-echo "🎯 Rebase target: ${TARGET:-<ninguno — Case C>}"
-echo "   Razón: ${TARGET_REASON}"
-
-# Asegurar que TARGET existe localmente como ref (si hay TARGET).
-if [[ -n "$TARGET" ]]; then
-    TARGET_BRANCH="${TARGET#origin/}"
-    if ! git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
-        git fetch origin "${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}" || {
-            echo "❌ No se pudo fetch ${TARGET_BRANCH}"
-            exit 2
-        }
-    fi
-fi
+git fetch origin <TARGET_BRANCH literal> --quiet
 ```
 
-Después de esta fase quedan resueltas las variables `PARENT`, `CURRENT_BRANCH`,
-`TARGET`, `TARGET_BRANCH`, `PR_COUNT`, `TARGET_REASON` — usadas en las
-Phases 4, 5 y 7.
+Escribí `TARGET`, `TARGET_BRANCH` y la razón **literales** en las Phases 4, 5 y 7 — no
+hay variables que sobrevivan entre bloques, y post-entry tampoco hay `$(...)` que las
+reconstruya.
 
 ---
 
@@ -448,18 +337,24 @@ This updates both `origin/<parent>` and `origin/<current-branch>` locally.
 
 ## Phase 4 — Sync the current branch with its own remote
 
+> **Las Phases 4-6 (rebase, merge de la base, `git add` de conflictos, stash) sólo
+> corren en un worktree de sesión o en `vps-ops-toolkit`.** El clon principal de un
+> repo de proyecto nunca llega hasta acá: Phase 0.1 lo resolvió con `fetch` +
+> `pull --ff-only`, o lo reportó como anomalía.
+
 **Skip this phase** if the current branch **is** the parent (handled in Phase 5) or if there is no upstream configured.
 
-Otherwise, preview incoming commits from the current branch's own remote:
+Otherwise, preview incoming commits from the current branch's own remote (`<rama>` =
+el `branch` literal del registro):
 
 ```bash
-git log --oneline HEAD..origin/<current-branch> --
+git log --oneline HEAD..origin/<rama> --
 ```
 
 - If empty: nothing to pull from own remote — continue to Phase 5.
 - If there are commits: pull with rebase:
   ```bash
-  git pull --rebase origin <current-branch>
+  git pull --rebase origin <rama>
   ```
 
 If this rebase stops with conflicts → Phase 6. When it finishes cleanly, continue to Phase 5.
@@ -471,47 +366,50 @@ If this rebase stops with conflicts → Phase 6. When it finishes cleanly, conti
 Usa las variables de Phase 2: `TARGET` (default `origin/<parent>`, o la base de
 integración para ramas locales sin PR, o **vacío** para ramas pusheadas con PR).
 
+Todos los nombres de rama van **literales**, tomados del registro de Phase 0.1.
+
 **Case A — current branch IS the parent (`main`/`master`):**
 
 ```bash
-git pull --rebase origin "${PARENT}"
+git pull --rebase origin <default_branch literal>
 ```
 
-Then skip to Phase 7. (En este caso `TARGET == origin/${PARENT}` siempre.)
+Then skip to Phase 7. (En este caso `TARGET == origin/<default_branch>` siempre.)
 
 **Case B — rama local SIN PR (aún no pusheada):**
 
 Preview qué tiene `TARGET` que current no tiene:
 
 ```bash
-git log --oneline "HEAD..${TARGET}" --
+git log --oneline HEAD..origin/<base literal> --
 ```
 
 - If empty: already up to date with `TARGET` — skip to Phase 7.
 - If there are commits: rebase onto `TARGET`:
   ```bash
-  git rebase "${TARGET}"
+  git rebase origin/<base literal>
   ```
 
 If the rebase stops with conflicts → Phase 6.
 
-**Case C — rama pusheada con PR (`TARGET` vacío):**
+**Case C — rama pusheada con PR (sin `TARGET`):**
 
-El sync real ya ocurrió en Phase 4 (su propio upstream). Acá sólo se decide si
-hace falta **absorber la base** (la base del PR — `${PR_BASE}` de Phase 2c — se
-movió por merges de otras sesiones):
+El sync real ya ocurrió en Phase 4 (su propio upstream). Acá sólo se decide si hace
+falta **absorber la base** (el `base` del registro — la base del PR — se movió por
+merges de otras sesiones):
 
 ```bash
-git fetch origin "${PR_BASE}" --quiet
-BEHIND_BASE=$(git rev-list --count "HEAD..origin/${PR_BASE}" -- 2>/dev/null || echo 0)
-echo "Commits de la base (${PR_BASE}) que esta rama no tiene: ${BEHIND_BASE}"
+git fetch origin <base literal> --quiet
+```
+```bash
+git rev-list --count HEAD..origin/<base literal>
 ```
 
-- `BEHIND_BASE == 0` → nada que absorber — skip to Phase 7.
-- `BEHIND_BASE > 0` → **merge, nunca rebase** (la rama ya está pusheada y el
-  force push está denegado en el fleet):
+- Imprime `0` → nada que absorber — skip to Phase 7.
+- Imprime >0 → **merge, nunca rebase** (la rama ya está pusheada y el force push está
+  denegado en el fleet):
   ```bash
-  git merge --no-edit "origin/${PR_BASE}"
+  git merge --no-edit origin/<base literal>
   ```
   Conflictos → Phase 6 (resolverlos acá es exactamente "ir resolviendo a medida
   que las otras ramas avanzan"; el squash final del PR se come el merge commit).
@@ -550,8 +448,8 @@ git stash list
 ```
 
 Report:
-- Current branch and the rebase target used (`TARGET` + `TARGET_REASON`)
-- PRs abiertos detectados (`PR_COUNT` + lista breve)
+- Current branch and the rebase target used (el `TARGET` + la razón de Phase 2c)
+- PRs abiertos detectados (cantidad + lista breve)
 - Stashes pre-existentes (cantidad + candidatos a drop)
 - Commits pulled from the current branch's own remote (if any)
 - Commits brought in from `TARGET` (if any)
@@ -572,12 +470,14 @@ local ya sano.
 Delega en el orquestador multi-host, que conecta por Tailscale y corre el core
 no-interactivo en cada VPS remoto (+ la dev si está online):
 
-```bash
-REPOS_FLAG="--repos=toolkit"
-(( ALL_REPOS == 1 )) && REPOS_FLAG="--repos=all"
+El flag de repos es literal: `--repos=toolkit` sin `--all-repos`, `--repos=all` con
+él. Un comando por llamada (dry-run primero):
 
-bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --check "$REPOS_FLAG"   # dry-run: behind por host/repo
-bash "$OPS_ROOT/scripts/maintenance/propagate-toolkit-commit.sh" --apply "$REPOS_FLAG"
+```bash
+bash ~/webapps/vps-ops-toolkit/scripts/maintenance/propagate-toolkit-commit.sh --check --repos=toolkit
+```
+```bash
+bash ~/webapps/vps-ops-toolkit/scripts/maintenance/propagate-toolkit-commit.sh --apply --repos=toolkit
 ```
 
 **Sentinel `exit 75` = pausa de auth de Tailscale**, NO es un fallo: el script
@@ -640,7 +540,7 @@ Reportar siguiendo [[_output-protocol]]. Plantilla específica de `/git-sync`:
 | gh CLI + auth | ✅ | gh <version>, autenticado |
 | Phase 0.5 — Stash inspection | ✅ | 0 stashes existentes |
 | Phase 1 — Inspect | ✅ | working tree clean |
-| Phase 2 — Parent + PR target | ✅ | <N> PRs abiertos → target=<TARGET> |
+| Phase 2 — Parent + PR target | ✅ | <N> PRs abiertos → target=<TARGET literal> |
 | Phase 3 — Fetch | ✅ | <N> commits nuevos |
 | Phase 4 — Own remote sync | ⏭️ | current es parent (n/a) o sin upstream |
 | Phase 5 — Rebase | ✅ | fast-forward o N commits rebased |

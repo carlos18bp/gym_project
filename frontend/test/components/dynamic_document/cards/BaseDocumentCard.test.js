@@ -244,6 +244,8 @@ describe("BaseDocumentCard.vue", () => {
       template:
         "<div data-test='modal-relationships'><button data-test='close-relationships' type='button' @click=\"$emit('close')\">x</button><button data-test='refresh-relationships' type='button' @click=\"$emit('refresh')\">r</button></div>",
     },
+    PaymentRecordsModal: { template: "<div data-test='modal-payment-records' />" },
+    UploadPaymentRecordModal: { template: "<div data-test='modal-upload-payment' />" },
   };
 
   test("emits click when clicking card, but not when clicking inside menu-container", async () => {

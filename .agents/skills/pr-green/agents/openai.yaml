@@ -1,0 +1,7 @@
+interface:
+  display_name: "Pr Green"
+  short_description: "Cierre de sesión en un repo de PROYECTO del fleet: deja el..."
+  default_prompt: "Use $pr-green to handle this task with its documented workflow."
+
+policy:
+  allow_implicit_invocation: true

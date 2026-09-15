@@ -33,8 +33,12 @@ def create_notification(
         link_id: PK of the linked resource.
 
     Returns:
-        The created Notification instance.
+        The created Notification instance, or None for archived recipients.
     """
+    # Archived accounts receive no notifications (in-app or, transitively,
+    # the bulk helper). This is the single in-app choke point.
+    if getattr(user, 'is_archived', False):
+        return None
     try:
         notification = Notification.objects.create(
             user=user,
@@ -113,12 +117,14 @@ def build_process_recipients(process, notify_clients=True, actor=None):
     seen_ids = set()
 
     lawyer = getattr(process, 'lawyer', None)
-    if lawyer is not None and lawyer.id not in seen_ids:
+    if lawyer is not None and not getattr(lawyer, 'is_archived', False) and lawyer.id not in seen_ids:
         recipients.append(lawyer)
         seen_ids.add(lawyer.id)
 
     if notify_clients:
         for client in process.clients.all():
+            if getattr(client, 'is_archived', False):
+                continue
             if client.id not in seen_ids:
                 recipients.append(client)
                 seen_ids.add(client.id)

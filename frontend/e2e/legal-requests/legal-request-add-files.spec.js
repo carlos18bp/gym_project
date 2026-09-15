@@ -59,8 +59,8 @@ test.describe("Add files to a legal request", { tag: ['@flow:legal-add-files', '
   });
 
   test("client cannot add files to a closed request", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:client'] }, async ({ page }) => {
-    // audit: load-only flow (role/state restriction — the CLOSED status must
-    // hide the entry point, so there is no action left for the user to drive)
+    // quality: allow-no-interaction (role/state restriction: CLOSED status hides the
+    // entry point — asserts positive content plus absence of the entry point)
     const userId = 2301;
 
     await installLegalRequestsApiMocks(page, {
@@ -81,8 +81,8 @@ test.describe("Add files to a legal request", { tag: ['@flow:legal-add-files', '
   });
 
   test("lawyer cannot add files to a client request", { tag: ['@flow:legal-add-files', '@module:legal-requests', '@priority:P2', '@role:lawyer'] }, async ({ page }) => {
-    // audit: load-only flow (role restriction — the add-files entry point is
-    // client-only, so a lawyer has nothing to click here)
+    // quality: allow-no-interaction (role restriction: the add-files entry point is
+    // client-only — asserts positive content plus absence of the entry point)
     const userId = 2310;
 
     await installLegalRequestsApiMocks(page, {

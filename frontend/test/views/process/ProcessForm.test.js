@@ -362,6 +362,55 @@ describe("ProcessForm.vue", () => {
     openSpy.mockRestore();
   });
 
+  test("create mode defaults the responsible lawyer to the logged-in user", async () => {
+    const lawyer = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      users: [lawyer],
+      currentUser: lawyer,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(42);
+    expect(setupState.formData.lawyerId).toBe(42);
+  });
+
+  test("selector value (not the logged-in user) is what gets submitted", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const client = { id: 7, first_name: "Ana", last_name: "Lopez", role: "client" };
+    const { wrapper } = await mountView({
+      routeParams: { action: "add", process_id: "" },
+      caseTypes: [{ id: 10, type: "Civil" }],
+      users: [me, colleague, client],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    // Admin/lawyer reassigns the process to a colleague at creation time
+    setupState.selectedLawyer = colleague;
+    setupState.selectedCaseType = { id: 10, type: "Civil" };
+    setupState.selectedClients = [client];
+    setupState.formData.plaintiff = "P";
+    setupState.formData.defendant = "D";
+    setupState.formData.subcase = "S";
+    setupState.formData.ref = "R";
+    setupState.formData.authority = "Court";
+    setupState.formData.stages = [{ status: "Inicio", date: "2024-01-01" }];
+    setupState.formData.caseFiles = [{ file: createFile("f.pdf", "application/pdf") }];
+
+    mockSubmitHandler.mockResolvedValue();
+    await setupState.onSubmit();
+
+    expect(mockSubmitHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ lawyerId: 77 }),
+      expect.any(String),
+      false
+    );
+  });
+
   test("edit mode prefills the stage alert configuration", async () => {
     const { wrapper } = await mountEditView({
       stages: [
@@ -482,6 +531,37 @@ describe("ProcessForm.vue", () => {
     expect(mockSubmitHandler).not.toHaveBeenCalled();
   });
 
+  test("lawyer search filters the selector options by query", async () => {
+    const me = { id: 42, first_name: "Luis", last_name: "Abo", role: "lawyer" };
+    const colleague = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const { wrapper } = await mountView({
+      users: [me, colleague],
+      currentUser: me,
+      authUser: { id: 42 },
+    });
+    const setupState = getSetupState(wrapper);
+
+    setupState.lawyerQuery = "mar";
+    await nextTick();
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([77]);
+  });
+
+  test("edit mode keeps an archived assigned lawyer selectable at the top", async () => {
+    const archived = { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer", is_archived: true };
+    const active = { id: 77, first_name: "Marta", last_name: "Colega", role: "lawyer" };
+    const process = buildProcess({ lawyer: archived });
+
+    const { wrapper } = await mountView({
+      routeParams: { action: "edit", process_id: String(process.id) },
+      processes: [process],
+      users: [archived, active],
+    });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.filteredLawyers.map((l) => l.id)).toEqual([99, 77]);
+  });
+
   test("logs and continues when auxiliary data fails to load", async () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const pinia = createPinia();
@@ -509,5 +589,13 @@ describe("ProcessForm.vue", () => {
       expect.any(Error)
     );
     consoleSpy.mockRestore();
+  });
+
+  test("edit mode prefills the selector from the assigned lawyer", async () => {
+    const { wrapper } = await mountEditView({ lawyer: { id: 99, first_name: "Ori", last_name: "Ginal", role: "lawyer" } });
+    const setupState = getSetupState(wrapper);
+
+    expect(setupState.selectedLawyer?.id).toBe(99);
+    expect(setupState.formData.lawyerId).toBe(99);
   });
 });

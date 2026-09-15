@@ -24,6 +24,35 @@ EXTRA_LAWYER_EMAILS = [
     'info@gymconsultoresjuridicos.com',
 ]
 
+# ── September 2026 release: dedicated QA accounts ─────────────────────
+# These back the three scenarios create_release_qa_data seeds. They are
+# deliberately separate from the generic pools so the QA screens stay
+# small enough to read at a glance.
+QA_ADMIN_EMAIL = 'admin@example.com'
+QA_REASSIGN_SOURCE_EMAIL = 'abogado.reasignar@example.com'
+QA_REASSIGN_TARGET_EMAIL = 'abogado.destino@example.com'
+QA_TOUR_STALE_EMAIL = 'tour.vencido@example.com'
+
+# The lawyer who reviews and the client who uploads the cuentas de cobro.
+# Both are generic pool accounts the QA guide already names.
+QA_PAYMENTS_LAWYER_EMAIL = 'lawyer1@example.com'
+QA_PAYMENTS_CLIENT_EMAIL = 'client1@example.com'
+# Client on the transferable documents of the reassignment scenario.
+QA_REASSIGN_CLIENT_EMAIL = 'client2@example.com'
+
+# (email, first_name, last_name, role)
+QA_ADMIN_SPEC = (QA_ADMIN_EMAIL, 'Admin', 'QA Staging', 'admin')
+
+# Lawyers whose dataset must stay EXACT. The volumetric seeders exclude
+# them, otherwise a second create_fake_data run buries the reassignment
+# screen under 20 random minutas and gives the tour account pending
+# signatures it must not have.
+QA_EXCLUDED_LAWYER_EMAILS = frozenset({
+    QA_REASSIGN_SOURCE_EMAIL,
+    QA_REASSIGN_TARGET_EMAIL,
+    QA_TOUR_STALE_EMAIL,
+})
+
 # Full user specs used by create_clients_lawyers to ensure users exist with
 # the correct role before any other seeder runs.
 SPECIAL_USERS_SPEC = [
@@ -41,10 +70,14 @@ SPECIAL_USERS_SPEC = [
 ]
 
 # Emails that delete_fake_data must never delete.
+# QA_ADMIN_EMAIL is already safe by role (delete_fake_data only sweeps
+# client/lawyer/basic/corporate_client), but it is listed explicitly so the
+# protection survives a future widening of that role filter.
 PROTECTED_EMAILS = frozenset(
     {SPECIAL_LAWYER_EMAIL}
     | set(SPECIAL_NON_LAWYER_EMAILS)
     | set(EXTRA_LAWYER_EMAILS)
+    | {QA_ADMIN_EMAIL}
 )
 
 # Emails created manually by the client on staging. The seeder must never
