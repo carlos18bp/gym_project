@@ -426,6 +426,17 @@ flowchart TD
 
 ## 8. Store Architecture
 
+### Explorador del Manual de Usuario (2026-09-19)
+
+`UserGuideMain` carga bajo demanda `explorer/GuideExplorer.vue` al abrir
+`?view=explorer`. El catálogo descriptivo local (`spaces.js` + `catalog.js`) es
+visible para todos los roles y no consulta registros de negocio. `ExplorerContext`
+resuelve accesos con el usuario actual, el getter `isLawyerLike`, el router y las
+guías filtradas por rol. `useGuideExplorer` usa la URL como estado de navegación
+(`node`, `tour`, `relations`); `useGuideOrbit` adapta el contenedor y administra
+animación, preferencias de movimiento y limpieza al desmontar. El inventario de
+rutas se verifica contra el router en pruebas para detectar módulos omitidos.
+
 ```mermaid
 flowchart TD
     subgraph AuthStores["Auth"]

@@ -138,6 +138,9 @@ Any new feature that gates by lawyer privileges **must consume `userStore.isLawy
 - Role-specific information cards
 - Search functionality within the guide
 - Quick links and example modals
+- Explorador del ecosistema completo para todos los usuarios autenticados: cuatro
+  espacios, módulos y capacidades, búsqueda, relaciones y recorridos guiados. El
+  acceso a funciones operativas conserva las restricciones del rol y plan.
 
 ### 4.14 SECOP Public Procurement
 - Daily incremental synchronization from the public Socrata dataset on datos.gov.co

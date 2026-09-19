@@ -145,6 +145,13 @@ export const INTRANET_INTERACTIONS = ['@flow:intranet-interactions', '@module:in
 
 // ── User Guide ──────────────────────────────────────────────────────────────
 export const USER_GUIDE_NAVIGATION = ['@flow:user-guide-navigation', '@module:user-guide', '@priority:P3'];
+export const USER_GUIDE_EXPLORER_NAVIGATION = ['@flow:user-guide-explorer-navigation', '@module:user-guide', '@priority:P2'];
+export const USER_GUIDE_EXPLORER_SEARCH = ['@flow:user-guide-explorer-search', '@module:user-guide', '@priority:P2'];
+export const USER_GUIDE_EXPLORER_ACCESS = ['@flow:user-guide-explorer-access', '@module:user-guide', '@priority:P2'];
+export const USER_GUIDE_EXPLORER_TOUR = ['@flow:user-guide-explorer-tour', '@module:user-guide', '@priority:P3'];
+export const USER_GUIDE_EXPLORER_RELATIONS = ['@flow:user-guide-explorer-relations', '@module:user-guide', '@priority:P3'];
+export const USER_GUIDE_EXPLORER_RESPONSIVE = ['@flow:user-guide-explorer-responsive', '@module:user-guide', '@priority:P2'];
+export const USER_GUIDE_EXPLORER_ORBIT = ['@flow:user-guide-explorer-orbit', '@module:user-guide', '@priority:P3'];
 
 // ── Misc ────────────────────────────────────────────────────────────────────
 export const MISC_POLICIES = ['@flow:misc-policies', '@module:misc', '@priority:P4'];

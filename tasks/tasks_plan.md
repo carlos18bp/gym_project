@@ -2,6 +2,11 @@
 
 ## 1. Feature Status
 
+**2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
+con catálogo completo, permisos independientes de la visibilidad, recorridos,
+búsqueda, relaciones y adaptación a móvil. Validación focalizada y siete flujos E2E
+registrados; entrega mediante PR de sesión, sin despliegue en esta tarea.
+
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 1 | User Management (JWT, Google OAuth, reCAPTCHA, profiles) | ✅ Complete | 3 models, 2 view files, 1 serializer |

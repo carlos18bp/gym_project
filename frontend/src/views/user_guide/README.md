@@ -4,6 +4,24 @@
 
 Este módulo proporciona un manual interactivo y contextual para guiar a los usuarios a través de todas las funcionalidades de la plataforma G&M Abogados, adaptado según su rol.
 
+## Explorador de la plataforma
+
+Disponible desde la primera opción de navegación o desde la bienvenida. Todos los
+usuarios autenticados pueden conocer el catálogo completo; los enlaces a módulos
+operativos y a guías respetan sus permisos. En escritorio amplio muestra una órbita
+interactiva y en contenedores menores a 1024 px, tarjetas. Incluye búsqueda sin
+tildes, relaciones y recorridos guiados por los cuatro espacios de la plataforma.
+
+URL compartible: `/user_guide?view=explorer&node=documents`. `tour` identifica el
+recorrido y `relations=0` oculta conexiones. Volver/avanzar y recargar restauran
+el estado; referencias desconocidas regresan al ecosistema.
+
+Para actualizar contenido, editar `explorer/spaces.js`; conservar IDs estables y
+referencias válidas al manual. Actualizar `explorer/routeInventory.js` cuando se
+agreguen pantallas y ejecutar `explorerInventory.test.js`. Ningún nodo debe incluir
+datos de clientes ni enlaces con IDs de registros. Los destinos con selección
+previa llevan al listado del módulo; las funciones en modales explican su acceso.
+
 ## 🏗️ Estructura de Archivos
 
 ```

@@ -1,5 +1,11 @@
 <template>
   <nav class="p-4 space-y-2">
+    <button type="button" class="mb-4 flex w-full items-center gap-3 rounded-lg border border-indigo-200 px-4 py-3 text-left text-sm font-semibold text-indigo-900 hover:bg-indigo-100"
+      :class="explorerSelected ? 'bg-indigo-100' : 'bg-white'" :aria-current="explorerSelected ? 'page' : undefined"
+      data-testid="guide-explorer-navigation" @click="$emit('explorer-selected')">
+      <GlobeAltIcon class="h-6 w-6 shrink-0" />
+      Explorador de la plataforma
+    </button>
     <!-- Role Badge -->
     <div class="mb-6 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
       <div class="flex items-center space-x-2 mb-2">
@@ -21,10 +27,10 @@
         <!-- Module Button -->
         <button
           @click="selectModule(module.id)"
-          :aria-current="selectedModule === module.id ? 'true' : 'false'"
+          :aria-current="!explorerSelected && selectedModule === module.id ? 'true' : 'false'"
           :class="[
             'w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors',
-            selectedModule === module.id
+            !explorerSelected && selectedModule === module.id
               ? 'bg-indigo-100 text-indigo-900 font-semibold'
               : 'text-gray-700 hover:bg-gray-100'
           ]"
@@ -98,6 +104,7 @@
 <script setup>
 import { computed } from 'vue';
 import {
+  GlobeAltIcon,
   UserCircleIcon,
   ChevronRightIcon,
   QuestionMarkCircleIcon
@@ -105,6 +112,7 @@ import {
 import { useUserGuideStore } from '@/stores/user_guide';
 
 const props = defineProps({
+  explorerSelected: { type: Boolean, default: false },
   currentRole: {
     type: String,
     required: true
@@ -119,7 +127,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['module-selected', 'section-selected', 'close']);
+const emit = defineEmits(['module-selected', 'section-selected', 'close', 'explorer-selected']);
 
 const guideStore = useUserGuideStore();
 
