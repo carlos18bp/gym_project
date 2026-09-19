@@ -2,6 +2,24 @@
 
 ## 1. Current State
 
+### Explorador del manual (2026-09-19)
+
+Nueva subsección del Manual de Usuario basada en el explorador orbital de Project Apps:
+cuatro espacios, catálogo completo para usuarios autenticados, búsqueda, relaciones,
+recorridos y enlaces a las guías existentes. Los accesos operativos conservan las
+restricciones vigentes. Tarjetas en contenedores menores a 1024 px; órbita con teclado,
+arrastre, zoom y pausa; estado compartible en query params. Trabajo aislado en
+`feat/19092026-user-guide-explorer`, base `master` tras el cierre de la release de septiembre.
+34 pruebas unitarias nuevas del catálogo, permisos, URL, inventario y ciclo de
+animación; 16 E2E nuevas y 18 E2E de regresión del manual aprobadas. Build Vite
+verificado; quality gate focalizado 100/100. Siete flujos registrados, con sus diez
+outcomes cubiertos; sin cambios backend, migraciones ni refresh de fake data.
+Hallazgo del inventario: el manual antiguo describe gestión de suscripción desde
+el perfil y publicación de novedades en Inicio que no existen en esas pantallas.
+El explorador describe planes/checkout y ubica la administración de novedades en el
+panel administrativo; la actualización general de ese contenido antiguo queda fuera
+de esta tarea.
+
 The application is **feature-complete** with all 18 major features implemented, tested, and operational:
 
 - User management with JWT + Google OAuth + reCAPTCHA

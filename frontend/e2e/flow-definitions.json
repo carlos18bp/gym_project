@@ -1,7 +1,63 @@
 {
-  "version": "1.12.1",
-  "lastUpdated": "2026-08-21",
+  "version": "1.13.0",
+  "lastUpdated": "2026-09-19",
   "flows": {
+    "user-guide-explorer-navigation": {
+      "name": "Explorar el ecosistema desde el manual",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Entrar desde el manual, recorrer espacios y capacidades, volver por breadcrumbs, restaurar URL e historial y abrir la guía relacionada.",
+      "outcomes": ["success", "display"]
+    },
+    "user-guide-explorer-search": {
+      "name": "Buscar capacidades del ecosistema",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Buscar módulos y funciones sin depender de tildes, seleccionar un resultado o consultar el mensaje sin coincidencias.",
+      "outcomes": ["success", "display"]
+    },
+    "user-guide-explorer-access": {
+      "name": "Consultar acceso a los módulos del explorador",
+      "module": "user-guide",
+      "roles": ["client", "basic", "lawyer", "corporate_client", "admin"],
+      "priority": "P2",
+      "description": "Un cliente descubre funciones administrativas con explicación de restricción y sin enlaces operativos; un usuario staff abre el destino permitido.",
+      "outcomes": ["success", "error"]
+    },
+    "user-guide-explorer-tour": {
+      "name": "Recorrer un espacio del explorador",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Iniciar un recorrido por espacio, avanzar por sus capacidades y salir conservando la selección.",
+      "outcomes": ["success"]
+    },
+    "user-guide-explorer-relations": {
+      "name": "Mostrar relaciones entre módulos",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Alternar las conexiones operativas y conservar la preferencia en la URL.",
+      "outcomes": ["success"]
+    },
+    "user-guide-explorer-responsive": {
+      "name": "Explorar mediante tarjetas y teclado",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P2",
+      "description": "Recorrer capacidades desde móvil o tableta sin desbordamiento y volver con Escape desde el teclado.",
+      "outcomes": ["success"]
+    },
+    "user-guide-explorer-orbit": {
+      "name": "Controlar la órbita del explorador",
+      "module": "user-guide",
+      "roles": ["shared"],
+      "priority": "P3",
+      "description": "Girar la órbita con los controles de escritorio respetando la preferencia de movimiento reducido.",
+      "outcomes": ["success"]
+    },
     "admin-data-reassignment": {
       "name": "Reasignación de datos de abogado (admin)",
       "module": "admin",

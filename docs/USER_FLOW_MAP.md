@@ -339,6 +339,43 @@ Documento exhaustivo que mapea todos los flujos end-to-end que un usuario puede 
 - **Módulo:** user-guide | **Prioridad:** P3 | **Ruta:** `/user_guide` | **E2E:** ✅
 - **Descripción:** Navegación por módulos, filtrado por rol, búsqueda y quick links
 
+### Explorador del manual — actualización 2026-09-19
+
+Ruta: `/user_guide?view=explorer`. El catálogo completo es visible para **client,
+basic, corporate_client, lawyer y admin/staff/superuser**. El acceso al módulo
+operativo se calcula por separado; no modifica los guards ni carga datos privados.
+
+| Interacción / flow | Clase | Inicio → interacción → resultado | Evidencia E2E |
+|---|---|---|---|
+| `user-guide-explorer-navigation` | success, display | Manual → Explorar la plataforma → espacios completos, selección, breadcrumbs, historial, recarga y vínculo a guía | `user-guide-explorer.spec.js` |
+| `user-guide-explorer-search` | success, display | Escribir término → elegir capacidad; término inexistente → mensaje sin coincidencias | `user-guide-explorer.spec.js` |
+| `user-guide-explorer-access` | success, error | Cliente → función administrativa → requisito explícito sin acceso; staff → Abrir módulo → destino permitido | `user-guide-explorer.spec.js` |
+| `user-guide-explorer-tour` | success | Espacio → Iniciar recorrido → Siguiente / Salir → capacidad seleccionada | `user-guide-explorer.spec.js` |
+| `user-guide-explorer-relations` | success | Explorador → Ocultar relaciones → conexiones ocultas y URL actualizada | `user-guide-explorer.spec.js` |
+| `user-guide-explorer-responsive` | success | Móvil/tableta → tarjetas → función; teclado → Enter / Escape → retorno | `user-guide-explorer-layout.spec.js` |
+| `user-guide-explorer-orbit` | success | Escritorio → Girar a la derecha → cambio de posición observable | `user-guide-explorer-layout.spec.js` |
+
+**Por rol:** todos recorren el mismo catálogo. Clientes y básicos ven las
+restricciones de funciones del equipo; abogados tienen acceso según su pertenencia
+a G&M; corporativos conservan sus acciones de organizaciones; admin/staff usan sus
+destinos administrativos. Las pruebas unitarias cubren las variantes de estas reglas.
+
+**Outcome failure:** n/a para las interacciones del explorador: catálogo local sin
+solicitudes de negocio ni formularios de escritura. Fallos de autenticación y de
+los módulos de destino pertenecen a sus flujos existentes. **Error** sólo aplica a
+la explicación de restricciones; búsqueda vacía es **display** y URL inválida se
+normaliza al ecosistema (cubierto por unit tests). La animación se detiene con
+movimiento reducido, foco, hover, recorrido, contenedor estrecho o pestaña oculta.
+
+**Inventario:** `explorer/routeInventory.js` relaciona todas las pantallas del
+router con nodos del catálogo y documenta las exclusiones de callbacks/redirects.
+`explorerInventory.test.js` detecta rutas nuevas sin explicación o referencias
+obsoletas. Estas verificaciones de datos son unitarias, no crédito E2E.
+
+**Índice del cambio:** 7 flujos nuevos, 10 combinaciones flow/outcome, 16 pruebas
+E2E ejecutadas. El resumen histórico global más abajo conserva su fecha de auditoría;
+la fuente actualizada para el total es `flow-definitions.json`.
+
 ---
 
 ### process-alert-configure: Configurar destinatarios de alerta de proceso
