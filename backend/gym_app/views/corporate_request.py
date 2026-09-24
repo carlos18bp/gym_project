@@ -474,36 +474,42 @@ def corporate_get_dashboard_stats(request):
     # Base queryset for current corporate client
     base_queryset = CorporateRequest.objects.filter(corporate_client=request.user)
     
-    # Status counts
-    status_counts = {}
-    for status_code, status_name in CorporateRequest.STATUS_CHOICES:
-        status_counts[status_code] = base_queryset.filter(status=status_code).count()
-    
-    # Priority counts
-    priority_counts = {}
-    for priority_code, priority_name in CorporateRequest.PRIORITY_CHOICES:
-        priority_counts[priority_code] = base_queryset.filter(priority=priority_code).count()
-    
-    # Recent requests (last 7 days)
-    recent_date = timezone.now() - timezone.timedelta(days=7)
-    recent_requests_count = base_queryset.filter(created_at__gte=recent_date).count()
-    
-    # Assigned to current user
-    assigned_to_me_count = base_queryset.filter(assigned_to=request.user).count()
-    
-    # Overdue requests (past estimated completion date)
-    overdue_count = base_queryset.filter(
-        estimated_completion_date__lt=timezone.now(),
-        status__in=['PENDING', 'IN_REVIEW']
-    ).count()
+    now = timezone.now()
+    status_aggregates = {
+        f'status_{code}': Count('pk', filter=Q(status=code))
+        for code, _ in CorporateRequest.STATUS_CHOICES
+    }
+    priority_aggregates = {
+        f'priority_{code}': Count('pk', filter=Q(priority=code))
+        for code, _ in CorporateRequest.PRIORITY_CHOICES
+    }
+    counts = base_queryset.aggregate(
+        total_requests=Count('pk'),
+        recent_requests_count=Count(
+            'pk', filter=Q(created_at__gte=now - timezone.timedelta(days=7))
+        ),
+        assigned_to_me_count=Count('pk', filter=Q(assigned_to=request.user)),
+        overdue_count=Count('pk', filter=Q(
+            estimated_completion_date__lt=now,
+            status__in=['PENDING', 'IN_REVIEW'],
+        )),
+        **status_aggregates,
+        **priority_aggregates,
+    )
     
     return Response({
-        'total_requests': base_queryset.count(),
-        'status_counts': status_counts,
-        'priority_counts': priority_counts,
-        'recent_requests_count': recent_requests_count,
-        'assigned_to_me_count': assigned_to_me_count,
-        'overdue_count': overdue_count
+        'total_requests': counts['total_requests'],
+        'status_counts': {
+            code: counts[f'status_{code}']
+            for code, _ in CorporateRequest.STATUS_CHOICES
+        },
+        'priority_counts': {
+            code: counts[f'priority_{code}']
+            for code, _ in CorporateRequest.PRIORITY_CHOICES
+        },
+        'recent_requests_count': counts['recent_requests_count'],
+        'assigned_to_me_count': counts['assigned_to_me_count'],
+        'overdue_count': counts['overdue_count'],
     }, status=status.HTTP_200_OK)
 
 # =============================================================================
