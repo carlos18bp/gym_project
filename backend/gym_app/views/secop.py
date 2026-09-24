@@ -1,7 +1,7 @@
 import logging
 
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -351,6 +351,8 @@ def secop_alerts_list_create(request):
     if request.method == 'GET':
         alerts = SECOPAlert.objects.filter(
             user=request.user
+        ).annotate(
+            _notification_count=Count('notifications')
         ).order_by('-created_at')
         serializer = SECOPAlertSerializer(alerts, many=True)
         return Response(serializer.data)
