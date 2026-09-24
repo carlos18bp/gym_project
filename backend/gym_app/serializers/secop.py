@@ -76,7 +76,10 @@ class SECOPProcessDetailSerializer(serializers.ModelSerializer):
         """Return all classifications for this process with user info."""
         request = self.context.get('request')
         current_user_id = request.user.id if request and request.user.is_authenticated else None
-        classifications = obj.classifications.select_related('user').all()
+        if hasattr(obj, '_detail_classifications'):
+            classifications = obj._detail_classifications
+        else:
+            classifications = obj.classifications.select_related('user').all()
         return [
             {
                 'id': c.id,

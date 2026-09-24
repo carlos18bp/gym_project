@@ -232,7 +232,11 @@ def secop_process_detail(request, pk):
     """
     try:
         process = SECOPProcess.objects.prefetch_related(
-            'classifications__user'
+            Prefetch(
+                'classifications',
+                queryset=ProcessClassification.objects.select_related('user'),
+                to_attr='_detail_classifications',
+            )
         ).get(pk=pk)
     except SECOPProcess.DoesNotExist:
         return Response(
