@@ -33,7 +33,11 @@ class SECOPProcessListSerializer(serializers.ModelSerializer):
             return None
 
         user_id = request.user.id
-        for c in obj.classifications.all():
+        if hasattr(obj, '_current_user_classifications'):
+            classifications = obj._current_user_classifications
+        else:
+            classifications = obj.classifications.all()
+        for c in classifications:
             if c.user_id == user_id:
                 return {
                     'id': c.id,
