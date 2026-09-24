@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count, IntegerField, OuterRef, Subquery
+from django.db.models import Q, Count, IntegerField, OuterRef, Prefetch, Subquery
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -27,6 +27,34 @@ class OrganizationPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _with_organization_list_relations(queryset):
+    """Load organization summaries without multiplying independent counts."""
+    active_members = (
+        OrganizationMembership.objects.filter(organization_id=OuterRef('pk'), is_active=True)
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    pending_invitations = (
+        OrganizationInvitation.objects.filter(organization_id=OuterRef('pk'), status='PENDING')
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    return queryset.select_related('corporate_client').annotate(
+        _member_count=Coalesce(Subquery(active_members, output_field=IntegerField()), 0),
+        _pending_invitations_count=Coalesce(
+            Subquery(pending_invitations, output_field=IntegerField()), 0,
+        ),
+    )
+
+
+def _with_invitation_list_relations(queryset):
+    """Load each invitation's users and annotated organization summary."""
+    return queryset.select_related('invited_by', 'invited_user').prefetch_related(
+        Prefetch(
+            'organization',
+            queryset=_with_organization_list_relations(Organization.objects.all()),
+        ),
+    )
 
 # Decorators for role-based access
 def require_corporate_client_only(view_func):
@@ -110,24 +138,8 @@ def get_my_organizations(request):
     is_active = request.GET.get('is_active', None)
     
     # Base queryset - only organizations led by current user
-    active_members = (
-        OrganizationMembership.objects.filter(organization_id=OuterRef('pk'), is_active=True)
-        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
-    )
-    pending_invitations = (
-        OrganizationInvitation.objects.filter(organization_id=OuterRef('pk'), status='PENDING')
-        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
-    )
-    # Independent subqueries avoid multiplying memberships by invitations.
-    queryset = (
+    queryset = _with_organization_list_relations(
         Organization.objects.filter(corporate_client=request.user)
-        .select_related('corporate_client')
-        .annotate(
-            _member_count=Coalesce(Subquery(active_members, output_field=IntegerField()), 0),
-            _pending_invitations_count=Coalesce(
-                Subquery(pending_invitations, output_field=IntegerField()), 0,
-            ),
-        )
     )
     
     # Apply filters
@@ -314,7 +326,9 @@ def get_organization_invitations(request, organization_id):
     status_filter = request.GET.get('status', None)
     
     # Base queryset
-    queryset = organization.invitations.all()
+    queryset = _with_invitation_list_relations(
+        OrganizationInvitation.objects.filter(organization=organization)
+    )
     
     # Apply filters
     if status_filter:
@@ -526,7 +540,9 @@ def get_my_invitations(request):
     status_filter = request.GET.get('status', 'PENDING')
     
     # Base queryset - only invitations for current user
-    queryset = OrganizationInvitation.objects.filter(invited_user=request.user)
+    queryset = _with_invitation_list_relations(
+        OrganizationInvitation.objects.filter(invited_user=request.user)
+    )
     
     # Apply filters
     if status_filter:
