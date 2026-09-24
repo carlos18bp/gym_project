@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, IntegerField, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from gym_app.models import (
@@ -22,6 +23,20 @@ class CorporateRequestPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _with_list_relations(queryset):
+    """Load list fields without per-request queries or an outer GROUP BY."""
+    response_counts = (
+        CorporateRequestResponse.objects.filter(corporate_request_id=OuterRef('pk'))
+        .order_by().values('corporate_request_id').annotate(total=Count('pk')).values('total')
+    )
+    return queryset.select_related(
+        'client', 'corporate_client', 'organization', 'request_type',
+    ).annotate(
+        _response_count=Coalesce(Subquery(response_counts, output_field=IntegerField()), 0),
+    )
+
 
 # Decorators for role-based access
 def require_client_only(view_func):
@@ -159,7 +174,7 @@ def client_get_my_corporate_requests(request):
     search = request.GET.get('search', None)
     
     # Base queryset - only requests created by current client
-    queryset = CorporateRequest.objects.filter(client=request.user)
+    queryset = _with_list_relations(CorporateRequest.objects.filter(client=request.user))
     
     # Apply filters
     if status_filter:
@@ -278,7 +293,7 @@ def corporate_get_received_requests(request):
     assigned_to_me = request.GET.get('assigned_to_me', None)
     
     # Base queryset - only requests for current corporate client
-    queryset = CorporateRequest.objects.filter(corporate_client=request.user)
+    queryset = _with_list_relations(CorporateRequest.objects.filter(corporate_client=request.user))
     
     # Apply filters
     if status_filter:

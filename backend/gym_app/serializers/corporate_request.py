@@ -257,6 +257,8 @@ class CorporateRequestListSerializer(serializers.ModelSerializer):
         return delta.days
 
     def get_response_count(self, obj):
+        if hasattr(obj, '_response_count'):
+            return obj._response_count
         return obj.responses.count()
 
 class CorporateRequestCreateSerializer(serializers.ModelSerializer):
