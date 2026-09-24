@@ -1,14 +1,19 @@
 """Tests for SECOP views module."""
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
 
 from gym_app.models import (
+    AlertNotification,
     ProcessClassification,
     SavedView,
     SECOPAlert,
@@ -16,6 +21,39 @@ from gym_app.models import (
     SyncLog,
     User,
 )
+
+MAX_SECOP_ALERT_LIST_QUERIES = 6
+
+
+def _create_secop_processes(start, count):
+    """Create distinct SECOP processes for alert notification fixtures."""
+    return [
+        SECOPProcess.objects.create(
+            process_id=f"COUNT-SECOP-{index}",
+            entity_name="Count entity",
+        )
+        for index in range(start, start + count)
+    ]
+
+
+def _set_alert_created_at(alert, created_at):
+    """Set a deterministic list order after the auto timestamp is assigned."""
+    SECOPAlert.objects.filter(pk=alert.pk).update(created_at=created_at)
+
+
+def _create_secop_alert_entries(user, start, count):
+    """Create owned alerts paired with distinct SECOP processes for list serialization."""
+    entries = []
+    for index in range(start, start + count):
+        alert = SECOPAlert.objects.create(user=user, name=f"Performance alert {index}")
+        process = SECOPProcess.objects.create(
+            process_id=f"PERF-SECOP-{index}",
+            entity_name=f"Performance entity {index}",
+        )
+        if index % 2:
+            AlertNotification.objects.create(alert=alert, process=process, is_sent=bool(index % 4))
+        entries.append(alert)
+    return entries
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -72,7 +110,7 @@ def process_open():
         status='Abierto',
         procurement_method='Licitación pública',
         contract_type='Obra',
-        base_price=Decimal('500000000'),
+        base_price=Decimal(500000000),
         description='Construcción de vía terciaria en Bogotá',
         procedure_name='Obra vial Bogotá',
         publication_date='2026-03-01',
@@ -93,7 +131,7 @@ def process_closed():
         status='Cerrado',
         procurement_method='Concurso de méritos',
         contract_type='Consultoría',
-        base_price=Decimal('100000000'),
+        base_price=Decimal(100000000),
         description='Consultoría ambiental en Antioquia',
         procedure_name='Consultoría ambiental',
         publication_date='2026-02-01',
@@ -447,6 +485,46 @@ class TestSecopAlertViews:
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_alert_list_returns_notification_counts_in_owner_order(self, api_client, lawyer, other_lawyer):
+        """Fails if alert list drops zero counts, sent records, ordering, or tenant isolation."""
+        processes = _create_secop_processes(0, 6)
+        zero_alert = SECOPAlert.objects.create(user=lawyer, name="Zero notifications")
+        one_alert = SECOPAlert.objects.create(user=lawyer, name="One notification")
+        many_alert = SECOPAlert.objects.create(user=lawyer, name="Many notifications")
+        other_alert = SECOPAlert.objects.create(user=other_lawyer, name="Other notification")
+        AlertNotification.objects.create(alert=one_alert, process=processes[0], is_sent=False)
+        AlertNotification.objects.create(alert=many_alert, process=processes[1], is_sent=False)
+        AlertNotification.objects.create(alert=many_alert, process=processes[2], is_sent=True)
+        AlertNotification.objects.create(alert=many_alert, process=processes[3], is_sent=False)
+        AlertNotification.objects.create(alert=other_alert, process=processes[4], is_sent=True)
+        fixed_now = datetime(2026, 9, 24, 12, 0, tzinfo=dt_timezone.utc)
+        _set_alert_created_at(zero_alert, fixed_now - timezone.timedelta(minutes=3))
+        _set_alert_created_at(one_alert, fixed_now - timezone.timedelta(minutes=2))
+        _set_alert_created_at(many_alert, fixed_now - timezone.timedelta(minutes=1))
+
+        response = api_client.get(reverse("secop-alerts-list-create"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [(item["name"], item["notification_count"]) for item in response.data] == [("Many notifications", 3), ("One notification", 1), ("Zero notifications", 0)]
+
+    def test_alert_list_has_constant_query_budget(self, api_client, lawyer):
+        """Fails if notification_count falls back to one query for each alert row."""
+        _create_secop_alert_entries(lawyer, 0, 1)
+        url = reverse("secop-alerts-list-create")
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url)
+        _create_secop_alert_entries(lawyer, 1, 49)
+        with CaptureQueriesContext(connection) as fifty_row_queries:
+            fifty_row_response = api_client.get(url)
+
+        assert one_row_response.status_code == status.HTTP_200_OK
+        assert len(one_row_response.data) == 1
+        assert fifty_row_response.status_code == status.HTTP_200_OK
+        assert len(fifty_row_response.data) == 50
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_SECOP_ALERT_LIST_QUERIES
 
 
 # ---------------------------------------------------------------------------

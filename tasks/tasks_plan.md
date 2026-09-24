@@ -8,6 +8,14 @@ constantes comprobados en SQLite y MySQL 8.4 aislados. Seguimiento en el ledger
 `gym_project` del toolkit y PR #128 de sesión `perf-bounded-lists`.
 No incluye cambios de infraestructura ni despliegue.
 
+**2026-09-24 — Segunda ronda de rendimiento:** conversación corporativa, alertas
+SECOP y dashboard aplicados en la misma sesión. Presupuestos constantes de 3, 1
+y 1 consultas, respectivamente, comprobados en SQLite y MySQL 8.4 aislados.
+Los cuatro guards nuevos detectan la regresión contra `ac3178f`; los cuatro
+anteriores siguen pasando. Nueve tests nuevos/reforzados cubren también payloads,
+visibilidad, aislamiento y fronteras temporales. Auditor dedicado aprobado.
+Seguimiento: candidatos P-backend-queries-04/05/06 y PR #128.
+
 **2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
 con catálogo completo, permisos independientes de la visibilidad, recorridos,
 búsqueda, relaciones y adaptación a móvil. Validación focalizada y siete flujos E2E

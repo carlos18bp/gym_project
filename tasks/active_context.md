@@ -2,6 +2,19 @@
 
 ## 1. Current State
 
+### Conversaciones, alertas y dashboard (2026-09-24)
+
+Segunda ronda en el PR #128: precarga de autores y archivos de conversación,
+conteo anotado de notificaciones SECOP y agregado condicional del dashboard.
+Se conservan payloads, visibilidad y filtros. QA independiente confirma consultas
+constantes con uno y cincuenta registros: conversación 3, alertas 1 y dashboard 1.
+Los nueve tests nuevos/reforzados pasan en SQLite y MySQL 8.4 aislados; el lote
+MySQL también conserva los cuatro presupuestos anteriores y las regresiones de
+permisos y CRUD. Los cuatro presupuestos nuevos fallan por aserciones contra
+`ac3178f`. Auditor dedicado y gate estricto aprobados; sin cambios en flujos frontend.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-conversations-alerts-dashboard.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-24-r2-gym_project-qa.md`.
+
 ### Rendimiento de listados (2026-09-24)
 
 Ronda `perf-bounded-lists` sobre `master`: organizaciones, solicitudes corporativas

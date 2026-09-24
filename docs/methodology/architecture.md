@@ -135,6 +135,12 @@ archivos y etapas con alerta; conserva el límite de diez. Los serializers manti
 fallback cuando reciben instancias sin anotaciones. Los presupuestos de queries
 viven en los tests de vistas y en `docs/PERFORMANCE_STANDARDS.md`.
 
+La conversación corporativa precarga autores y adjuntos después del filtro de
+visibilidad. El listado SECOP anota sus conteos de notificaciones; el serializer
+conserva el fallback para instancias sin anotación. El dashboard corporativo
+calcula todos sus contadores en un único agregado condicional, con el mismo
+alcance por corporativo y las mismas fronteras de recientes y vencidas.
+
 ### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
