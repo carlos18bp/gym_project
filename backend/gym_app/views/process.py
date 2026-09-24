@@ -200,7 +200,7 @@ def process_list(request):
     user = request.user  # Get the authenticated user
 
     try:
-        base_qs = Process.objects.select_related('lawyer') \
+        base_qs = Process.objects.select_related('lawyer', 'case') \
             .prefetch_related('clients', 'stages__alert', 'case_files') \
             .order_by('-created_at')
 
