@@ -16,6 +16,13 @@ anteriores siguen pasando. Nueve tests nuevos/reforzados cubren también payload
 visibilidad, aislamiento y fronteras temporales. Auditor dedicado aprobado.
 Seguimiento: candidatos P-backend-queries-04/05/06 y PR #128.
 
+**2026-09-24 — Tercera ronda de rendimiento:** candidatos 07/08 aplicados en SECOP.
+Listados con precarga de clasificación personal y detalle con precarga de autores
+reutilizada. Seis tests backend nuevos protegen consultas constantes, filas cargadas,
+payload y listas vacías; los tests directos existentes conservan el fallback.
+Presupuestos y evidencia independiente en el reporte QA de ronda 3 del toolkit.
+Los candidatos 09/10/11 quedan en el ledger para próximas rondas, fuera de este lote.
+
 **2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
 con catálogo completo, permisos independientes de la visibilidad, recorridos,
 búsqueda, relaciones y adaptación a móvil. Validación focalizada y siete flujos E2E

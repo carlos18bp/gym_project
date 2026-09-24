@@ -2,6 +2,20 @@
 
 ## 1. Current State
 
+### Clasificaciones SECOP (2026-09-24)
+
+Tercera ronda en el PR #128, candidatos P-backend-queries-07/08. Los dos listados
+SECOP cargan sólo la clasificación del usuario actual; el detalle carga todas las
+clasificaciones con sus autores y reutiliza esa precarga. Se conservan filtros,
+paginación, campos, permisos y los fallbacks de los serializers directos.
+Los guards exigen consultas constantes con uno y cincuenta registros (listados
+máximo seis, detalle máximo dos), además de una clasificación cargada por proceso
+propio mostrado, sin materializar clasificaciones ajenas. La cobertura contempla
+precargas vacías, identidad del autor, notas, estados y fechas del payload.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-secop-classifications.md`.
+Verificación independiente: `vps-ops-toolkit/docs/audits/2026-09-24-r3-gym_project-qa.md`.
+Sin cambios de UX, infraestructura, dependencias o migraciones.
+
 ### Conversaciones, alertas y dashboard (2026-09-24)
 
 Segunda ronda en el PR #128: precarga de autores y archivos de conversación,

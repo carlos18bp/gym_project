@@ -141,6 +141,13 @@ conserva el fallback para instancias sin anotación. El dashboard corporativo
 calcula todos sus contadores en un único agregado condicional, con el mismo
 alcance por corporativo y las mismas fronteras de recientes y vencidas.
 
+Los listados de procesos SECOP precargan sólo la clasificación del usuario actual
+en `_current_user_classifications`; el detalle precarga todas las clasificaciones
+del equipo con sus autores en `_detail_classifications`. Los atributos separados
+evitan confundir una relación completa con una selección por usuario. Ambos
+serializers respetan una precarga vacía y conservan su fallback para instancias
+obtenidas directamente. No cambia el contrato de filtros, paginación o respuesta.
+
 ### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
