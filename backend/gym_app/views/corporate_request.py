@@ -545,7 +545,9 @@ def get_request_conversation(request, request_id):
         # Corporate clients can see all responses
         responses = corporate_request.responses.all()
     
-    responses = responses.order_by('created_at')
+    responses = responses.select_related('user').prefetch_related(
+        'response_files'
+    ).order_by('created_at')
     serializer = CorporateRequestResponseSerializer(responses, many=True)
     
     return Response({
