@@ -25,6 +25,8 @@ User = get_user_model()
 MAX_CORPORATE_REQUEST_LIST_QUERIES = 6
 MAX_CONVERSATION_QUERIES = 4
 MAX_DASHBOARD_QUERIES = 4
+MAX_CLIENT_REQUEST_DETAIL_QUERIES = 4
+MAX_CORPORATE_REQUEST_DETAIL_QUERIES = 4
 
 
 def _create_conversation_request(client, corporate_client, organization, request_type):
@@ -59,6 +61,114 @@ def _create_conversation_responses(corporate_request, client, corporate_client, 
         )
         responses.append(response)
     return responses
+
+
+def _create_detail_request(
+    client,
+    corporate_client,
+    request_type,
+    organization=None,
+    assigned_to=None,
+):
+    """Create a nullable detail row that both authorized actors can retrieve."""
+    return CorporateRequest.objects.create(
+        client=client,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        organization=organization,
+        assigned_to=assigned_to,
+        title='Detail request',
+        description='Detail request fixture',
+        priority='MEDIUM',
+        status='PENDING',
+    )
+
+
+def _create_detail_responses(corporate_request, client, count, response_file=None):
+    """Create response rows with distinct client authors outside a query capture."""
+    responses = []
+    start_index = corporate_request.responses.count()
+    for index in range(start_index, start_index + count):
+        author = client if index == 0 else User.objects.create_user(
+            email=f'detail-response-author-{corporate_request.pk}-{index}@example.com',
+            password=None,
+            first_name=f'Detail{index}',
+            last_name='Author',
+            role='client',
+        )
+        response = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            response_text=f'Detail response {index}',
+            user=author,
+            user_type='client',
+            is_internal_note=index == start_index + count - 1,
+        )
+        if response_file is not None:
+            response.response_files.add(response_file)
+        responses.append(response)
+    return responses
+
+
+def _detail_payload_summary(payload):
+    """Return the nested detail fields whose values form the response contract."""
+    return {
+        'request': (
+            payload['id'],
+            payload['response_count'],
+            payload['assigned_to_info'],
+            payload['organization_info'],
+            [item['file_name'] for item in payload['files']],
+        ),
+        'responses': [
+            (
+                item['response_text'],
+                item['user_email'],
+                item['is_internal_note'],
+                [attachment['file_name'] for attachment in item['response_files']],
+            )
+            for item in payload['responses']
+        ],
+    }
+
+
+def _create_detail_payload_fixture(client, corporate_client, request_type):
+    """Create a nullable request with direct and response attachments."""
+    corporate_request = _create_detail_request(
+        client,
+        corporate_client,
+        request_type,
+    )
+    request_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('detail-request.txt', b'request attachment'),
+    )
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('detail-response.txt', b'response attachment'),
+    )
+    corporate_request.files.add(request_file)
+    responses = _create_detail_responses(corporate_request, client, 2)
+    responses[1].response_files.add(response_file)
+    return corporate_request, responses
+
+
+def _create_populated_detail_request(client, corporate_client, request_type, title):
+    """Create a valid detail request with populated organization and assignment FKs."""
+    organization = Organization.objects.create(
+        title=title,
+        corporate_client=corporate_client,
+    )
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=client,
+        role='MEMBER',
+        is_active=True,
+    )
+    return _create_detail_request(
+        client,
+        corporate_client,
+        request_type,
+        organization=organization,
+        assigned_to=corporate_client,
+    )
 
 
 def _create_dashboard_request(client, corporate_client, request_type, title, **values):
@@ -1640,3 +1750,218 @@ def test_corporate_received_request_list_has_bounded_queries(
     assert len(_corporate_request_list_items(fifty_row_response)) == 50
     assert len(single_row_queries) == len(fifty_row_queries)
     assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_client_request_detail_preserves_nested_payload(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if detail drops nullable fields, nested files, authors, or internal notes."""
+    settings.MEDIA_ROOT = tmp_path
+    corporate_request, responses = _create_detail_payload_fixture(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(
+        reverse(
+            'client-get-corporate-request-detail',
+            kwargs={'request_id': corporate_request.pk},
+        )
+    )
+
+    payload = response.data['corporate_request']
+    assert response.status_code == status.HTTP_200_OK
+    assert _detail_payload_summary(payload) == {
+        'request': (
+            corporate_request.pk,
+            2,
+            None,
+            None,
+            ['detail-request.txt'],
+        ),
+        'responses': [
+            ('Detail response 0', client_user.email, False, []),
+            (
+                'Detail response 1',
+                responses[1].user.email,
+                True,
+                ['detail-response.txt'],
+            ),
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_client_request_detail_has_constant_query_budget(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if client detail restores per-response relation queries."""
+    corporate_request = _create_populated_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+        'Client detail budget organization',
+    )
+    settings.MEDIA_ROOT = tmp_path
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('client-budget.txt', b'client budget attachment'),
+    )
+    _create_detail_responses(corporate_request, client_user, 1, response_file)
+    api_client.force_authenticate(user=client_user)
+    url = reverse(
+        'client-get-corporate-request-detail',
+        kwargs={'request_id': corporate_request.pk},
+    )
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_detail_responses(corporate_request, client_user, 49, response_file)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        single_row_response.data['corporate_request']['response_count'],
+        fifty_row_response.status_code,
+        fifty_row_response.data['corporate_request']['response_count'],
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CLIENT_REQUEST_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+def test_corporate_request_detail_has_constant_query_budget(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if corporate detail restores per-response relation queries."""
+    corporate_request = _create_populated_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+        'Corporate detail budget organization',
+    )
+    settings.MEDIA_ROOT = tmp_path
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('corporate-budget.txt', b'corporate budget attachment'),
+    )
+    _create_detail_responses(corporate_request, client_user, 1, response_file)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse(
+        'corporate-get-request-detail',
+        kwargs={'request_id': corporate_request.pk},
+    )
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_detail_responses(corporate_request, client_user, 49, response_file)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        single_row_response.data['corporate_request']['response_count'],
+        fifty_row_response.status_code,
+        fifty_row_response.data['corporate_request']['response_count'],
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('actor', 'url_name'),
+    [
+        ('client', 'client-get-corporate-request-detail'),
+        ('corporate', 'corporate-get-request-detail'),
+    ],
+)
+def test_request_detail_returns_empty_relations_for_nullable_fields(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    actor,
+    url_name,
+):
+    """Fails if a detail with nullable fields bypasses the empty relation fast path."""
+    corporate_request = _create_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    authenticated_user = {
+        'client': client_user,
+        'corporate': corporate_client,
+    }[actor]
+    api_client.force_authenticate(user=authenticated_user)
+
+    response = api_client.get(
+        reverse(url_name, kwargs={'request_id': corporate_request.pk})
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert {
+        'assigned_to_info': response.data['corporate_request']['assigned_to_info'],
+        'organization_info': response.data['corporate_request']['organization_info'],
+        'responses': response.data['corporate_request']['responses'],
+        'response_count': response.data['corporate_request']['response_count'],
+    } == {
+        'assigned_to_info': None,
+        'organization_info': None,
+        'responses': [],
+        'response_count': 0,
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('role', 'url_name'),
+    [
+        ('client', 'client-get-corporate-request-detail'),
+        ('corporate_client', 'corporate-get-request-detail'),
+    ],
+)
+def test_request_detail_hides_other_tenant(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    role,
+    url_name,
+):
+    """Fails if either detail endpoint exposes a request to a different tenant."""
+    corporate_request = _create_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    outsider = User.objects.create_user(
+        email=f'{role}-detail-outsider@example.com',
+        password=None,
+        role=role,
+    )
+    api_client.force_authenticate(user=outsider)
+
+    response = api_client.get(
+        reverse(url_name, kwargs={'request_id': corporate_request.pk})
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND

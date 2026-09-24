@@ -21,7 +21,15 @@ Listados con precarga de clasificación personal y detalle con precarga de autor
 reutilizada. Seis tests backend nuevos protegen consultas constantes, filas cargadas,
 payload y listas vacías; los tests directos existentes conservan el fallback.
 Presupuestos y evidencia independiente en el reporte QA de ronda 3 del toolkit.
-Los candidatos 09/10/11 quedan en el ledger para próximas rondas, fuera de este lote.
+Los candidatos 09/10/11 se trabajan en la cuarta ronda descrita abajo.
+
+**2026-09-24 — Cuarta ronda de rendimiento:** procesos, invitaciones y detalles
+corporativos precargan sus relaciones manteniendo contratos y permisos. Se
+reutilizan las anotaciones de organizaciones y la caché de respuestas de Django.
+Presupuestos: consultas constantes con uno y cincuenta registros, máximo seis
+por listado y cuatro por detalle. QA y mediciones de esta ronda en el reporte
+`2026-09-24-r4-gym_project-qa.md` del toolkit. Candidatos 12–15 quedan pendientes
+en el ledger; la paginación de procesos/respuestas requiere otra tarea de contrato.
 
 **2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
 con catálogo completo, permisos independientes de la visibilidad, recorridos,

@@ -148,6 +148,16 @@ evitan confundir una relación completa con una selección por usuario. Ambos
 serializers respetan una precarga vacía y conservan su fallback para instancias
 obtenidas directamente. No cambia el contrato de filtros, paginación o respuesta.
 
+El listado general de procesos une el tipo de caso. Los listados de invitaciones
+precargan usuarios y organizaciones con conteos anotados; el queryset de
+organización se comparte con el listado del propietario. Se evita el manager
+inverso al construir las invitaciones para que su instancia conocida no omita
+el prefetch anotado. Ambos detalles corporativos precargan sus cinco FKs,
+archivos y respuestas con autores/adjuntos. El prefetch normal de respuestas,
+sin `to_attr`, permite que `responses.count()` reutilice la caché de la relación.
+Estos contratos sin paginación de procesos/respuestas mantienen su payload;
+la constancia de consultas no impone un límite de memoria o tamaño de respuesta.
+
 ### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85

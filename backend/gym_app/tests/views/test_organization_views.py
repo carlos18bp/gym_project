@@ -1,4 +1,7 @@
 """Tests for organization_views module."""
+from datetime import datetime as datetime_cls
+from datetime import timezone as dt_timezone
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.db import connection
@@ -19,6 +22,8 @@ from gym_app.models import (
 
 User = get_user_model()
 MAX_ORGANIZATION_LIST_QUERIES = 6
+MAX_OWNER_INVITATION_LIST_QUERIES = 6
+MAX_PERSONAL_INVITATION_LIST_QUERIES = 6
 
 
 def _organization_list_items(response):
@@ -86,6 +91,95 @@ def _create_organization_count_relations(organization, corporate_client):
 def _item_with_title(items, title):
     """Find one concrete organization payload without duplicating endpoint calls."""
     return next(item for item in items if item["title"] == title)
+
+
+def _invitation_list_items(response):
+    """Return the paginated invitation payload used by both invitation endpoints."""
+    return response.data['results']
+
+
+def _create_owner_invitation_fixtures(corporate_client, count):
+    """Create one owner organization with distinct invitees for list pagination."""
+    organization = Organization.objects.create(
+        title='Owner invitation budget organization',
+        corporate_client=corporate_client,
+    )
+    for index in range(count):
+        invited_user = User.objects.create_user(
+            email=f'owner-invitation-{index}@example.com',
+            password=None,
+            role='client',
+        )
+        OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=invited_user,
+            invited_by=corporate_client,
+            status='PENDING',
+        )
+    return organization
+
+
+def _create_personal_invitation_fixtures(client, corporate_client, count):
+    """Create one pending invitation from each distinct organization for a client."""
+    for index in range(count):
+        organization = Organization.objects.create(
+            title=f'Personal invitation organization {index}',
+            corporate_client=corporate_client,
+        )
+        OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=client,
+            invited_by=corporate_client,
+            status='PENDING',
+        )
+
+
+def _create_counted_invitation(organization, corporate_client, invited_user):
+    """Create active-member and pending-invitation counts including an expired pending row."""
+    member_users = [
+        User.objects.create_user(
+            email=f'count-member-{organization.pk}-{index}@example.com',
+            password=None,
+            role='client',
+        )
+        for index in range(3)
+    ]
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=member_users[0],
+        role='MEMBER',
+    )
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=member_users[1],
+        role='ADMIN',
+    )
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=member_users[2],
+        role='MEMBER',
+        is_active=False,
+    )
+    expired_invitation = OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invited_user,
+        invited_by=corporate_client,
+        status='PENDING',
+        expires_at=datetime_cls(2025, 1, 1, tzinfo=dt_timezone.utc),
+    )
+    for index in range(2):
+        another_user = User.objects.create_user(
+            email=f'count-invitee-{organization.pk}-{index}@example.com',
+            password=None,
+            role='client',
+        )
+        OrganizationInvitation.objects.create(
+            organization=organization,
+            invited_user=another_user,
+            invited_by=corporate_client,
+            status='PENDING',
+        )
+    return expired_invitation
 
 @pytest.fixture
 def corporate_client():
@@ -932,7 +1026,7 @@ class TestSubscriptionViews:
         """Verify get current with subscription."""
         Subscription.objects.create(
             user=law, plan_type="cliente", status="active",
-            amount=Decimal("50000"), next_billing_date=datetime.date.today(),
+            amount=Decimal(50000), next_billing_date=datetime.datetime.now(tz=datetime.UTC).date(),
         )
         api.force_authenticate(user=law)
         resp = api.get(reverse("subscription-current"))
@@ -982,7 +1076,7 @@ class TestIntranetViews:
 # ======================================================================
 
 """Tests for uncovered branches in organization.py (91%→higher)."""
-import unittest.mock as mock
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -1249,3 +1343,177 @@ def test_organization_list_counts_pending_invitations(api_client, corporate_clie
     assert counted_item["pending_invitations_count"] == 3
     assert empty_item["member_count"] == 0
     assert empty_item["pending_invitations_count"] == 0
+
+
+@pytest.mark.django_db
+def test_owner_invitation_list_preserves_expired_pending_summary(
+    api_client, corporate_client, client_user, organization
+):
+    """Fails if owner invitation summaries exclude expired pending rows or nested users."""
+    expired_invitation = _create_counted_invitation(
+        organization,
+        corporate_client,
+        client_user,
+    )
+    api_client.force_authenticate(user=corporate_client)
+
+    response = api_client.get(
+        reverse(
+            'get-organization-invitations',
+            kwargs={'organization_id': organization.pk},
+        ),
+        {'page_size': 50},
+    )
+
+    item = next(
+        item for item in _invitation_list_items(response)
+        if item['id'] == expired_invitation.pk
+    )
+    assert response.status_code == status.HTTP_200_OK
+    assert {
+        'organization': (
+            item['organization_info']['id'],
+            item['organization_info']['title'],
+            item['organization_info']['member_count'],
+            item['organization_info']['pending_invitations_count'],
+        ),
+        'users': (item['invited_by_info']['email'], item['invited_user_info']['email']),
+        'pending_expired': (item['status'], item['is_expired']),
+    } == {
+        'organization': (organization.pk, organization.title, 2, 3),
+        'users': (corporate_client.email, client_user.email),
+        'pending_expired': ('PENDING', True),
+    }
+
+
+@pytest.mark.django_db
+def test_personal_invitation_list_preserves_empty_organization_summary(
+    api_client, corporate_client, client_user
+):
+    """Fails if pending invitations lose empty membership or include non-pending rows."""
+    organization = Organization.objects.create(
+        title='Empty invitation organization',
+        corporate_client=corporate_client,
+    )
+    pending_invitation = OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=client_user,
+        invited_by=corporate_client,
+        status='PENDING',
+    )
+    accepted_organization = Organization.objects.create(
+        title='Accepted invitation organization',
+        corporate_client=corporate_client,
+    )
+    OrganizationInvitation.objects.create(
+        organization=accepted_organization,
+        invited_user=client_user,
+        invited_by=corporate_client,
+        status='ACCEPTED',
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse('get-my-invitations'), {'page_size': 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert [item['id'] for item in _invitation_list_items(response)] == [
+        pending_invitation.pk
+    ]
+    assert {
+        'organization': (
+            response.data['results'][0]['organization_info']['id'],
+            response.data['results'][0]['organization_info']['member_count'],
+            response.data['results'][0]['organization_info']['pending_invitations_count'],
+        ),
+        'users': (
+            response.data['results'][0]['invited_by_info']['email'],
+            response.data['results'][0]['invited_user_info']['email'],
+        ),
+    } == {
+        'organization': (organization.pk, 0, 1),
+        'users': (corporate_client.email, client_user.email),
+    }
+
+
+@pytest.mark.django_db
+def test_personal_invitation_list_preserves_zero_summary_for_accepted_status(
+    api_client, corporate_client, client_user
+):
+    """Fails if an accepted invitation serializes an unannotated empty organization."""
+    organization = Organization.objects.create(
+        title='Accepted empty invitation organization',
+        corporate_client=corporate_client,
+    )
+    invitation = OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=client_user,
+        invited_by=corporate_client,
+        status='ACCEPTED',
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(
+        reverse('get-my-invitations'),
+        {'status': 'ACCEPTED', 'page_size': 50},
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert {
+        'id': response.data['results'][0]['id'],
+        'summary': (
+            response.data['results'][0]['organization_info']['member_count'],
+            response.data['results'][0]['organization_info']['pending_invitations_count'],
+        ),
+    } == {
+        'id': invitation.pk,
+        'summary': (0, 0),
+    }
+
+
+@pytest.mark.django_db
+def test_owner_invitation_list_has_constant_query_budget(api_client, corporate_client):
+    """Fails if owner invitation serialization restores per-row relation queries."""
+    organization = _create_owner_invitation_fixtures(corporate_client, 50)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse(
+        'get-organization-invitations',
+        kwargs={'organization_id': organization.pk},
+    )
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {'page_size': 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {'page_size': 50})
+
+    assert (
+        single_row_response.status_code,
+        len(_invitation_list_items(single_row_response)),
+        fifty_row_response.status_code,
+        len(_invitation_list_items(fifty_row_response)),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_OWNER_INVITATION_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_personal_invitation_list_has_constant_query_budget(
+    api_client, corporate_client, client_user
+):
+    """Fails if personal invitation serialization restores per-row relation queries."""
+    _create_personal_invitation_fixtures(client_user, corporate_client, 50)
+    api_client.force_authenticate(user=client_user)
+    url = reverse('get-my-invitations')
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {'page_size': 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {'page_size': 50})
+
+    assert (
+        single_row_response.status_code,
+        len(_invitation_list_items(single_row_response)),
+        fifty_row_response.status_code,
+        len(_invitation_list_items(fifty_row_response)),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_PERSONAL_INVITATION_LIST_QUERIES

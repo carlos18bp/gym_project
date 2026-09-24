@@ -1,4 +1,5 @@
 """Tests for process module."""
+
 import json
 from unittest.mock import patch
 
@@ -21,6 +22,7 @@ from gym_app.models import (
 )
 
 MAX_RECENT_PROCESS_LIST_QUERIES = 6
+MAX_PROCESS_LIST_QUERIES = 6
 
 
 def _create_recent_process_fixtures(user, start_index, count):
@@ -66,6 +68,24 @@ def _create_recent_process_fixtures(user, start_index, count):
         )
         recent_processes.append(recent_process)
     return recent_processes
+
+
+def _create_process_list_fixtures(lawyer, start_index, count):
+    """Create processes with distinct cases for the list serializer budget."""
+    expected_cases = {}
+    for index in range(start_index, start_index + count):
+        case = Case.objects.create(type=f"Budget case {index}")
+        process = Process.objects.create(
+            authority=f"Budget court {index}",
+            plaintiff=f"Budget plaintiff {index}",
+            defendant=f"Budget defendant {index}",
+            ref=f"PROCESS-BUDGET-{index}",
+            lawyer=lawyer,
+            case=case,
+            subcase=f"Budget subcase {index}",
+        )
+        expected_cases[process.ref] = (case.id, case.type)
+    return expected_cases
 
 
 @pytest.fixture
@@ -153,6 +173,10 @@ class TestProcessViews:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
         assert response.data[0]['ref'] == 'CASE-123'
+        assert response.data[0]['case'] == {
+            'id': process.case.id,
+            'type': process.case.type,
+        }
         
         # Create another process with a different client
         other_client = User.objects.create_user(
@@ -1139,6 +1163,37 @@ def test_recent_processes_have_constant_query_budget(api_client, client_user):
     assert len(ten_row_response.data) == 10
     assert len(single_row_queries) == len(ten_row_queries)
     assert len(ten_row_queries) <= MAX_RECENT_PROCESS_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_process_list_has_constant_case_query_budget(api_client, lawyer_user):
+    """Fails if process list serializes each case without select_related loading."""
+    single_case = _create_process_list_fixtures(lawyer_user, 0, 1)
+    api_client.force_authenticate(user=lawyer_user)
+    url = reverse('process-list')
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    fifty_cases = _create_process_list_fixtures(lawyer_user, 1, 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert {
+        item['ref']: (item['case']['id'], item['case']['type'])
+        for item in single_row_response.data
+    } == single_case
+    assert {
+        item['ref']: (item['case']['id'], item['case']['type'])
+        for item in fifty_row_response.data
+    } == single_case | fifty_cases
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_PROCESS_LIST_QUERIES
 
 
 @pytest.mark.django_db

@@ -2,6 +2,20 @@
 
 ## 1. Current State
 
+### Procesos, invitaciones y detalles corporativos (2026-09-24)
+
+Cuarta ronda en el PR #128, candidatos P-backend-queries-09/10/11. El listado de
+procesos une su tipo de caso; las invitaciones precargan usuarios y organizaciones
+con conteos independientes; ambos detalles corporativos precargan relaciones,
+respuestas, autores y adjuntos. El conteo de respuestas reutiliza la caché normal
+del manager, sin modificar el serializer ni la visibilidad actual.
+QA verifica consultas constantes con uno y cincuenta registros, máximo seis
+por listado y cuatro por detalle, además de payloads y permisos.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-processes-invitations-details.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-24-r4-gym_project-qa.md`.
+Procesos y respuestas siguen sin paginación: esta ronda no garantiza un límite de
+memoria/payload al techo del dataset. Esa evolución del contrato queda separada.
+
 ### Clasificaciones SECOP (2026-09-24)
 
 Tercera ronda en el PR #128, candidatos P-backend-queries-07/08. Los dos listados
