@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, IntegerField, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 
@@ -109,7 +110,25 @@ def get_my_organizations(request):
     is_active = request.GET.get('is_active', None)
     
     # Base queryset - only organizations led by current user
-    queryset = Organization.objects.filter(corporate_client=request.user)
+    active_members = (
+        OrganizationMembership.objects.filter(organization_id=OuterRef('pk'), is_active=True)
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    pending_invitations = (
+        OrganizationInvitation.objects.filter(organization_id=OuterRef('pk'), status='PENDING')
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    # Independent subqueries avoid multiplying memberships by invitations.
+    queryset = (
+        Organization.objects.filter(corporate_client=request.user)
+        .select_related('corporate_client')
+        .annotate(
+            _member_count=Coalesce(Subquery(active_members, output_field=IntegerField()), 0),
+            _pending_invitations_count=Coalesce(
+                Subquery(pending_invitations, output_field=IntegerField()), 0,
+            ),
+        )
+    )
     
     # Apply filters
     if search:

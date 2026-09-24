@@ -50,9 +50,13 @@ class OrganizationListSerializer(serializers.ModelSerializer):
         ]
 
     def get_member_count(self, obj):
+        if hasattr(obj, '_member_count'):
+            return obj._member_count
         return obj.get_member_count()
 
     def get_pending_invitations_count(self, obj):
+        if hasattr(obj, '_pending_invitations_count'):
+            return obj._pending_invitations_count
         return obj.get_pending_invitations_count()
 
     def get_profile_image_url(self, obj):
