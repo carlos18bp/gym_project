@@ -125,7 +125,17 @@ sequenceDiagram
     E-->>D: Response
 ```
 
-### 3.1 Document PDF resource boundary
+### 3.1 Rendimiento de listados
+
+Listados optimizados (2026-09-24): organizaciones y solicitudes corporativas
+cargan sus FKs en la consulta principal y calculan conteos mediante subconsultas
+correlacionadas. Esto evita joins multiplicativos y conserva filtros/orden.
+Procesos recientes combina joins de caso/abogado con prefetch de clientes,
+archivos y etapas con alerta; conserva el límite de diez. Los serializers mantienen
+fallback cuando reciben instancias sin anotaciones. Los presupuestos de queries
+viven en los tests de vistas y en `docs/PERFORMANCE_STANDARDS.md`.
+
+### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
 vulnerability records across nine packages. User-authored HTML now reaches a

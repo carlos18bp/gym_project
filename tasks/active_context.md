@@ -2,6 +2,19 @@
 
 ## 1. Current State
 
+### Rendimiento de listados (2026-09-24)
+
+Ronda `perf-bounded-lists` sobre `master`: organizaciones, solicitudes corporativas
+y procesos recientes conservan su contrato y cargan los datos relacionados sin
+consultas por fila. Los conteos usan subconsultas independientes para evitar
+multiplicación de relaciones y conservar el orden de prioridad. Recientes mantiene
+el límite de diez y las etapas con/sin alerta. Presupuesto: queries constantes y
+máximo seis por listado. QA mide 2 consultas en organizaciones y solicitudes
+y 4 en recientes; verifica los presupuestos en SQLite y MySQL 8.4 aislados,
+además de los conteos, la prioridad y el contenido relacionado.
+Perfil y guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-bounded-lists.md`.
+Sin migraciones, dependencias nuevas ni cambios en flujos frontend.
+
 ### Explorador del manual (2026-09-19)
 
 Nueva subsección del Manual de Usuario basada en el explorador orbital de Project Apps:

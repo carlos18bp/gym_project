@@ -4,6 +4,8 @@ from datetime import timezone as dt_timezone
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from rest_framework import status
 
@@ -16,6 +18,107 @@ from gym_app.models import (
 )
 
 User = get_user_model()
+MAX_CORPORATE_REQUEST_LIST_QUERIES = 6
+
+
+def _corporate_request_list_items(response):
+    """Return the paginated request payload from either corporate list endpoint."""
+    return response.data["results"]
+
+
+def _create_client_list_requests(
+    client,
+    corporate_client,
+    request_type,
+    count,
+):
+    """Create client-list rows with varied related objects and a nullable organization."""
+    alternate_corporate_client = User.objects.create_user(
+        email="alternate-corporate@example.com",
+        password=None,
+        role="corporate_client",
+    )
+    primary_organization = Organization.objects.create(
+        title="Primary performance organization",
+        corporate_client=corporate_client,
+    )
+    alternate_organization = Organization.objects.create(
+        title="Alternate performance organization",
+        corporate_client=alternate_corporate_client,
+    )
+    alternate_request_type = CorporateRequestType.objects.create(name="Alternate performance type")
+    OrganizationMembership.objects.create(
+        organization=primary_organization,
+        user=client,
+        role="MEMBER",
+    )
+    OrganizationMembership.objects.create(
+        organization=alternate_organization,
+        user=client,
+        role="MEMBER",
+    )
+    organizations = [primary_organization, alternate_organization]
+    corporate_clients = [corporate_client, alternate_corporate_client]
+    request_types = [request_type, alternate_request_type]
+    requests = []
+    for index in range(count):
+        organization = organizations[index % 2] if index % 3 else None
+        request = CorporateRequest.objects.create(
+            client=client,
+            corporate_client=organization.corporate_client if organization else corporate_clients[index % 2],
+            organization=organization,
+            request_type=request_types[index % 2],
+            title=f"Performance client request {index}",
+            description="List budget fixture",
+            priority="MEDIUM",
+            status="PENDING",
+        )
+        requests.append(request)
+    return requests
+
+
+def _create_received_list_requests(corporate_client, request_type, count, priorities):
+    """Create received-list rows with varied client, organization, and type relations."""
+    clients = [
+        User.objects.create_user(
+            email=f"received-client-{index}@example.com",
+            password=None,
+            role="client",
+        )
+        for index in range(2)
+    ]
+    organizations = [
+        Organization.objects.create(
+            title=f"Received performance organization {index}",
+            corporate_client=corporate_client,
+        )
+        for index in range(2)
+    ]
+    alternate_request_type = CorporateRequestType.objects.create(name="Received alternate type")
+    for client in clients:
+        for organization in organizations:
+            OrganizationMembership.objects.create(organization=organization, user=client, role="MEMBER")
+    request_types = [request_type, alternate_request_type]
+    requests = []
+    for index in range(count):
+        request = CorporateRequest.objects.create(
+            client=clients[index % 2],
+            corporate_client=corporate_client,
+            organization=organizations[index % 2],
+            request_type=request_types[index % 2],
+            title=f"Performance received request {index}",
+            description="List budget fixture",
+            priority=priorities[index],
+            status="PENDING",
+        )
+        requests.append(request)
+    return requests
+
+
+def _item_with_request_id(items, request_id):
+    """Find one concrete list row while preserving the endpoint payload contract."""
+    return next(item for item in items if item["id"] == request_id)
+
 @pytest.fixture
 def corporate_client():
     """Corporate client."""
@@ -1252,3 +1355,129 @@ class TestCorporateRequestViewsAdditionalScenarios:
         url = reverse("get-request-conversation", kwargs={"request_id": 99999})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_has_bounded_queries(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if client request list relations return to per-row queries."""
+    _create_client_list_requests(
+        client_user,
+        corporate_client,
+        request_type,
+        50,
+    )
+    api_client.force_authenticate(user=client_user)
+    url = reverse("client-get-my-corporate-requests")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {"page_size": 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {"page_size": 50})
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(single_row_response)) == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    fifty_row_items = _corporate_request_list_items(fifty_row_response)
+    assert len(fifty_row_items) == 50
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_counts_internal_responses(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if list response_count stops including corporate internal notes."""
+    requests = _create_client_list_requests(client_user, corporate_client, request_type, 2)
+    CorporateRequestResponse.objects.create(
+        corporate_request=requests[0],
+        response_text="Internal note",
+        user=corporate_client,
+        user_type="corporate_client",
+        is_internal_note=True,
+    )
+    CorporateRequestResponse.objects.create(
+        corporate_request=requests[0],
+        response_text="Client answer",
+        user=client_user,
+        user_type="client",
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("client-get-my-corporate-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert _item_with_request_id(response.data["results"], requests[0].id)["response_count"] == 2
+    assert _item_with_request_id(response.data["results"], requests[1].id)["response_count"] == 0
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_serializes_null_organization(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if a client request without an organization raises during list serialization."""
+    requests = _create_client_list_requests(client_user, corporate_client, request_type, 2)
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("client-get-my-corporate-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert _item_with_request_id(response.data["results"], requests[0].id)["organization_info"] is None
+
+
+@pytest.mark.django_db
+def test_corporate_received_request_list_preserves_priority_order(
+    api_client,
+    corporate_client,
+    request_type,
+):
+    """Fails if received request ordering no longer follows the priority contract."""
+    priorities = ["URGENT", "HIGH", "MEDIUM", "LOW"] + ["LOW"] * 46
+    _create_received_list_requests(
+        corporate_client,
+        request_type,
+        50,
+        priorities=priorities,
+    )
+    api_client.force_authenticate(user=corporate_client)
+    response = api_client.get(reverse("corporate-get-received-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    fifty_row_items = _corporate_request_list_items(response)
+    assert len(fifty_row_items) == 50
+    assert [item["priority"] for item in fifty_row_items[:4]] == ["URGENT", "HIGH", "MEDIUM", "LOW"]
+
+
+@pytest.mark.django_db
+def test_corporate_received_request_list_has_bounded_queries(
+    api_client,
+    corporate_client,
+    request_type,
+):
+    """Fails if received request list relations return to per-row queries."""
+    _create_received_list_requests(corporate_client, request_type, 50, ["MEDIUM"] * 50)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse("corporate-get-received-requests")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {"page_size": 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {"page_size": 50})
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(single_row_response)) == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(fifty_row_response)) == 50
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_LIST_QUERIES

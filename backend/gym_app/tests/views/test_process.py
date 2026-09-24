@@ -4,10 +4,68 @@ from unittest.mock import patch
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
-from gym_app.models import Case, CaseFile, Process, RecentProcess, Stage, User
+from gym_app.models import (
+    Case,
+    CaseFile,
+    Process,
+    RecentProcess,
+    Stage,
+    StageAlert,
+    User,
+)
+
+MAX_RECENT_PROCESS_LIST_QUERIES = 6
+
+
+def _create_recent_process_fixtures(user, start_index, count):
+    """Create recent processes with distinct nested data for real serializer work."""
+    recent_processes = []
+    for index in range(start_index, start_index + count):
+        client = User.objects.create_user(
+            email=f"recent-client-{index}@example.com",
+            password=None,
+            role="Client",
+        )
+        lawyer = User.objects.create_user(
+            email=f"recent-lawyer-{index}@example.com",
+            password=None,
+            role="Lawyer",
+        )
+        case = Case.objects.create(type=f"Recent case {index}")
+        process = Process.objects.create(
+            authority=f"Court {index}",
+            plaintiff=f"Plaintiff {index}",
+            defendant=f"Defendant {index}",
+            ref=f"PERF-RECENT-{index}",
+            lawyer=lawyer,
+            case=case,
+            subcase=f"Subcase {index}",
+        )
+        case_file = CaseFile.objects.create(
+            file=SimpleUploadedFile(
+                f"recent-{index}.txt",
+                f"file-{index}".encode(),
+                content_type="text/plain",
+            )
+        )
+        first_stage = Stage.objects.create(status=f"First stage {index}")
+        alerted_stage = Stage.objects.create(status=f"Alerted stage {index}")
+        StageAlert.objects.create(stage=alerted_stage, description=f"Alert {index}")
+        process.clients.add(client)
+        process.case_files.add(case_file)
+        process.stages.add(first_stage, alerted_stage)
+        recent_process = RecentProcess.objects.create(user=user, process=process)
+        RecentProcess.objects.filter(pk=recent_process.pk).update(
+            last_viewed=timezone.now() + timezone.timedelta(minutes=index),
+        )
+        recent_processes.append(recent_process)
+    return recent_processes
 
 
 @pytest.fixture
@@ -1060,3 +1118,87 @@ class TestLawyerDeletionProtection:
         lawyer_id = lawyer.id
         lawyer.delete()
         assert not User.objects.filter(id=lawyer_id).exists()
+
+
+@pytest.mark.django_db
+def test_recent_processes_have_constant_query_budget(api_client, client_user):
+    """Fails if recent process serialization returns to per-row relation queries."""
+    _create_recent_process_fixtures(client_user, 0, 1)
+    api_client.force_authenticate(user=client_user)
+    url = reverse("recent-processes")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_recent_process_fixtures(client_user, 1, 9)
+    with CaptureQueriesContext(connection) as ten_row_queries:
+        ten_row_response = api_client.get(url)
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(single_row_response.data) == 1
+    assert ten_row_response.status_code == status.HTTP_200_OK
+    assert len(ten_row_response.data) == 10
+    assert len(single_row_queries) == len(ten_row_queries)
+    assert len(ten_row_queries) <= MAX_RECENT_PROCESS_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_recent_processes_keep_top_ten_recent_entries(api_client, client_user):
+    """Fails if recent processes stop limiting the response to the newest ten entries."""
+    _create_recent_process_fixtures(client_user, 0, 12)
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("recent-processes"))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 10
+    assert [item["process"]["ref"] for item in response.data] == [
+        "PERF-RECENT-11",
+        "PERF-RECENT-10",
+        "PERF-RECENT-9",
+        "PERF-RECENT-8",
+        "PERF-RECENT-7",
+        "PERF-RECENT-6",
+        "PERF-RECENT-5",
+        "PERF-RECENT-4",
+        "PERF-RECENT-3",
+        "PERF-RECENT-2",
+    ]
+
+
+@pytest.mark.django_db
+def test_recent_processes_serialize_related_models(api_client, client_user):
+    """Fails if recent process case, lawyer, client, or file payloads stop serializing."""
+    _create_recent_process_fixtures(client_user, 0, 12)
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("recent-processes"))
+
+    assert response.status_code == status.HTTP_200_OK
+    expected_file_url = Process.objects.get(ref="PERF-RECENT-11").case_files.get().file.url
+    nested_process = response.data[0]["process"]
+    assert {
+        "case": nested_process["case"]["type"],
+        "lawyer": nested_process["lawyer"]["email"],
+        "client": nested_process["clients"][0]["email"],
+        "file": nested_process["case_files"][0]["file"],
+    } == {
+        "case": "Recent case 11",
+        "lawyer": "recent-lawyer-11@example.com",
+        "client": "recent-client-11@example.com",
+        "file": expected_file_url,
+    }
+
+
+@pytest.mark.django_db
+def test_recent_processes_preserve_stage_alert_payload(api_client, client_user):
+    """Fails if recent process stages lose their order or optional alert payload."""
+    _create_recent_process_fixtures(client_user, 0, 12)
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("recent-processes"))
+
+    assert response.status_code == status.HTTP_200_OK
+    nested_process = response.data[0]["process"]
+    assert [stage["status"] for stage in nested_process["stages"]] == ["First stage 11", "Alerted stage 11"]
+    assert nested_process["stages"][0]["alert"] is None
+    assert nested_process["stages"][1]["alert"]["description"] == "Alert 11"

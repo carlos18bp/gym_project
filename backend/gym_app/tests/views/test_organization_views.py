@@ -1,6 +1,8 @@
 """Tests for organization_views module."""
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from freezegun import freeze_time
@@ -16,6 +18,75 @@ from gym_app.models import (
 )
 
 User = get_user_model()
+MAX_ORGANIZATION_LIST_QUERIES = 6
+
+
+def _organization_list_items(response):
+    """Return the paginated organization payload used by the list endpoint."""
+    return response.data["results"]
+
+
+def _create_organization_fixtures(corporate_client, count):
+    """Create organizations whose list serialization exercises the queryset."""
+    return [
+        Organization.objects.create(
+            title=f"Performance organization {index}",
+            description="List budget fixture",
+            corporate_client=corporate_client,
+        )
+        for index in range(count)
+    ]
+
+
+def _create_organization_count_relations(organization, corporate_client):
+    """Create active, inactive, pending, and non-pending related records."""
+    members = [
+        User.objects.create_user(email=f"member-{index}@example.com", password=None, role="client")
+        for index in range(3)
+    ]
+    invitees = [
+        User.objects.create_user(email=f"invitee-{index}@example.com", password=None, role="client")
+        for index in range(4)
+    ]
+    OrganizationMembership.objects.create(organization=organization, user=members[0], role="MEMBER")
+    OrganizationMembership.objects.create(organization=organization, user=members[1], role="ADMIN")
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=members[2],
+        role="MEMBER",
+        is_active=False,
+    )
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invitees[0],
+        invited_by=corporate_client,
+        status="PENDING",
+    )
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invitees[1],
+        invited_by=corporate_client,
+        status="PENDING",
+        expires_at=timezone.now() - timezone.timedelta(days=1),
+    )
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invitees[2],
+        invited_by=corporate_client,
+        status="PENDING",
+    )
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invitees[3],
+        invited_by=corporate_client,
+        status="ACCEPTED",
+    )
+
+
+def _item_with_title(items, title):
+    """Find one concrete organization payload without duplicating endpoint calls."""
+    return next(item for item in items if item["title"] == title)
+
 @pytest.fixture
 def corporate_client():
     """Corporate client."""
@@ -1139,3 +1210,42 @@ class TestOrganizationViewsRegressionScenarios:
         MockSerializer.assert_called()
         mock_instance.is_valid.assert_called()
         mock_instance.save.assert_called()
+
+
+@pytest.mark.django_db
+def test_organization_list_query_budget_is_constant_for_page_size(api_client, corporate_client):
+    """Fails if organization list serialization returns to per-row relation queries."""
+    _create_organization_fixtures(corporate_client, 50)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse("get-my-organizations")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {"page_size": 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {"page_size": 50})
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(_organization_list_items(single_row_response)) == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    assert len(_organization_list_items(fifty_row_response)) == 50
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_ORGANIZATION_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_organization_list_counts_pending_invitations(api_client, corporate_client):
+    """Fails if list subqueries multiply counts or exclude expired pending invitations."""
+    organizations = _create_organization_fixtures(corporate_client, 2)
+    counted_organization, empty_organization = organizations
+    _create_organization_count_relations(counted_organization, corporate_client)
+    api_client.force_authenticate(user=corporate_client)
+
+    response = api_client.get(reverse("get-my-organizations"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    counted_item = _item_with_title(response.data["results"], counted_organization.title)
+    empty_item = _item_with_title(response.data["results"], empty_organization.title)
+    assert counted_item["member_count"] == 2
+    assert counted_item["pending_invitations_count"] == 3
+    assert empty_item["member_count"] == 0
+    assert empty_item["pending_invitations_count"] == 0

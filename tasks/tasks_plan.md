@@ -2,6 +2,12 @@
 
 ## 1. Feature Status
 
+**2026-09-24 — Rendimiento:** tres candidatos de consultas por fila aplicados
+(organizaciones, solicitudes corporativas y procesos recientes); presupuestos
+constantes comprobados en SQLite y MySQL 8.4 aislados. Seguimiento en el ledger
+`gym_project` del toolkit y PR #128 de sesión `perf-bounded-lists`.
+No incluye cambios de infraestructura ni despliegue.
+
 **2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
 con catálogo completo, permisos independientes de la visibilidad, recorridos,
 búsqueda, relaciones y adaptación a móvil. Validación focalizada y siete flujos E2E
