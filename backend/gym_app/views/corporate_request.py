@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count, IntegerField, OuterRef, Subquery
+from django.db.models import Q, Count, IntegerField, OuterRef, Prefetch, Subquery
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -35,6 +35,21 @@ def _with_list_relations(queryset):
         'client', 'corporate_client', 'organization', 'request_type',
     ).annotate(
         _response_count=Coalesce(Subquery(response_counts, output_field=IntegerField()), 0),
+    )
+
+
+def _with_detail_relations(queryset):
+    """Load detail fields and keep responses in the related manager's cache."""
+    return queryset.select_related(
+        'client', 'corporate_client', 'assigned_to', 'organization', 'request_type',
+    ).prefetch_related(
+        'files',
+        Prefetch(
+            'responses',
+            queryset=CorporateRequestResponse.objects.select_related('user').prefetch_related(
+                'response_files',
+            ),
+        ),
     )
 
 
@@ -214,7 +229,7 @@ def client_get_corporate_request_detail(request, request_id):
     Only the client who created the request can view it.
     """
     corporate_request = get_object_or_404(
-        CorporateRequest, 
+        _with_detail_relations(CorporateRequest.objects.all()),
         id=request_id, 
         client=request.user
     )
@@ -341,7 +356,7 @@ def corporate_get_request_detail(request, request_id):
     Only the corporate client who received the request can view it.
     """
     corporate_request = get_object_or_404(
-        CorporateRequest, 
+        _with_detail_relations(CorporateRequest.objects.all()),
         id=request_id, 
         corporate_client=request.user
     )
