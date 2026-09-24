@@ -3,6 +3,7 @@ import logging
 import traceback
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -600,7 +601,16 @@ def get_recent_processes(request):
     """
     Get the 10 most recently viewed processes by the authenticated user.
     """
-    recent_processes = RecentProcess.objects.filter(user=request.user).order_by('-last_viewed')[:10]
+    recent_processes = (
+        RecentProcess.objects.filter(user=request.user)
+        .select_related('process__case', 'process__lawyer')
+        .prefetch_related(
+            'process__clients',
+            'process__case_files',
+            Prefetch('process__stages', queryset=Stage.objects.select_related('alert')),
+        )
+        .order_by('-last_viewed')[:10]
+    )
     serializer = RecentProcessSerializer(recent_processes, many=True)
     return Response(serializer.data)
 
@@ -650,4 +660,3 @@ def update_recent_process(request, process_id):
         recent_process.save()
     
     return Response({'status': 'success'}, status=status.HTTP_200_OK)
-
