@@ -2,6 +2,24 @@
 
 ## 1. Current State
 
+### Limpieza del repositorio (2026-09-25)
+
+Auditoría de 1.309 archivos versionados: sin artefactos HIGH detectados. El lote
+MEDIUM aprobado elimina el store de documentos recientes sin consumidores, su
+test exclusivo y las dos excepciones de calidad de ese test; conserva los
+endpoints backend. Corrige el filtro del hook de
+calidad para incluir `backend/gym_app/tests/` y las excepciones de `.gitignore`
+para fixtures de media, `.gitkeep` de logs y extensiones compartidas de VS Code.
+El diagrama de stores refleja la eliminación. Sin cambios de API ni flujos UX.
+
+Fuera del lote: revisar roles/versiones del README, instrucciones antiguas del
+manual de usuario y la tabla del estándar arquitectónico. Se conserva el comando
+`clean_service_notifications`: no se ha demostrado su obsolescencia operativa.
+Validación local: dashboard 2/2, build frontend correcto, seis escenarios de
+selección/propagación de fallos del hook y once casos de ignore correctos.
+El hook real con Ruff analiza once tests backend: cero errores y una advertencia
+preexistente por exceso de aserciones. Configuración pre-commit y diff válidos.
+
 ### Membresías y detalles organizacionales (2026-09-25)
 
 Quinta ronda en el PR #128, candidatos P-backend-queries-12/13/14. Las

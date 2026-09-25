@@ -12,6 +12,9 @@
 frontend/.cursor/
 .idea/
 .vscode/
+!/frontend/.vscode/
+/frontend/.vscode/*
+!/frontend/.vscode/extensions.json
 *.swp
 *.swo
 
@@ -58,7 +61,7 @@ backend/staticfiles/
 backend/static/frontend/
 backend/static/admin/
 backend/gym_app/templates/index.html
-backend/media/
+backend/media/*
 !backend/media/example_files/
 
 # ===========================================================================
@@ -80,7 +83,7 @@ backend/debug.log*
 # ===========================================================================
 # Backend – operational logs & backups
 # ===========================================================================
-backend/logs/
+backend/logs/*
 !backend/logs/.gitkeep
 backend/backups/
 backups/
