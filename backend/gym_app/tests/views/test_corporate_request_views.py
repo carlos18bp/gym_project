@@ -1,14 +1,20 @@
 """Tests for corporate_request_views module."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
 from gym_app.models import (
     CorporateRequest,
+    CorporateRequestFiles,
     CorporateRequestResponse,
     CorporateRequestType,
     Organization,
@@ -16,6 +22,334 @@ from gym_app.models import (
 )
 
 User = get_user_model()
+MAX_CORPORATE_REQUEST_LIST_QUERIES = 6
+MAX_CONVERSATION_QUERIES = 4
+MAX_DASHBOARD_QUERIES = 4
+MAX_CLIENT_REQUEST_DETAIL_QUERIES = 4
+MAX_CORPORATE_REQUEST_DETAIL_QUERIES = 4
+MAX_CLIENT_ORGANIZATIONS_QUERIES = 6
+MEMBERSHIP_JOINED_AT = datetime(2026, 9, 25, 12, tzinfo=dt_timezone.utc)
+
+
+def _create_client_organization_memberships(user, prefix, count):
+    """Create active memberships with distinct nested organization relations."""
+    memberships = []
+    for index in range(count):
+        corporate_client = User.objects.create_user(
+            email=f'{prefix}-corporate-{index}@example.com',
+            password=None,
+            first_name=f'Corporate{index}',
+            last_name='Owner',
+            role='corporate_client',
+        )
+        organization = Organization.objects.create(
+            title=f'{prefix} organization {index}',
+            description='Round five organization fixture',
+            corporate_client=corporate_client,
+        )
+        membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=user,
+            role='MEMBER',
+            is_active=True,
+        )
+        OrganizationMembership.objects.filter(pk=membership.pk).update(
+            joined_at=MEMBERSHIP_JOINED_AT + timedelta(minutes=index),
+        )
+        memberships.append(membership)
+    return memberships
+
+
+def _create_conversation_request(client, corporate_client, organization, request_type):
+    """Create a request that both authorized conversation roles can access."""
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=client,
+        role="MEMBER",
+        is_active=True,
+    )
+    return CorporateRequest.objects.create(
+        client=client,
+        organization=organization,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        title="Conversation request",
+        description="Conversation fixture",
+        priority="MEDIUM",
+        status="PENDING",
+    )
+
+
+def _create_conversation_responses(corporate_request, client, corporate_client, count):
+    """Create visible responses with loaded author and attachment relations."""
+    responses = []
+    for index in range(count):
+        response = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            response_text=f"Visible response {index}",
+            user=corporate_client if index % 2 else client,
+            user_type="corporate_client" if index % 2 else "client",
+        )
+        responses.append(response)
+    return responses
+
+
+def _create_detail_request(
+    client,
+    corporate_client,
+    request_type,
+    organization=None,
+    assigned_to=None,
+):
+    """Create a nullable detail row that both authorized actors can retrieve."""
+    return CorporateRequest.objects.create(
+        client=client,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        organization=organization,
+        assigned_to=assigned_to,
+        title='Detail request',
+        description='Detail request fixture',
+        priority='MEDIUM',
+        status='PENDING',
+    )
+
+
+def _create_detail_responses(corporate_request, client, count, response_file=None):
+    """Create response rows with distinct client authors outside a query capture."""
+    responses = []
+    start_index = corporate_request.responses.count()
+    for index in range(start_index, start_index + count):
+        author = client if index == 0 else User.objects.create_user(
+            email=f'detail-response-author-{corporate_request.pk}-{index}@example.com',
+            password=None,
+            first_name=f'Detail{index}',
+            last_name='Author',
+            role='client',
+        )
+        response = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            response_text=f'Detail response {index}',
+            user=author,
+            user_type='client',
+            is_internal_note=index == start_index + count - 1,
+        )
+        if response_file is not None:
+            response.response_files.add(response_file)
+        responses.append(response)
+    return responses
+
+
+def _detail_payload_summary(payload):
+    """Return the nested detail fields whose values form the response contract."""
+    return {
+        'request': (
+            payload['id'],
+            payload['response_count'],
+            payload['assigned_to_info'],
+            payload['organization_info'],
+            [item['file_name'] for item in payload['files']],
+        ),
+        'responses': [
+            (
+                item['response_text'],
+                item['user_email'],
+                item['is_internal_note'],
+                [attachment['file_name'] for attachment in item['response_files']],
+            )
+            for item in payload['responses']
+        ],
+    }
+
+
+def _create_detail_payload_fixture(client, corporate_client, request_type):
+    """Create a nullable request with direct and response attachments."""
+    corporate_request = _create_detail_request(
+        client,
+        corporate_client,
+        request_type,
+    )
+    request_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('detail-request.txt', b'request attachment'),
+    )
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('detail-response.txt', b'response attachment'),
+    )
+    corporate_request.files.add(request_file)
+    responses = _create_detail_responses(corporate_request, client, 2)
+    responses[1].response_files.add(response_file)
+    return corporate_request, responses
+
+
+def _create_populated_detail_request(client, corporate_client, request_type, title):
+    """Create a valid detail request with populated organization and assignment FKs."""
+    organization = Organization.objects.create(
+        title=title,
+        corporate_client=corporate_client,
+    )
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=client,
+        role='MEMBER',
+        is_active=True,
+    )
+    return _create_detail_request(
+        client,
+        corporate_client,
+        request_type,
+        organization=organization,
+        assigned_to=corporate_client,
+    )
+
+
+def _create_dashboard_request(client, corporate_client, request_type, title, **values):
+    """Create a dashboard row without an organization membership dependency."""
+    return CorporateRequest.objects.create(
+        client=client,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        title=title,
+        description="Dashboard fixture",
+        priority=values.pop("priority", "MEDIUM"),
+        status=values.pop("status", "PENDING"),
+        **values,
+    )
+
+
+def _set_created_at(corporate_request, created_at):
+    """Set deterministic request age after the model's auto timestamp is assigned."""
+    CorporateRequest.objects.filter(pk=corporate_request.pk).update(created_at=created_at)
+
+
+def _create_dashboard_contract_rows(client, corporate_client, request_type, now):
+    """Create one row for each dashboard state, priority, and overdue boundary."""
+    rows = [
+        _create_dashboard_request(client, corporate_client, request_type, "pending", priority="URGENT", assigned_to=corporate_client, estimated_completion_date=now - timezone.timedelta(minutes=1)),
+        _create_dashboard_request(client, corporate_client, request_type, "review", priority="HIGH", status="IN_REVIEW", estimated_completion_date=now),
+        _create_dashboard_request(client, corporate_client, request_type, "responded", status="RESPONDED"),
+        _create_dashboard_request(client, corporate_client, request_type, "resolved", priority="LOW", status="RESOLVED"),
+        _create_dashboard_request(client, corporate_client, request_type, "closed", priority="LOW", status="CLOSED", estimated_completion_date=now - timezone.timedelta(minutes=1)),
+        _create_dashboard_request(client, corporate_client, request_type, "nullable", priority="LOW"),
+        _create_dashboard_request(client, corporate_client, request_type, "future", status="PENDING", estimated_completion_date=now + timezone.timedelta(minutes=1)),
+    ]
+    _set_created_at(rows[0], now)
+    _set_created_at(rows[1], now - timezone.timedelta(days=7))
+    for row in rows[2:]:
+        _set_created_at(row, now - timezone.timedelta(days=8))
+    return rows
+
+
+def _create_dashboard_rows(client, corporate_client, request_type, start, count):
+    """Create rows outside the aggregate query capture for the dashboard budget test."""
+    return [
+        _create_dashboard_request(
+            client,
+            corporate_client,
+            request_type,
+            f"Dashboard budget {index}",
+        )
+        for index in range(start, start + count)
+    ]
+
+
+def _corporate_request_list_items(response):
+    """Return the paginated request payload from either corporate list endpoint."""
+    return response.data["results"]
+
+
+def _create_client_list_requests(
+    client,
+    corporate_client,
+    request_type,
+    count,
+):
+    """Create client-list rows with varied related objects and a nullable organization."""
+    alternate_corporate_client = User.objects.create_user(
+        email="alternate-corporate@example.com",
+        password=None,
+        role="corporate_client",
+    )
+    primary_organization = Organization.objects.create(
+        title="Primary performance organization",
+        corporate_client=corporate_client,
+    )
+    alternate_organization = Organization.objects.create(
+        title="Alternate performance organization",
+        corporate_client=alternate_corporate_client,
+    )
+    alternate_request_type = CorporateRequestType.objects.create(name="Alternate performance type")
+    OrganizationMembership.objects.create(
+        organization=primary_organization,
+        user=client,
+        role="MEMBER",
+    )
+    OrganizationMembership.objects.create(
+        organization=alternate_organization,
+        user=client,
+        role="MEMBER",
+    )
+    organizations = [primary_organization, alternate_organization]
+    corporate_clients = [corporate_client, alternate_corporate_client]
+    request_types = [request_type, alternate_request_type]
+    requests = []
+    for index in range(count):
+        organization = organizations[index % 2] if index % 3 else None
+        request = CorporateRequest.objects.create(
+            client=client,
+            corporate_client=organization.corporate_client if organization else corporate_clients[index % 2],
+            organization=organization,
+            request_type=request_types[index % 2],
+            title=f"Performance client request {index}",
+            description="List budget fixture",
+            priority="MEDIUM",
+            status="PENDING",
+        )
+        requests.append(request)
+    return requests
+
+
+def _create_received_list_requests(corporate_client, request_type, count, priorities):
+    """Create received-list rows with varied client, organization, and type relations."""
+    clients = [
+        User.objects.create_user(
+            email=f"received-client-{index}@example.com",
+            password=None,
+            role="client",
+        )
+        for index in range(2)
+    ]
+    organizations = [
+        Organization.objects.create(
+            title=f"Received performance organization {index}",
+            corporate_client=corporate_client,
+        )
+        for index in range(2)
+    ]
+    alternate_request_type = CorporateRequestType.objects.create(name="Received alternate type")
+    for client in clients:
+        for organization in organizations:
+            OrganizationMembership.objects.create(organization=organization, user=client, role="MEMBER")
+    request_types = [request_type, alternate_request_type]
+    requests = []
+    for index in range(count):
+        request = CorporateRequest.objects.create(
+            client=clients[index % 2],
+            corporate_client=corporate_client,
+            organization=organizations[index % 2],
+            request_type=request_types[index % 2],
+            title=f"Performance received request {index}",
+            description="List budget fixture",
+            priority=priorities[index],
+            status="PENDING",
+        )
+        requests.append(request)
+    return requests
+
+
+def _item_with_request_id(items, request_id):
+    """Find one concrete list row while preserving the endpoint payload contract."""
+    return next(item for item in items if item["id"] == request_id)
+
 @pytest.fixture
 def corporate_client():
     """Corporate client."""
@@ -233,91 +567,131 @@ class TestCorporateSideCorporateRequests:
         assert resp.response_text == "Nota interna"
         assert resp.is_internal_note is True
 
-    def test_corporate_get_dashboard_stats(self, api_client, corporate_client, client_user, organization, request_type):
-        """Verify corporate get dashboard stats."""
-        OrganizationMembership.objects.create(
-            organization=organization,
-            user=client_user,
-            role="MEMBER",
-            is_active=True,
+    def test_corporate_dashboard_stats_returns_tenant_aggregate_payload(self, api_client, corporate_client, client_user, request_type):
+        """Fails if dashboard aggregates leak tenants or change temporal counter semantics."""
+        fixed_now = datetime(2026, 9, 24, 12, 0, tzinfo=dt_timezone.utc)
+        _create_dashboard_contract_rows(client_user, corporate_client, request_type, fixed_now)
+        other_corporate = User.objects.create_user(
+            email="other-dashboard@example.com",
+            password=None,
+            role="corporate_client",
         )
-
-        # Crear solicitudes en varios estados/prioridades
-        CorporateRequest.objects.create(
-            client=client_user,
-            organization=organization,
-            corporate_client=corporate_client,
-            request_type=request_type,
-            title="Req1",
-            description="D1",
-            priority="URGENT",
-            status="PENDING",
-        )
-        CorporateRequest.objects.create(
-            client=client_user,
-            organization=organization,
-            corporate_client=corporate_client,
-            request_type=request_type,
-            title="Req2",
-            description="D2",
-            priority="LOW",
-            status="IN_REVIEW",
-            estimated_completion_date=datetime(2025, 6, 14, 12, 0, 0, tzinfo=dt_timezone.utc),
-        )
-
+        _create_dashboard_request(client_user, other_corporate, request_type, "foreign")
         api_client.force_authenticate(user=corporate_client)
-        url = reverse("corporate-get-dashboard-stats")
-        response = api_client.get(url)
+
+        with patch("gym_app.views.corporate_request.timezone.now", return_value=fixed_now):
+            response = api_client.get(reverse("corporate-get-dashboard-stats"))
 
         assert response.status_code == status.HTTP_200_OK
-        data = response.data
-        assert "total_requests" in data
-        assert "status_counts" in data
-        assert "priority_counts" in data
-        assert "recent_requests_count" in data
-        assert "assigned_to_me_count" in data
-        assert "overdue_count" in data
+        assert response.data == {
+            "total_requests": 7,
+            "status_counts": {"PENDING": 3, "IN_REVIEW": 1, "RESPONDED": 1, "RESOLVED": 1, "CLOSED": 1},
+            "priority_counts": {"LOW": 3, "MEDIUM": 2, "HIGH": 1, "URGENT": 1},
+            "recent_requests_count": 2,
+            "assigned_to_me_count": 1,
+            "overdue_count": 1,
+        }
 
 
 @pytest.mark.django_db
 class TestRequestConversation:
     """Tests for Request Conversation."""
 
-    def test_get_request_conversation_client_vs_corporate(self, api_client, client_user, corporate_client, organization, request_type):
-        """Verify get request conversation client vs corporate."""
-        OrganizationMembership.objects.create(
-            organization=organization, user=client_user, role="MEMBER", is_active=True,
+    def test_get_request_conversation_client_vs_corporate(self, api_client, client_user, corporate_client, organization, request_type, settings, tmp_path):
+        """Fails if role visibility drops nested authors, files, or chronological responses."""
+        settings.MEDIA_ROOT = tmp_path
+        corporate_request = _create_conversation_request(
+            client_user, corporate_client, organization, request_type,
         )
-        corporate_request = CorporateRequest.objects.create(
-            client=client_user, organization=organization,
-            corporate_client=corporate_client, request_type=request_type,
-            title="Req", description="Desc", priority="MEDIUM", status="PENDING",
+        visible_response = CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            response_text="Visible",
+            user=corporate_client,
+            user_type="corporate_client",
+        )
+        attachment = CorporateRequestFiles.objects.create(
+            file=SimpleUploadedFile("conversation.txt", b"attachment", content_type="text/plain"),
+        )
+        visible_response.response_files.add(attachment)
+        CorporateRequestResponse.objects.create(
+            corporate_request=corporate_request,
+            response_text="Client reply",
+            user=client_user,
+            user_type="client",
         )
         CorporateRequestResponse.objects.create(
-            corporate_request=corporate_request, response_text="Visible",
-            user=corporate_client, user_type="corporate_client", is_internal_note=False,
+            corporate_request=corporate_request,
+            response_text="Internal note",
+            user=corporate_client,
+            user_type="corporate_client",
+            is_internal_note=True,
         )
-        CorporateRequestResponse.objects.create(
-            corporate_request=corporate_request, response_text="Interna",
-            user=corporate_client, user_type="corporate_client", is_internal_note=True,
-        )
+        url = reverse("get-request-conversation", kwargs={"request_id": corporate_request.id})
+        api_client.force_authenticate(user=client_user)
+        client_response = api_client.get(url)
+        api_client.force_authenticate(user=corporate_client)
+        corporate_response = api_client.get(url)
 
+        assert client_response.status_code == status.HTTP_200_OK
+        assert [(item["response_text"], item["user_email"], len(item["response_files"])) for item in client_response.data["responses"]] == [("Visible", corporate_client.email, 1), ("Client reply", client_user.email, 0)]
+        assert corporate_response.status_code == status.HTTP_200_OK
+        assert [(item["response_text"], item["user_email"]) for item in corporate_response.data["responses"]] == [("Visible", corporate_client.email), ("Client reply", client_user.email), ("Internal note", corporate_client.email)]
+
+    def test_get_request_conversation_returns_empty_thread(self, api_client, client_user, corporate_client, organization, request_type):
+        """Fails if an empty authorized conversation returns stale response data."""
+        corporate_request = _create_conversation_request(
+            client_user, corporate_client, organization, request_type,
+        )
+        api_client.force_authenticate(user=client_user)
+
+        response = api_client.get(reverse("get-request-conversation", kwargs={"request_id": corporate_request.id}))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert {"responses": response.data["responses"], "total_responses": response.data["total_responses"]} == {"responses": [], "total_responses": 0}
+
+    def test_client_conversation_has_constant_query_budget(self, api_client, client_user, corporate_client, organization, request_type):
+        """Fails if client-visible conversation rows restore per-response queries."""
+        corporate_request = _create_conversation_request(
+            client_user, corporate_client, organization, request_type,
+        )
+        _create_conversation_responses(corporate_request, client_user, corporate_client, 1)
+        api_client.force_authenticate(user=client_user)
         url = reverse("get-request-conversation", kwargs={"request_id": corporate_request.id})
 
-        # Cliente solo ve respuestas no internas
-        api_client.force_authenticate(user=client_user)
-        response = api_client.get(url)
-        assert response.status_code == status.HTTP_200_OK
-        texts = {r["response_text"] for r in response.data["responses"]}
-        assert "Visible" in texts
-        assert "Interna" not in texts
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url)
+        _create_conversation_responses(corporate_request, client_user, corporate_client, 49)
+        with CaptureQueriesContext(connection) as fifty_row_queries:
+            fifty_row_response = api_client.get(url)
 
-        # Corporate ve todas
+        assert one_row_response.status_code == status.HTTP_200_OK
+        assert len(one_row_response.data["responses"]) == 1
+        assert fifty_row_response.status_code == status.HTTP_200_OK
+        assert len(fifty_row_response.data["responses"]) == 50
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_CONVERSATION_QUERIES
+
+    def test_corporate_conversation_has_constant_query_budget(self, api_client, client_user, corporate_client, organization, request_type):
+        """Fails if corporate conversation rows restore per-response queries."""
+        corporate_request = _create_conversation_request(
+            client_user, corporate_client, organization, request_type,
+        )
+        _create_conversation_responses(corporate_request, client_user, corporate_client, 1)
         api_client.force_authenticate(user=corporate_client)
-        response = api_client.get(url)
-        texts = {r["response_text"] for r in response.data["responses"]}
-        assert "Visible" in texts
-        assert "Interna" in texts
+        url = reverse("get-request-conversation", kwargs={"request_id": corporate_request.id})
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url)
+        _create_conversation_responses(corporate_request, client_user, corporate_client, 49)
+        with CaptureQueriesContext(connection) as fifty_row_queries:
+            fifty_row_response = api_client.get(url)
+
+        assert one_row_response.status_code == status.HTTP_200_OK
+        assert len(one_row_response.data["responses"]) == 1
+        assert fifty_row_response.status_code == status.HTTP_200_OK
+        assert len(fifty_row_response.data["responses"]) == 50
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_CONVERSATION_QUERIES
 
     def test_get_request_conversation_forbidden_for_other_roles(self, api_client, client_user, organization, corporate_client, request_type):
         """Verify get request conversation forbidden for other roles."""
@@ -966,7 +1340,7 @@ class TestOrganizationMemberManagement:
 # ======================================================================
 
 """Tests for uncovered branches in corporate_request.py (89%→higher)."""
-import unittest.mock as mock
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -1232,12 +1606,20 @@ class TestCorporateRequestRegressionScenarios:
 class TestCorporateRequestViewsAdditionalScenarios:
     """Tests for Corporate Request Views Additional Scenarios."""
 
-    def test_dashboard_stats(self, api_client, corporate_client, organization):
-        """Lines covering corporate_get_dashboard_stats."""
+    def test_dashboard_stats_returns_empty_payload(self, api_client, corporate_client):
+        """Fails if an empty corporate tenant returns missing or stale dashboard counters."""
         api_client.force_authenticate(user=corporate_client)
-        url = reverse("corporate-get-dashboard-stats")
-        resp = api_client.get(url)
-        assert resp.status_code == status.HTTP_200_OK
+        response = api_client.get(reverse("corporate-get-dashboard-stats"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data == {
+            "total_requests": 0,
+            "status_counts": {"PENDING": 0, "IN_REVIEW": 0, "RESPONDED": 0, "RESOLVED": 0, "CLOSED": 0},
+            "priority_counts": {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "URGENT": 0},
+            "recent_requests_count": 0,
+            "assigned_to_me_count": 0,
+            "overdue_count": 0,
+        }
 
     def test_dashboard_stats_non_corp_forbidden(self, api_client, client_user):
         """Decorator: require_corporate_client_only."""
@@ -1252,3 +1634,434 @@ class TestCorporateRequestViewsAdditionalScenarios:
         url = reverse("get-request-conversation", kwargs={"request_id": 99999})
         resp = api_client.get(url)
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_corporate_dashboard_stats_has_constant_query_budget(client_user, corporate_client, request_type, api_client):
+    """Fails if dashboard counters regress from one aggregate into per-row queries."""
+    _create_dashboard_rows(client_user, corporate_client, request_type, 0, 1)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse("corporate-get-dashboard-stats")
+
+    with CaptureQueriesContext(connection) as one_row_queries:
+        one_row_response = api_client.get(url)
+    _create_dashboard_rows(client_user, corporate_client, request_type, 1, 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert one_row_response.status_code == status.HTTP_200_OK
+    assert one_row_response.data["total_requests"] == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    assert fifty_row_response.data["total_requests"] == 50
+    assert len(one_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_DASHBOARD_QUERIES
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_has_bounded_queries(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if client request list relations return to per-row queries."""
+    _create_client_list_requests(
+        client_user,
+        corporate_client,
+        request_type,
+        50,
+    )
+    api_client.force_authenticate(user=client_user)
+    url = reverse("client-get-my-corporate-requests")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {"page_size": 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {"page_size": 50})
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(single_row_response)) == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    fifty_row_items = _corporate_request_list_items(fifty_row_response)
+    assert len(fifty_row_items) == 50
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_counts_internal_responses(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if list response_count stops including corporate internal notes."""
+    requests = _create_client_list_requests(client_user, corporate_client, request_type, 2)
+    CorporateRequestResponse.objects.create(
+        corporate_request=requests[0],
+        response_text="Internal note",
+        user=corporate_client,
+        user_type="corporate_client",
+        is_internal_note=True,
+    )
+    CorporateRequestResponse.objects.create(
+        corporate_request=requests[0],
+        response_text="Client answer",
+        user=client_user,
+        user_type="client",
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("client-get-my-corporate-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert _item_with_request_id(response.data["results"], requests[0].id)["response_count"] == 2
+    assert _item_with_request_id(response.data["results"], requests[1].id)["response_count"] == 0
+
+
+@pytest.mark.django_db
+def test_client_corporate_request_list_serializes_null_organization(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+):
+    """Fails if a client request without an organization raises during list serialization."""
+    requests = _create_client_list_requests(client_user, corporate_client, request_type, 2)
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(reverse("client-get-my-corporate-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    assert _item_with_request_id(response.data["results"], requests[0].id)["organization_info"] is None
+
+
+@pytest.mark.django_db
+def test_corporate_received_request_list_preserves_priority_order(
+    api_client,
+    corporate_client,
+    request_type,
+):
+    """Fails if received request ordering no longer follows the priority contract."""
+    priorities = ["URGENT", "HIGH", "MEDIUM", "LOW"] + ["LOW"] * 46
+    _create_received_list_requests(
+        corporate_client,
+        request_type,
+        50,
+        priorities=priorities,
+    )
+    api_client.force_authenticate(user=corporate_client)
+    response = api_client.get(reverse("corporate-get-received-requests"), {"page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+    fifty_row_items = _corporate_request_list_items(response)
+    assert len(fifty_row_items) == 50
+    assert [item["priority"] for item in fifty_row_items[:4]] == ["URGENT", "HIGH", "MEDIUM", "LOW"]
+
+
+@pytest.mark.django_db
+def test_corporate_received_request_list_has_bounded_queries(
+    api_client,
+    corporate_client,
+    request_type,
+):
+    """Fails if received request list relations return to per-row queries."""
+    _create_received_list_requests(corporate_client, request_type, 50, ["MEDIUM"] * 50)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse("corporate-get-received-requests")
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url, {"page_size": 1})
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url, {"page_size": 50})
+
+    assert single_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(single_row_response)) == 1
+    assert fifty_row_response.status_code == status.HTTP_200_OK
+    assert len(_corporate_request_list_items(fifty_row_response)) == 50
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_LIST_QUERIES
+
+
+@pytest.mark.django_db
+def test_client_request_detail_preserves_nested_payload(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if detail drops nullable fields, nested files, authors, or internal notes."""
+    settings.MEDIA_ROOT = tmp_path
+    corporate_request, responses = _create_detail_payload_fixture(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    api_client.force_authenticate(user=client_user)
+
+    response = api_client.get(
+        reverse(
+            'client-get-corporate-request-detail',
+            kwargs={'request_id': corporate_request.pk},
+        )
+    )
+
+    payload = response.data['corporate_request']
+    assert response.status_code == status.HTTP_200_OK
+    assert _detail_payload_summary(payload) == {
+        'request': (
+            corporate_request.pk,
+            2,
+            None,
+            None,
+            ['detail-request.txt'],
+        ),
+        'responses': [
+            ('Detail response 0', client_user.email, False, []),
+            (
+                'Detail response 1',
+                responses[1].user.email,
+                True,
+                ['detail-response.txt'],
+            ),
+        ],
+    }
+
+
+@pytest.mark.django_db
+def test_client_request_detail_has_constant_query_budget(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if client detail restores per-response relation queries."""
+    corporate_request = _create_populated_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+        'Client detail budget organization',
+    )
+    settings.MEDIA_ROOT = tmp_path
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('client-budget.txt', b'client budget attachment'),
+    )
+    _create_detail_responses(corporate_request, client_user, 1, response_file)
+    api_client.force_authenticate(user=client_user)
+    url = reverse(
+        'client-get-corporate-request-detail',
+        kwargs={'request_id': corporate_request.pk},
+    )
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_detail_responses(corporate_request, client_user, 49, response_file)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        single_row_response.data['corporate_request']['response_count'],
+        fifty_row_response.status_code,
+        fifty_row_response.data['corporate_request']['response_count'],
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CLIENT_REQUEST_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+def test_corporate_request_detail_has_constant_query_budget(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    settings,
+    tmp_path,
+):
+    """Fails if corporate detail restores per-response relation queries."""
+    corporate_request = _create_populated_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+        'Corporate detail budget organization',
+    )
+    settings.MEDIA_ROOT = tmp_path
+    response_file = CorporateRequestFiles.objects.create(
+        file=SimpleUploadedFile('corporate-budget.txt', b'corporate budget attachment'),
+    )
+    _create_detail_responses(corporate_request, client_user, 1, response_file)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse(
+        'corporate-get-request-detail',
+        kwargs={'request_id': corporate_request.pk},
+    )
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_detail_responses(corporate_request, client_user, 49, response_file)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        single_row_response.data['corporate_request']['response_count'],
+        fifty_row_response.status_code,
+        fifty_row_response.data['corporate_request']['response_count'],
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CORPORATE_REQUEST_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('actor', 'url_name'),
+    [
+        ('client', 'client-get-corporate-request-detail'),
+        ('corporate', 'corporate-get-request-detail'),
+    ],
+)
+def test_request_detail_returns_empty_relations_for_nullable_fields(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    actor,
+    url_name,
+):
+    """Fails if a detail with nullable fields bypasses the empty relation fast path."""
+    corporate_request = _create_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    authenticated_user = {
+        'client': client_user,
+        'corporate': corporate_client,
+    }[actor]
+    api_client.force_authenticate(user=authenticated_user)
+
+    response = api_client.get(
+        reverse(url_name, kwargs={'request_id': corporate_request.pk})
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert {
+        'assigned_to_info': response.data['corporate_request']['assigned_to_info'],
+        'organization_info': response.data['corporate_request']['organization_info'],
+        'responses': response.data['corporate_request']['responses'],
+        'response_count': response.data['corporate_request']['response_count'],
+    } == {
+        'assigned_to_info': None,
+        'organization_info': None,
+        'responses': [],
+        'response_count': 0,
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ('role', 'url_name'),
+    [
+        ('client', 'client-get-corporate-request-detail'),
+        ('corporate_client', 'corporate-get-request-detail'),
+    ],
+)
+def test_request_detail_hides_other_tenant(
+    api_client,
+    client_user,
+    corporate_client,
+    request_type,
+    role,
+    url_name,
+):
+    """Fails if either detail endpoint exposes a request to a different tenant."""
+    corporate_request = _create_detail_request(
+        client_user,
+        corporate_client,
+        request_type,
+    )
+    outsider = User.objects.create_user(
+        email=f'{role}-detail-outsider@example.com',
+        password=None,
+        role=role,
+    )
+    api_client.force_authenticate(user=outsider)
+
+    response = api_client.get(
+        reverse(url_name, kwargs={'request_id': corporate_request.pk})
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_client_organizations_list_preserves_active_membership_visibility(api_client, role):
+    """Fails if the list excludes inactive organizations or includes inactive memberships."""
+    actor = User.objects.create_user(
+        email=f'round-five-{role}-organization-actor@example.com',
+        password=None,
+        role=role,
+    )
+    visible_memberships = _create_client_organization_memberships(actor, role, 2)
+    visible_memberships[0].organization.is_active = False
+    visible_memberships[0].organization.save(update_fields=['is_active'])
+    hidden_membership = _create_client_organization_memberships(actor, f'{role}-hidden', 1)[0]
+    hidden_membership.is_active = False
+    hidden_membership.save(update_fields=['is_active'])
+    api_client.force_authenticate(user=actor)
+
+    response = api_client.get(reverse('client-get-my-organizations'))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['total_count'] == 2
+    assert [
+        (item['id'], item['title'], item['corporate_client']['id'], item['member_role'])
+        for item in response.data['organizations']
+    ] == [
+        (
+            visible_memberships[1].organization_id,
+            visible_memberships[1].organization.title,
+            visible_memberships[1].organization.corporate_client_id,
+            'MEMBER',
+        ),
+        (
+            visible_memberships[0].organization_id,
+            visible_memberships[0].organization.title,
+            visible_memberships[0].organization.corporate_client_id,
+            'MEMBER',
+        ),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_client_organizations_list_has_constant_query_budget(api_client, role):
+    """Fails if nested organization corporate clients return to per-row queries."""
+    actor = User.objects.create_user(
+        email=f'round-five-{role}-organization-budget@example.com',
+        password=None,
+        role=role,
+    )
+    _create_client_organization_memberships(actor, f'{role}-budget', 1)
+    api_client.force_authenticate(user=actor)
+    url = reverse('client-get-my-organizations')
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_client_organization_memberships(actor, f'{role}-budget-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organizations']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organizations']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CLIENT_ORGANIZATIONS_QUERIES

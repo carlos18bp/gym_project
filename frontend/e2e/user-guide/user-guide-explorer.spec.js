@@ -82,6 +82,7 @@ test('browser back restores the selected module', { tag: ['@flow:user-guide-expl
   await openExplorerGuide(page);
   await page.getByTestId('explorer-node-legal').click();
   await page.getByTestId('explorer-node-documents').click();
+  await expect(page).toHaveURL(/[?&]node=documents(?:&|$)/);
   await page.goBack();
 
   await expect(page.getByTestId('explorer-detail-title')).toHaveText('Trabajo jurídico');
@@ -91,6 +92,7 @@ test('reload restores the shared explorer URL', { tag: ['@flow:user-guide-explor
   await openExplorerGuide(page);
   await page.getByTestId('explorer-node-legal').click();
   await page.getByTestId('explorer-node-documents').click();
+  await expect(page).toHaveURL(/[?&]node=documents(?:&|$)/);
   await page.reload();
 
   await expect(page.getByTestId('explorer-detail-title')).toHaveText('Archivos Jurídicos');

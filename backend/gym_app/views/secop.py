@@ -1,7 +1,7 @@
 import logging
 
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -182,7 +182,13 @@ def secop_process_list(request):
         closing_date_from, closing_date_to,
         is_open, ordering, page, page_size
     """
-    queryset = SECOPProcess.objects.prefetch_related('classifications').all()
+    queryset = SECOPProcess.objects.prefetch_related(
+        Prefetch(
+            'classifications',
+            queryset=ProcessClassification.objects.filter(user=request.user),
+            to_attr='_current_user_classifications',
+        )
+    ).all()
     queryset = _apply_secop_filters(queryset, request.query_params)
 
     # --- Ordering ---
@@ -226,7 +232,11 @@ def secop_process_detail(request, pk):
     """
     try:
         process = SECOPProcess.objects.prefetch_related(
-            'classifications__user'
+            Prefetch(
+                'classifications',
+                queryset=ProcessClassification.objects.select_related('user'),
+                to_attr='_detail_classifications',
+            )
         ).get(pk=pk)
     except SECOPProcess.DoesNotExist:
         return Response(
@@ -263,7 +273,13 @@ def secop_my_classified(request):
     process_ids = classifications.values_list('process_id', flat=True)
     queryset = SECOPProcess.objects.filter(
         id__in=process_ids
-    ).prefetch_related('classifications').order_by('-closing_date')
+    ).prefetch_related(
+        Prefetch(
+            'classifications',
+            queryset=ProcessClassification.objects.filter(user=request.user),
+            to_attr='_current_user_classifications',
+        )
+    ).order_by('-closing_date')
 
     page_size = _safe_page_size(request.query_params)
     page_number = request.query_params.get('page', 1)
@@ -351,6 +367,8 @@ def secop_alerts_list_create(request):
     if request.method == 'GET':
         alerts = SECOPAlert.objects.filter(
             user=request.user
+        ).annotate(
+            _notification_count=Count('notifications')
         ).order_by('-created_at')
         serializer = SECOPAlertSerializer(alerts, many=True)
         return Response(serializer.data)

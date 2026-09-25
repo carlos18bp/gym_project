@@ -2,6 +2,77 @@
 
 ## 1. Current State
 
+### Membresías y detalles organizacionales (2026-09-25)
+
+Quinta ronda en el PR #128, candidatos P-backend-queries-12/13/14. Las
+organizaciones disponibles para solicitudes unen su corporativo; las membresías
+precargan resúmenes anotados sin cambiar el orden de ingreso. Ambos detalles de
+organización cargan conteos independientes y miembros activos con sus usuarios.
+El serializer reconoce ceros y listas vacías precargadas, conservando el fallback
+para creación, edición e instancias directas. Se mantienen roles, permisos y las
+organizaciones inactivas visibles mediante una membresía activa en los listados.
+QA independiente verificó los dieciséis casos nuevos y cinco regresiones en
+MySQL 8.4 aislado: consultas constantes con uno y cincuenta registros (listados
+una/dos; detalles dos/dos/tres), payloads, frontera de solicitudes recientes y
+acceso. Auditor y gate canónico aprobados. El contrato sigue sin paginación:
+la mejora de queries no garantiza límites de memoria o payload al techo del dataset.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-25-gym_project-perf-memberships-organization-details.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-25-r5-gym_project-qa.md`.
+
+### Procesos, invitaciones y detalles corporativos (2026-09-24)
+
+Cuarta ronda en el PR #128, candidatos P-backend-queries-09/10/11. El listado de
+procesos une su tipo de caso; las invitaciones precargan usuarios y organizaciones
+con conteos independientes; ambos detalles corporativos precargan relaciones,
+respuestas, autores y adjuntos. El conteo de respuestas reutiliza la caché normal
+del manager, sin modificar el serializer ni la visibilidad actual.
+QA verifica consultas constantes con uno y cincuenta registros, máximo seis
+por listado y cuatro por detalle, además de payloads y permisos.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-processes-invitations-details.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-24-r4-gym_project-qa.md`.
+Procesos y respuestas siguen sin paginación: esta ronda no garantiza un límite de
+memoria/payload al techo del dataset. Esa evolución del contrato queda separada.
+
+### Clasificaciones SECOP (2026-09-24)
+
+Tercera ronda en el PR #128, candidatos P-backend-queries-07/08. Los dos listados
+SECOP cargan sólo la clasificación del usuario actual; el detalle carga todas las
+clasificaciones con sus autores y reutiliza esa precarga. Se conservan filtros,
+paginación, campos, permisos y los fallbacks de los serializers directos.
+Los guards exigen consultas constantes con uno y cincuenta registros (listados
+máximo seis, detalle máximo dos), además de una clasificación cargada por proceso
+propio mostrado, sin materializar clasificaciones ajenas. La cobertura contempla
+precargas vacías, identidad del autor, notas, estados y fechas del payload.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-secop-classifications.md`.
+Verificación independiente: `vps-ops-toolkit/docs/audits/2026-09-24-r3-gym_project-qa.md`.
+Sin cambios de UX, infraestructura, dependencias o migraciones.
+
+### Conversaciones, alertas y dashboard (2026-09-24)
+
+Segunda ronda en el PR #128: precarga de autores y archivos de conversación,
+conteo anotado de notificaciones SECOP y agregado condicional del dashboard.
+Se conservan payloads, visibilidad y filtros. QA independiente confirma consultas
+constantes con uno y cincuenta registros: conversación 3, alertas 1 y dashboard 1.
+Los nueve tests nuevos/reforzados pasan en SQLite y MySQL 8.4 aislados; el lote
+MySQL también conserva los cuatro presupuestos anteriores y las regresiones de
+permisos y CRUD. Los cuatro presupuestos nuevos fallan por aserciones contra
+`ac3178f`. Auditor dedicado y gate estricto aprobados; sin cambios en flujos frontend.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-conversations-alerts-dashboard.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-24-r2-gym_project-qa.md`.
+
+### Rendimiento de listados (2026-09-24)
+
+Ronda `perf-bounded-lists` sobre `master`: organizaciones, solicitudes corporativas
+y procesos recientes conservan su contrato y cargan los datos relacionados sin
+consultas por fila. Los conteos usan subconsultas independientes para evitar
+multiplicación de relaciones y conservar el orden de prioridad. Recientes mantiene
+el límite de diez y las etapas con/sin alerta. Presupuesto: queries constantes y
+máximo seis por listado. QA mide 2 consultas en organizaciones y solicitudes
+y 4 en recientes; verifica los presupuestos en SQLite y MySQL 8.4 aislados,
+además de los conteos, la prioridad y el contenido relacionado.
+Perfil y guion: `vps-ops-toolkit/docs/audits/2026-09-24-gym_project-perf-bounded-lists.md`.
+Sin migraciones, dependencias nuevas ni cambios en flujos frontend.
+
 ### Explorador del manual (2026-09-19)
 
 Nueva subsección del Manual de Usuario basada en el explorador orbital de Project Apps:

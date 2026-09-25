@@ -125,7 +125,49 @@ sequenceDiagram
     E-->>D: Response
 ```
 
-### 3.1 Document PDF resource boundary
+### 3.1 Rendimiento de listados
+
+Listados optimizados (2026-09-24): organizaciones y solicitudes corporativas
+cargan sus FKs en la consulta principal y calculan conteos mediante subconsultas
+correlacionadas. Esto evita joins multiplicativos y conserva filtros/orden.
+Procesos recientes combina joins de caso/abogado con prefetch de clientes,
+archivos y etapas con alerta; conserva el límite de diez. Los serializers mantienen
+fallback cuando reciben instancias sin anotaciones. Los presupuestos de queries
+viven en los tests de vistas y en `docs/PERFORMANCE_STANDARDS.md`.
+
+La conversación corporativa precarga autores y adjuntos después del filtro de
+visibilidad. El listado SECOP anota sus conteos de notificaciones; el serializer
+conserva el fallback para instancias sin anotación. El dashboard corporativo
+calcula todos sus contadores en un único agregado condicional, con el mismo
+alcance por corporativo y las mismas fronteras de recientes y vencidas.
+
+Los listados de procesos SECOP precargan sólo la clasificación del usuario actual
+en `_current_user_classifications`; el detalle precarga todas las clasificaciones
+del equipo con sus autores en `_detail_classifications`. Los atributos separados
+evitan confundir una relación completa con una selección por usuario. Ambos
+serializers respetan una precarga vacía y conservan su fallback para instancias
+obtenidas directamente. No cambia el contrato de filtros, paginación o respuesta.
+
+El listado general de procesos une el tipo de caso. Los listados de invitaciones
+precargan usuarios y organizaciones con conteos anotados; el queryset de
+organización se comparte con el listado del propietario. Se evita el manager
+inverso al construir las invitaciones para que su instancia conocida no omita
+el prefetch anotado. Ambos detalles corporativos precargan sus cinco FKs,
+archivos y respuestas con autores/adjuntos. El prefetch normal de respuestas,
+sin `to_attr`, permite que `responses.count()` reutilice la caché de la relación.
+Estos contratos sin paginación de procesos/respuestas mantienen su payload;
+la constancia de consultas no impone un límite de memoria o tamaño de respuesta.
+
+Las organizaciones para crear solicitudes unen su corporativo desde la membresía.
+El listado de membresías usa Prefetch de organizaciones anotadas, sin un
+select_related competidor, y conserva el orden de ingreso de las membresías.
+Los detalles organizacionales reutilizan esos conteos independientes y agregan
+solicitudes recientes; precargan miembros activos con usuarios en
+`_active_memberships`. El serializer acepta anotaciones cero y precargas vacías,
+con fallback para creación, edición e instancias directas. El control de acceso
+público conserva su consulta de pertenencia y su distinción entre 403 y 404.
+
+### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
 vulnerability records across nine packages. User-authored HTML now reaches a

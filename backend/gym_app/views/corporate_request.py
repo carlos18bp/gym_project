@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, IntegerField, OuterRef, Prefetch, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from gym_app.models import (
@@ -22,6 +23,35 @@ class CorporateRequestPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _with_list_relations(queryset):
+    """Load list fields without per-request queries or an outer GROUP BY."""
+    response_counts = (
+        CorporateRequestResponse.objects.filter(corporate_request_id=OuterRef('pk'))
+        .order_by().values('corporate_request_id').annotate(total=Count('pk')).values('total')
+    )
+    return queryset.select_related(
+        'client', 'corporate_client', 'organization', 'request_type',
+    ).annotate(
+        _response_count=Coalesce(Subquery(response_counts, output_field=IntegerField()), 0),
+    )
+
+
+def _with_detail_relations(queryset):
+    """Load detail fields and keep responses in the related manager's cache."""
+    return queryset.select_related(
+        'client', 'corporate_client', 'assigned_to', 'organization', 'request_type',
+    ).prefetch_related(
+        'files',
+        Prefetch(
+            'responses',
+            queryset=CorporateRequestResponse.objects.select_related('user').prefetch_related(
+                'response_files',
+            ),
+        ),
+    )
+
 
 # Decorators for role-based access
 def require_client_only(view_func):
@@ -73,7 +103,7 @@ def client_get_my_organizations(request):
     memberships = OrganizationMembership.objects.filter(
         user=request.user,
         is_active=True
-    ).select_related('organization')
+    ).select_related('organization__corporate_client')
     
     organizations_data = []
     for membership in memberships:
@@ -159,7 +189,7 @@ def client_get_my_corporate_requests(request):
     search = request.GET.get('search', None)
     
     # Base queryset - only requests created by current client
-    queryset = CorporateRequest.objects.filter(client=request.user)
+    queryset = _with_list_relations(CorporateRequest.objects.filter(client=request.user))
     
     # Apply filters
     if status_filter:
@@ -199,7 +229,7 @@ def client_get_corporate_request_detail(request, request_id):
     Only the client who created the request can view it.
     """
     corporate_request = get_object_or_404(
-        CorporateRequest, 
+        _with_detail_relations(CorporateRequest.objects.all()),
         id=request_id, 
         client=request.user
     )
@@ -278,7 +308,7 @@ def corporate_get_received_requests(request):
     assigned_to_me = request.GET.get('assigned_to_me', None)
     
     # Base queryset - only requests for current corporate client
-    queryset = CorporateRequest.objects.filter(corporate_client=request.user)
+    queryset = _with_list_relations(CorporateRequest.objects.filter(corporate_client=request.user))
     
     # Apply filters
     if status_filter:
@@ -326,7 +356,7 @@ def corporate_get_request_detail(request, request_id):
     Only the corporate client who received the request can view it.
     """
     corporate_request = get_object_or_404(
-        CorporateRequest, 
+        _with_detail_relations(CorporateRequest.objects.all()),
         id=request_id, 
         corporate_client=request.user
     )
@@ -459,36 +489,42 @@ def corporate_get_dashboard_stats(request):
     # Base queryset for current corporate client
     base_queryset = CorporateRequest.objects.filter(corporate_client=request.user)
     
-    # Status counts
-    status_counts = {}
-    for status_code, status_name in CorporateRequest.STATUS_CHOICES:
-        status_counts[status_code] = base_queryset.filter(status=status_code).count()
-    
-    # Priority counts
-    priority_counts = {}
-    for priority_code, priority_name in CorporateRequest.PRIORITY_CHOICES:
-        priority_counts[priority_code] = base_queryset.filter(priority=priority_code).count()
-    
-    # Recent requests (last 7 days)
-    recent_date = timezone.now() - timezone.timedelta(days=7)
-    recent_requests_count = base_queryset.filter(created_at__gte=recent_date).count()
-    
-    # Assigned to current user
-    assigned_to_me_count = base_queryset.filter(assigned_to=request.user).count()
-    
-    # Overdue requests (past estimated completion date)
-    overdue_count = base_queryset.filter(
-        estimated_completion_date__lt=timezone.now(),
-        status__in=['PENDING', 'IN_REVIEW']
-    ).count()
+    now = timezone.now()
+    status_aggregates = {
+        f'status_{code}': Count('pk', filter=Q(status=code))
+        for code, _ in CorporateRequest.STATUS_CHOICES
+    }
+    priority_aggregates = {
+        f'priority_{code}': Count('pk', filter=Q(priority=code))
+        for code, _ in CorporateRequest.PRIORITY_CHOICES
+    }
+    counts = base_queryset.aggregate(
+        total_requests=Count('pk'),
+        recent_requests_count=Count(
+            'pk', filter=Q(created_at__gte=now - timezone.timedelta(days=7))
+        ),
+        assigned_to_me_count=Count('pk', filter=Q(assigned_to=request.user)),
+        overdue_count=Count('pk', filter=Q(
+            estimated_completion_date__lt=now,
+            status__in=['PENDING', 'IN_REVIEW'],
+        )),
+        **status_aggregates,
+        **priority_aggregates,
+    )
     
     return Response({
-        'total_requests': base_queryset.count(),
-        'status_counts': status_counts,
-        'priority_counts': priority_counts,
-        'recent_requests_count': recent_requests_count,
-        'assigned_to_me_count': assigned_to_me_count,
-        'overdue_count': overdue_count
+        'total_requests': counts['total_requests'],
+        'status_counts': {
+            code: counts[f'status_{code}']
+            for code, _ in CorporateRequest.STATUS_CHOICES
+        },
+        'priority_counts': {
+            code: counts[f'priority_{code}']
+            for code, _ in CorporateRequest.PRIORITY_CHOICES
+        },
+        'recent_requests_count': counts['recent_requests_count'],
+        'assigned_to_me_count': counts['assigned_to_me_count'],
+        'overdue_count': counts['overdue_count'],
     }, status=status.HTTP_200_OK)
 
 # =============================================================================
@@ -530,7 +566,9 @@ def get_request_conversation(request, request_id):
         # Corporate clients can see all responses
         responses = corporate_request.responses.all()
     
-    responses = responses.order_by('created_at')
+    responses = responses.select_related('user').prefetch_related(
+        'response_files'
+    ).order_by('created_at')
     serializer = CorporateRequestResponseSerializer(responses, many=True)
     
     return Response({

@@ -3,7 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, IntegerField, OuterRef, Prefetch, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.core.exceptions import ValidationError as DjangoValidationError
 
@@ -26,6 +27,56 @@ class OrganizationPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def _with_organization_list_relations(queryset):
+    """Load organization summaries without multiplying independent counts."""
+    active_members = (
+        OrganizationMembership.objects.filter(organization_id=OuterRef('pk'), is_active=True)
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    pending_invitations = (
+        OrganizationInvitation.objects.filter(organization_id=OuterRef('pk'), status='PENDING')
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    return queryset.select_related('corporate_client').annotate(
+        _member_count=Coalesce(Subquery(active_members, output_field=IntegerField()), 0),
+        _pending_invitations_count=Coalesce(
+            Subquery(pending_invitations, output_field=IntegerField()), 0,
+        ),
+    )
+
+
+def _with_invitation_list_relations(queryset):
+    """Load each invitation's users and annotated organization summary."""
+    return queryset.select_related('invited_by', 'invited_user').prefetch_related(
+        Prefetch(
+            'organization',
+            queryset=_with_organization_list_relations(Organization.objects.all()),
+        ),
+    )
+
+
+def _with_organization_detail_relations(queryset):
+    """Load organization details with independent counts and active members."""
+    recent_requests = (
+        CorporateRequest.objects.filter(
+            organization_id=OuterRef('pk'),
+            created_at__gte=timezone.now() - timezone.timedelta(days=30),
+        )
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    return _with_organization_list_relations(queryset).annotate(
+        _recent_requests_count=Coalesce(
+            Subquery(recent_requests, output_field=IntegerField()), 0,
+        ),
+    ).prefetch_related(
+        Prefetch(
+            'memberships',
+            queryset=OrganizationMembership.objects.filter(is_active=True).select_related('user'),
+            to_attr='_active_memberships',
+        ),
+    )
 
 # Decorators for role-based access
 def require_corporate_client_only(view_func):
@@ -109,7 +160,9 @@ def get_my_organizations(request):
     is_active = request.GET.get('is_active', None)
     
     # Base queryset - only organizations led by current user
-    queryset = Organization.objects.filter(corporate_client=request.user)
+    queryset = _with_organization_list_relations(
+        Organization.objects.filter(corporate_client=request.user)
+    )
     
     # Apply filters
     if search:
@@ -154,7 +207,7 @@ def get_organization_detail(request, organization_id):
     Only the corporate client who leads the organization can view it.
     """
     organization = get_object_or_404(
-        Organization,
+        _with_organization_detail_relations(Organization.objects.all()),
         id=organization_id,
         corporate_client=request.user
     )
@@ -295,7 +348,9 @@ def get_organization_invitations(request, organization_id):
     status_filter = request.GET.get('status', None)
     
     # Base queryset
-    queryset = organization.invitations.all()
+    queryset = _with_invitation_list_relations(
+        OrganizationInvitation.objects.filter(organization=organization)
+    )
     
     # Apply filters
     if status_filter:
@@ -507,7 +562,9 @@ def get_my_invitations(request):
     status_filter = request.GET.get('status', 'PENDING')
     
     # Base queryset - only invitations for current user
-    queryset = OrganizationInvitation.objects.filter(invited_user=request.user)
+    queryset = _with_invitation_list_relations(
+        OrganizationInvitation.objects.filter(invited_user=request.user)
+    )
     
     # Apply filters
     if status_filter:
@@ -597,7 +654,12 @@ def get_my_memberships(request):
     memberships = OrganizationMembership.objects.filter(
         user=request.user,
         is_active=True
-    ).select_related('organization')
+    ).prefetch_related(
+        Prefetch(
+            'organization',
+            queryset=_with_organization_list_relations(Organization.objects.all()),
+        ),
+    )
     
     organizations = [membership.organization for membership in memberships]
     
@@ -652,7 +714,11 @@ def get_organization_public_detail(request, organization_id):
     Get public information about an organization.
     Both clients and corporate clients can view this.
     """
-    organization = get_object_or_404(Organization, id=organization_id, is_active=True)
+    organization = get_object_or_404(
+        _with_organization_detail_relations(Organization.objects.all()),
+        id=organization_id,
+        is_active=True,
+    )
     
     # Check if user has access (either leader or member)
     has_access = False

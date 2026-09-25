@@ -2,6 +2,46 @@
 
 ## 1. Feature Status
 
+**2026-09-25 — Quinta ronda de rendimiento:** candidatos 12/13/14 aplicados en
+el PR #128: organizaciones para solicitudes, resúmenes de membresías y detalles
+organizacionales. Presupuestos constantes de máximo seis consultas por listado
+y cuatro por detalle, conservando payloads, permisos y fallbacks del serializer.
+QA independiente aprobó dieciséis casos nuevos y cinco regresiones en MySQL 8.4
+aislado, incluyendo el consumo de precargas vacías y la frontera de solicitudes
+recientes. Auditor y gate canónico aprobados; evidencia en
+`vps-ops-toolkit/docs/audits/2026-09-25-r5-gym_project-qa.md`.
+Los candidatos 15–17 quedan para rondas posteriores; no se agregan paginación,
+migraciones ni cambios de infraestructura.
+
+**2026-09-24 — Rendimiento:** tres candidatos de consultas por fila aplicados
+(organizaciones, solicitudes corporativas y procesos recientes); presupuestos
+constantes comprobados en SQLite y MySQL 8.4 aislados. Seguimiento en el ledger
+`gym_project` del toolkit y PR #128 de sesión `perf-bounded-lists`.
+No incluye cambios de infraestructura ni despliegue.
+
+**2026-09-24 — Segunda ronda de rendimiento:** conversación corporativa, alertas
+SECOP y dashboard aplicados en la misma sesión. Presupuestos constantes de 3, 1
+y 1 consultas, respectivamente, comprobados en SQLite y MySQL 8.4 aislados.
+Los cuatro guards nuevos detectan la regresión contra `ac3178f`; los cuatro
+anteriores siguen pasando. Nueve tests nuevos/reforzados cubren también payloads,
+visibilidad, aislamiento y fronteras temporales. Auditor dedicado aprobado.
+Seguimiento: candidatos P-backend-queries-04/05/06 y PR #128.
+
+**2026-09-24 — Tercera ronda de rendimiento:** candidatos 07/08 aplicados en SECOP.
+Listados con precarga de clasificación personal y detalle con precarga de autores
+reutilizada. Seis tests backend nuevos protegen consultas constantes, filas cargadas,
+payload y listas vacías; los tests directos existentes conservan el fallback.
+Presupuestos y evidencia independiente en el reporte QA de ronda 3 del toolkit.
+Los candidatos 09/10/11 se trabajan en la cuarta ronda descrita abajo.
+
+**2026-09-24 — Cuarta ronda de rendimiento:** procesos, invitaciones y detalles
+corporativos precargan sus relaciones manteniendo contratos y permisos. Se
+reutilizan las anotaciones de organizaciones y la caché de respuestas de Django.
+Presupuestos: consultas constantes con uno y cincuenta registros, máximo seis
+por listado y cuatro por detalle. QA y mediciones de esta ronda en el reporte
+`2026-09-24-r4-gym_project-qa.md` del toolkit. Candidatos 12–15 quedan pendientes
+en el ledger; la paginación de procesos/respuestas requiere otra tarea de contrato.
+
 **2026-09-19 — Manual de Usuario:** explorador orbital del ecosistema implementado
 con catálogo completo, permisos independientes de la visibilidad, recorridos,
 búsqueda, relaciones y adaptación a móvil. Validación focalizada y siete flujos E2E

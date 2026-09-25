@@ -1,14 +1,20 @@
 """Tests for SECOP views module."""
+from datetime import datetime
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
+from django.db.models.signals import post_init
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from freezegun import freeze_time
 from rest_framework import status
 
 from gym_app.models import (
+    AlertNotification,
     ProcessClassification,
     SavedView,
     SECOPAlert,
@@ -16,6 +22,127 @@ from gym_app.models import (
     SyncLog,
     User,
 )
+
+MAX_SECOP_ALERT_LIST_QUERIES = 6
+MAX_SECOP_PROCESS_LIST_QUERIES = 6
+MAX_SECOP_MY_CLASSIFIED_QUERIES = 6
+MAX_SECOP_PROCESS_DETAIL_QUERIES = 2
+
+
+def _create_secop_processes(start, count):
+    """Create distinct SECOP processes for alert notification fixtures."""
+    return [
+        SECOPProcess.objects.create(
+            process_id=f"COUNT-SECOP-{index}",
+            entity_name="Count entity",
+        )
+        for index in range(start, start + count)
+    ]
+
+
+def _set_alert_created_at(alert, created_at):
+    """Set a deterministic list order after the auto timestamp is assigned."""
+    SECOPAlert.objects.filter(pk=alert.pk).update(created_at=created_at)
+
+
+def _create_secop_alert_entries(user, start, count):
+    """Create owned alerts paired with distinct SECOP processes for list serialization."""
+    entries = []
+    for index in range(start, start + count):
+        alert = SECOPAlert.objects.create(user=user, name=f"Performance alert {index}")
+        process = SECOPProcess.objects.create(
+            process_id=f"PERF-SECOP-{index}",
+            entity_name=f"Performance entity {index}",
+        )
+        if index % 2:
+            AlertNotification.objects.create(alert=alert, process=process, is_sent=bool(index % 4))
+        entries.append(alert)
+    return entries
+
+
+def _create_prefetch_processes(owner, other_user, count):
+    """Create processes with one owner and one foreign classification each."""
+    fixed_timestamp = datetime(2026, 9, 24, 12, 0, tzinfo=dt_timezone.utc)
+    processes = []
+    owner_classifications = []
+    for index in range(count):
+        process = SECOPProcess.objects.create(
+            process_id=f"PREFETCH-SECOP-{index}",
+            entity_name=f"Prefetch entity {index}",
+        )
+        owner_classifications.append(ProcessClassification.objects.create(
+            process=process,
+            user=owner,
+            status=ProcessClassification.Status.INTERESTING,
+            notes=f"Owner note {index}",
+        ))
+        ProcessClassification.objects.create(
+            process=process,
+            user=other_user,
+            status=ProcessClassification.Status.APPLIED,
+            notes=f"Foreign note {index}",
+        )
+        processes.append(process)
+    ProcessClassification.objects.filter(
+        pk__in=[classification.pk for classification in owner_classifications]
+    ).update(created_at=fixed_timestamp, updated_at=fixed_timestamp)
+    expected_classifications = {
+        classification.process.process_id: {
+            'id': classification.pk,
+            'status': ProcessClassification.Status.INTERESTING,
+            'notes': classification.notes,
+            'updated_at': '2026-09-24T12:00:00Z',
+        }
+        for classification in owner_classifications
+    }
+    return expected_classifications
+
+
+def _create_detail_classifications(process, current_user, count):
+    """Create deterministic detail rows with their related authors."""
+    fixed_timestamp = datetime(2026, 9, 24, 12, 0, tzinfo=dt_timezone.utc)
+    classifications = [
+        ProcessClassification.objects.create(
+            process=process,
+            user=current_user,
+            status=ProcessClassification.Status.INTERESTING,
+            notes="Current user note",
+        )
+    ]
+    for index in range(1, count):
+        user = User.objects.create_user(
+            email=f"detail-classification-{index}@test.com",
+            password=None,
+            first_name=f"Detail{index}",
+            last_name="Reviewer",
+            role="lawyer",
+        )
+        classifications.append(
+            ProcessClassification.objects.create(
+                process=process,
+                user=user,
+                status=ProcessClassification.Status.APPLIED,
+                notes=f"Detail note {index}",
+            )
+        )
+    ProcessClassification.objects.filter(
+        pk__in=[classification.pk for classification in classifications]
+    ).update(created_at=fixed_timestamp, updated_at=fixed_timestamp)
+    expected = {
+        (
+            classification.pk,
+            classification.user.id,
+            classification.user.first_name,
+            classification.user.last_name,
+            classification.status.value,
+            classification.notes,
+            classification.user_id == current_user.id,
+            "2026-09-24T12:00:00Z",
+            "2026-09-24T12:00:00Z",
+        )
+        for classification in classifications
+    }
+    return expected
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -72,7 +199,7 @@ def process_open():
         status='Abierto',
         procurement_method='Licitación pública',
         contract_type='Obra',
-        base_price=Decimal('500000000'),
+        base_price=Decimal(500000000),
         description='Construcción de vía terciaria en Bogotá',
         procedure_name='Obra vial Bogotá',
         publication_date='2026-03-01',
@@ -93,7 +220,7 @@ def process_closed():
         status='Cerrado',
         procurement_method='Concurso de méritos',
         contract_type='Consultoría',
-        base_price=Decimal('100000000'),
+        base_price=Decimal(100000000),
         description='Consultoría ambiental en Antioquia',
         procedure_name='Consultoría ambiental',
         publication_date='2026-02-01',
@@ -266,6 +393,189 @@ class TestSecopProcessViews:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1
         assert response.data['results'][0]['process_id'] == 'CO1.REQ.VIEW001'
+
+    def test_process_list_prefetches_only_current_user_classifications(
+        self, api_client, lawyer, other_lawyer
+    ):
+        """Fails if process list materializes foreign classifications or restores N+1 queries."""
+        expected_classifications = _create_prefetch_processes(
+            lawyer, other_lawyer, 50
+        )
+        url = reverse('secop-process-list')
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url, {'page_size': 1})
+        initialized_classifications = []
+
+        def record_classification(sender, instance, **kwargs):
+            initialized_classifications.append(instance.pk)
+
+        post_init.connect(record_classification, sender=ProcessClassification, weak=False)
+        try:
+            with CaptureQueriesContext(connection) as fifty_row_queries:
+                fifty_row_response = api_client.get(url, {'page_size': 50})
+        finally:
+            post_init.disconnect(record_classification, sender=ProcessClassification)
+
+        assert (
+            one_row_response.status_code,
+            len(one_row_response.data['results']),
+            fifty_row_response.status_code,
+            len(fifty_row_response.data['results']),
+            len(initialized_classifications),
+        ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50, 50)
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_SECOP_PROCESS_LIST_QUERIES
+        assert {
+            item['process_id']: item['my_classification']
+            for item in fifty_row_response.json()['results']
+        } == expected_classifications
+
+    def test_my_classified_prefetches_only_current_user_classifications(
+        self, api_client, lawyer, other_lawyer
+    ):
+        """Fails if my-classified materializes foreign classifications or restores N+1 queries."""
+        expected_classifications = _create_prefetch_processes(
+            lawyer, other_lawyer, 50
+        )
+        url = reverse('secop-my-classified')
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url, {'page_size': 1})
+        initialized_classifications = []
+
+        def record_classification(sender, instance, **kwargs):
+            initialized_classifications.append(instance.pk)
+
+        post_init.connect(record_classification, sender=ProcessClassification, weak=False)
+        try:
+            with CaptureQueriesContext(connection) as fifty_row_queries:
+                fifty_row_response = api_client.get(url, {'page_size': 50})
+        finally:
+            post_init.disconnect(record_classification, sender=ProcessClassification)
+
+        assert (
+            one_row_response.status_code,
+            len(one_row_response.data['results']),
+            fifty_row_response.status_code,
+            len(fifty_row_response.data['results']),
+            len(initialized_classifications),
+        ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50, 50)
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_SECOP_MY_CLASSIFIED_QUERIES
+        assert {
+            item['process_id']: item['my_classification']
+            for item in fifty_row_response.json()['results']
+        } == expected_classifications
+
+    def test_process_list_returns_none_for_empty_prefetched_classifications(
+        self, api_client, lawyer, other_lawyer
+    ):
+        """Fails if an empty prefetched attribute falls back to a foreign classification query."""
+        process = SECOPProcess.objects.create(
+            process_id='EMPTY-PREFETCH-SECOP',
+            entity_name='Empty prefetch entity',
+        )
+        ProcessClassification.objects.create(
+            process=process,
+            user=other_lawyer,
+            status=ProcessClassification.Status.APPLIED,
+        )
+        initialized_classifications = []
+
+        def record_classification(sender, instance, **kwargs):
+            initialized_classifications.append(instance.pk)
+
+        post_init.connect(record_classification, sender=ProcessClassification, weak=False)
+        try:
+            response = api_client.get(
+                reverse('secop-process-list'),
+                {'page_size': 50},
+            )
+        finally:
+            post_init.disconnect(record_classification, sender=ProcessClassification)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['results'][0]['my_classification'] is None
+        assert initialized_classifications == []
+
+    def test_process_detail_preserves_prefetched_classification_payload(
+        self, api_client, lawyer
+    ):
+        """Fails if detail serialization loses prefetched classification fields or authors."""
+        process = SECOPProcess.objects.create(
+            process_id='DETAIL-PAYLOAD-SECOP',
+            entity_name='Detail payload entity',
+        )
+        expected_classifications = _create_detail_classifications(process, lawyer, 50)
+
+        response = api_client.get(
+            reverse('secop-process-detail', kwargs={'pk': process.pk})
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data['classifications']) == 50
+        actual_classifications = {
+            (
+                item['id'],
+                item['user']['id'],
+                item['user']['first_name'],
+                item['user']['last_name'],
+                item['status'],
+                item['notes'],
+                item['is_mine'],
+                item['created_at'],
+                item['updated_at'],
+            )
+            for item in response.json()['classifications']
+        }
+        assert actual_classifications == expected_classifications
+
+    def test_process_detail_has_constant_query_budget(self, api_client, lawyer):
+        """Fails if detail repeats its classification query after the prefetch."""
+        one_classification_process = SECOPProcess.objects.create(
+            process_id='DETAIL-ONE-SECOP',
+            entity_name='One detail entity',
+        )
+        fifty_classification_process = SECOPProcess.objects.create(
+            process_id='DETAIL-FIFTY-SECOP',
+            entity_name='Fifty detail entity',
+        )
+        _create_detail_classifications(one_classification_process, lawyer, 1)
+        _create_detail_classifications(fifty_classification_process, lawyer, 50)
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(
+                reverse('secop-process-detail', kwargs={'pk': one_classification_process.pk})
+            )
+        with CaptureQueriesContext(connection) as fifty_row_queries:
+            fifty_row_response = api_client.get(
+                reverse('secop-process-detail', kwargs={'pk': fifty_classification_process.pk})
+            )
+
+        assert one_row_response.status_code == status.HTTP_200_OK
+        assert len(one_row_response.data['classifications']) == 1
+        assert fifty_row_response.status_code == status.HTTP_200_OK
+        assert len(fifty_row_response.data['classifications']) == 50
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_SECOP_PROCESS_DETAIL_QUERIES
+
+    def test_process_detail_empty_classifications_has_bounded_queries(
+        self, api_client, lawyer
+    ):
+        """Fails if an empty detail list bypasses the prefetched classification fast path."""
+        process = SECOPProcess.objects.create(
+            process_id='DETAIL-EMPTY-SECOP',
+            entity_name='Empty detail entity',
+        )
+        url = reverse('secop-process-detail', kwargs={'pk': process.pk})
+
+        with CaptureQueriesContext(connection) as queries:
+            response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['classifications'] == []
+        assert len(queries) <= MAX_SECOP_PROCESS_DETAIL_QUERIES
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +757,46 @@ class TestSecopAlertViews:
         response = api_client.delete(url)
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_alert_list_returns_notification_counts_in_owner_order(self, api_client, lawyer, other_lawyer):
+        """Fails if alert list drops zero counts, sent records, ordering, or tenant isolation."""
+        processes = _create_secop_processes(0, 6)
+        zero_alert = SECOPAlert.objects.create(user=lawyer, name="Zero notifications")
+        one_alert = SECOPAlert.objects.create(user=lawyer, name="One notification")
+        many_alert = SECOPAlert.objects.create(user=lawyer, name="Many notifications")
+        other_alert = SECOPAlert.objects.create(user=other_lawyer, name="Other notification")
+        AlertNotification.objects.create(alert=one_alert, process=processes[0], is_sent=False)
+        AlertNotification.objects.create(alert=many_alert, process=processes[1], is_sent=False)
+        AlertNotification.objects.create(alert=many_alert, process=processes[2], is_sent=True)
+        AlertNotification.objects.create(alert=many_alert, process=processes[3], is_sent=False)
+        AlertNotification.objects.create(alert=other_alert, process=processes[4], is_sent=True)
+        fixed_now = datetime(2026, 9, 24, 12, 0, tzinfo=dt_timezone.utc)
+        _set_alert_created_at(zero_alert, fixed_now - timezone.timedelta(minutes=3))
+        _set_alert_created_at(one_alert, fixed_now - timezone.timedelta(minutes=2))
+        _set_alert_created_at(many_alert, fixed_now - timezone.timedelta(minutes=1))
+
+        response = api_client.get(reverse("secop-alerts-list-create"))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert [(item["name"], item["notification_count"]) for item in response.data] == [("Many notifications", 3), ("One notification", 1), ("Zero notifications", 0)]
+
+    def test_alert_list_has_constant_query_budget(self, api_client, lawyer):
+        """Fails if notification_count falls back to one query for each alert row."""
+        _create_secop_alert_entries(lawyer, 0, 1)
+        url = reverse("secop-alerts-list-create")
+
+        with CaptureQueriesContext(connection) as one_row_queries:
+            one_row_response = api_client.get(url)
+        _create_secop_alert_entries(lawyer, 1, 49)
+        with CaptureQueriesContext(connection) as fifty_row_queries:
+            fifty_row_response = api_client.get(url)
+
+        assert one_row_response.status_code == status.HTTP_200_OK
+        assert len(one_row_response.data) == 1
+        assert fifty_row_response.status_code == status.HTTP_200_OK
+        assert len(fifty_row_response.data) == 50
+        assert len(one_row_queries) == len(fifty_row_queries)
+        assert len(fifty_row_queries) <= MAX_SECOP_ALERT_LIST_QUERIES
 
 
 # ---------------------------------------------------------------------------
