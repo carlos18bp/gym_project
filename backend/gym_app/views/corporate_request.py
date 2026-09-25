@@ -103,7 +103,7 @@ def client_get_my_organizations(request):
     memberships = OrganizationMembership.objects.filter(
         user=request.user,
         is_active=True
-    ).select_related('organization')
+    ).select_related('organization__corporate_client')
     
     organizations_data = []
     for membership in memberships:
