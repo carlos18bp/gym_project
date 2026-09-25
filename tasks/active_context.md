@@ -5,8 +5,9 @@
 ### Limpieza del repositorio (2026-09-25)
 
 Auditoría de 1.309 archivos versionados: sin artefactos HIGH detectados. El lote
-MEDIUM aprobado elimina el store de documentos recientes sin consumidores y su
-test exclusivo; conserva los endpoints backend. Corrige el filtro del hook de
+MEDIUM aprobado elimina el store de documentos recientes sin consumidores, su
+test exclusivo y las dos excepciones de calidad de ese test; conserva los
+endpoints backend. Corrige el filtro del hook de
 calidad para incluir `backend/gym_app/tests/` y las excepciones de `.gitignore`
 para fixtures de media, `.gitkeep` de logs y extensiones compartidas de VS Code.
 El diagrama de stores refleja la eliminación. Sin cambios de API ni flujos UX.

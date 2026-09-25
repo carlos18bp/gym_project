@@ -209,8 +209,6 @@
     "frontend/test/stores/corporate_requests.test.js::mock_only_assertion::updateFilters does nothing for unsupported role",
     "frontend/test/stores/corporate_requests.test.js::negation_only_assertion::refreshRequests does nothing for unsupported role",
     "frontend/test/stores/corporate_requests.test.js::negation_only_assertion::updateFilters does nothing for unsupported role",
-    "frontend/test/stores/dashboard/recent_document.test.js::mock_only_assertion::fetchRecentDocuments logs error on failure",
-    "frontend/test/stores/dashboard/recent_document.test.js::mock_only_assertion::updateRecentDocument handles errors without throwing",
     "frontend/test/stores/dashboard/recent_process.test.js::mock_only_assertion::init calls fetchRecentProcesses",
     "frontend/test/stores/dashboard/recent_process.test.js::mock_only_assertion::updateRecentProcess handles errors without throwing",
     "frontend/test/stores/dynamic_document/documents.test.js::mock_only_assertion::init does not fetch when data is fresh and loaded",
