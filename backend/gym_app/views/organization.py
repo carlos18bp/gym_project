@@ -56,6 +56,28 @@ def _with_invitation_list_relations(queryset):
         ),
     )
 
+
+def _with_organization_detail_relations(queryset):
+    """Load organization details with independent counts and active members."""
+    recent_requests = (
+        CorporateRequest.objects.filter(
+            organization_id=OuterRef('pk'),
+            created_at__gte=timezone.now() - timezone.timedelta(days=30),
+        )
+        .order_by().values('organization_id').annotate(total=Count('pk')).values('total')
+    )
+    return _with_organization_list_relations(queryset).annotate(
+        _recent_requests_count=Coalesce(
+            Subquery(recent_requests, output_field=IntegerField()), 0,
+        ),
+    ).prefetch_related(
+        Prefetch(
+            'memberships',
+            queryset=OrganizationMembership.objects.filter(is_active=True).select_related('user'),
+            to_attr='_active_memberships',
+        ),
+    )
+
 # Decorators for role-based access
 def require_corporate_client_only(view_func):
     """Decorator to ensure only corporate clients can access the view"""
@@ -185,7 +207,7 @@ def get_organization_detail(request, organization_id):
     Only the corporate client who leads the organization can view it.
     """
     organization = get_object_or_404(
-        Organization,
+        _with_organization_detail_relations(Organization.objects.all()),
         id=organization_id,
         corporate_client=request.user
     )
@@ -692,7 +714,11 @@ def get_organization_public_detail(request, organization_id):
     Get public information about an organization.
     Both clients and corporate clients can view this.
     """
-    organization = get_object_or_404(Organization, id=organization_id, is_active=True)
+    organization = get_object_or_404(
+        _with_organization_detail_relations(Organization.objects.all()),
+        id=organization_id,
+        is_active=True,
+    )
     
     # Check if user has access (either leader or member)
     has_access = False

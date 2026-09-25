@@ -100,9 +100,13 @@ class OrganizationSerializer(serializers.ModelSerializer):
         ]
 
     def get_member_count(self, obj):
+        if hasattr(obj, '_member_count'):
+            return obj._member_count
         return obj.get_member_count()
 
     def get_pending_invitations_count(self, obj):
+        if hasattr(obj, '_pending_invitations_count'):
+            return obj._pending_invitations_count
         return obj.get_pending_invitations_count()
 
     def get_profile_image_url(self, obj):
@@ -123,7 +127,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_members(self, obj):
         """Get active members of the organization"""
-        memberships = obj.memberships.filter(is_active=True).select_related('user')
+        if hasattr(obj, '_active_memberships'):
+            memberships = obj._active_memberships
+        else:
+            memberships = obj.memberships.filter(is_active=True).select_related('user')
         return [{
             'id': membership.user.id,
             'email': membership.user.email,
@@ -134,6 +141,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_recent_requests_count(self, obj):
         """Get count of recent requests (last 30 days)"""
+        if hasattr(obj, '_recent_requests_count'):
+            return obj._recent_requests_count
         thirty_days_ago = timezone.now() - timezone.timedelta(days=30)
         return obj.corporate_requests.filter(created_at__gte=thirty_days_ago).count()
 
