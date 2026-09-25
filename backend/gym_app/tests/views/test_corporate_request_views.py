@@ -1,5 +1,5 @@
 """Tests for corporate_request_views module."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone as dt_timezone
 from unittest.mock import patch
 
@@ -27,6 +27,37 @@ MAX_CONVERSATION_QUERIES = 4
 MAX_DASHBOARD_QUERIES = 4
 MAX_CLIENT_REQUEST_DETAIL_QUERIES = 4
 MAX_CORPORATE_REQUEST_DETAIL_QUERIES = 4
+MAX_CLIENT_ORGANIZATIONS_QUERIES = 6
+MEMBERSHIP_JOINED_AT = datetime(2026, 9, 25, 12, tzinfo=dt_timezone.utc)
+
+
+def _create_client_organization_memberships(user, prefix, count):
+    """Create active memberships with distinct nested organization relations."""
+    memberships = []
+    for index in range(count):
+        corporate_client = User.objects.create_user(
+            email=f'{prefix}-corporate-{index}@example.com',
+            password=None,
+            first_name=f'Corporate{index}',
+            last_name='Owner',
+            role='corporate_client',
+        )
+        organization = Organization.objects.create(
+            title=f'{prefix} organization {index}',
+            description='Round five organization fixture',
+            corporate_client=corporate_client,
+        )
+        membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=user,
+            role='MEMBER',
+            is_active=True,
+        )
+        OrganizationMembership.objects.filter(pk=membership.pk).update(
+            joined_at=MEMBERSHIP_JOINED_AT + timedelta(minutes=index),
+        )
+        memberships.append(membership)
+    return memberships
 
 
 def _create_conversation_request(client, corporate_client, organization, request_type):
@@ -1965,3 +1996,72 @@ def test_request_detail_hides_other_tenant(
     )
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_client_organizations_list_preserves_active_membership_visibility(api_client, role):
+    """Fails if the list excludes inactive organizations or includes inactive memberships."""
+    actor = User.objects.create_user(
+        email=f'round-five-{role}-organization-actor@example.com',
+        password=None,
+        role=role,
+    )
+    visible_memberships = _create_client_organization_memberships(actor, role, 2)
+    visible_memberships[0].organization.is_active = False
+    visible_memberships[0].organization.save(update_fields=['is_active'])
+    hidden_membership = _create_client_organization_memberships(actor, f'{role}-hidden', 1)[0]
+    hidden_membership.is_active = False
+    hidden_membership.save(update_fields=['is_active'])
+    api_client.force_authenticate(user=actor)
+
+    response = api_client.get(reverse('client-get-my-organizations'))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['total_count'] == 2
+    assert [
+        (item['id'], item['title'], item['corporate_client']['id'], item['member_role'])
+        for item in response.data['organizations']
+    ] == [
+        (
+            visible_memberships[1].organization_id,
+            visible_memberships[1].organization.title,
+            visible_memberships[1].organization.corporate_client_id,
+            'MEMBER',
+        ),
+        (
+            visible_memberships[0].organization_id,
+            visible_memberships[0].organization.title,
+            visible_memberships[0].organization.corporate_client_id,
+            'MEMBER',
+        ),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_client_organizations_list_has_constant_query_budget(api_client, role):
+    """Fails if nested organization corporate clients return to per-row queries."""
+    actor = User.objects.create_user(
+        email=f'round-five-{role}-organization-budget@example.com',
+        password=None,
+        role=role,
+    )
+    _create_client_organization_memberships(actor, f'{role}-budget', 1)
+    api_client.force_authenticate(user=actor)
+    url = reverse('client-get-my-organizations')
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_client_organization_memberships(actor, f'{role}-budget-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organizations']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organizations']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_CLIENT_ORGANIZATIONS_QUERIES

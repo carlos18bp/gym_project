@@ -2,6 +2,23 @@
 
 ## 1. Current State
 
+### Membresías y detalles organizacionales (2026-09-25)
+
+Quinta ronda en el PR #128, candidatos P-backend-queries-12/13/14. Las
+organizaciones disponibles para solicitudes unen su corporativo; las membresías
+precargan resúmenes anotados sin cambiar el orden de ingreso. Ambos detalles de
+organización cargan conteos independientes y miembros activos con sus usuarios.
+El serializer reconoce ceros y listas vacías precargadas, conservando el fallback
+para creación, edición e instancias directas. Se mantienen roles, permisos y las
+organizaciones inactivas visibles mediante una membresía activa en los listados.
+QA independiente verificó los dieciséis casos nuevos y cinco regresiones en
+MySQL 8.4 aislado: consultas constantes con uno y cincuenta registros (listados
+una/dos; detalles dos/dos/tres), payloads, frontera de solicitudes recientes y
+acceso. Auditor y gate canónico aprobados. El contrato sigue sin paginación:
+la mejora de queries no garantiza límites de memoria o payload al techo del dataset.
+Guion: `vps-ops-toolkit/docs/audits/2026-09-25-gym_project-perf-memberships-organization-details.md`.
+Verificación: `vps-ops-toolkit/docs/audits/2026-09-25-r5-gym_project-qa.md`.
+
 ### Procesos, invitaciones y detalles corporativos (2026-09-24)
 
 Cuarta ronda en el PR #128, candidatos P-backend-queries-09/10/11. El listado de

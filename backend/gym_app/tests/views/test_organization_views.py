@@ -1,5 +1,6 @@
 """Tests for organization_views module."""
 from datetime import datetime as datetime_cls
+from datetime import timedelta
 from datetime import timezone as dt_timezone
 
 import pytest
@@ -24,6 +25,166 @@ User = get_user_model()
 MAX_ORGANIZATION_LIST_QUERIES = 6
 MAX_OWNER_INVITATION_LIST_QUERIES = 6
 MAX_PERSONAL_INVITATION_LIST_QUERIES = 6
+MAX_MY_MEMBERSHIPS_QUERIES = 6
+MAX_PRIVATE_ORGANIZATION_DETAIL_QUERIES = 4
+MAX_PUBLIC_LEADER_ORGANIZATION_DETAIL_QUERIES = 4
+MAX_PUBLIC_MEMBER_ORGANIZATION_DETAIL_QUERIES = 4
+ORGANIZATION_DETAIL_NOW = datetime_cls(2026, 9, 25, 12, tzinfo=dt_timezone.utc)
+
+
+def _create_organization_actor(role, suffix):
+    """Create an authenticated role without password hashing overhead."""
+    return User.objects.create_user(
+        email=f'round-five-{role}-{suffix}@example.com',
+        password=None,
+        role=role,
+    )
+
+
+def _create_membership_organizations(actor, prefix, count):
+    """Create active memberships with distinct organizations and corporate owners."""
+    memberships = []
+    for index in range(count):
+        corporate_client = _create_organization_actor(
+            'corporate_client', f'{prefix}-corporate-{index}'
+        )
+        organization = Organization.objects.create(
+            title=f'{prefix} organization {index}',
+            description='Round five membership fixture',
+            corporate_client=corporate_client,
+        )
+        membership = OrganizationMembership.objects.create(
+            organization=organization,
+            user=actor,
+            role='MEMBER',
+            is_active=True,
+        )
+        OrganizationMembership.objects.filter(pk=membership.pk).update(
+            joined_at=ORGANIZATION_DETAIL_NOW + timedelta(minutes=index),
+        )
+        memberships.append(membership)
+    return memberships
+
+
+def _add_membership_summary_relations(organization, role):
+    """Create the active-member and expired-pending counts for a membership summary."""
+    extra_member = _create_organization_actor('client', f'{role}-summary-extra-member')
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=extra_member,
+        role='ADMIN',
+        is_active=True,
+    )
+    invitee = _create_organization_actor('client', f'{role}-summary-invitee')
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=invitee,
+        invited_by=organization.corporate_client,
+        status='PENDING',
+        expires_at=ORGANIZATION_DETAIL_NOW - timedelta(days=1),
+    )
+
+
+def _create_owned_organization(suffix, is_active=True):
+    """Create an organization and its distinct corporate owner for access boundaries."""
+    corporate_client = _create_organization_actor('corporate_client', suffix)
+    organization = Organization.objects.create(
+        title=f'Round five {suffix} organization',
+        description='Round five organization access fixture',
+        corporate_client=corporate_client,
+        is_active=is_active,
+    )
+    return corporate_client, organization
+
+
+def _add_active_detail_members(organization, prefix, count, first_member=None):
+    """Add distinct active members for detail serialization outside query capture."""
+    memberships = []
+    for index in range(count):
+        user = first_member if index == 0 and first_member is not None else _create_organization_actor(
+            'client', f'{prefix}-member-{index}'
+        )
+        memberships.append(
+            OrganizationMembership.objects.create(
+                organization=organization,
+                user=user,
+                role='MEMBER',
+                is_active=True,
+            )
+        )
+    return memberships
+
+
+def _create_detail_organizations():
+    """Create loaded and empty organizations for the detail serializer fast path."""
+    corporate_client = _create_organization_actor('corporate_client', 'detail-owner')
+    organization = Organization.objects.create(
+        title='Round five populated detail organization',
+        description='Detail serializer fixture',
+        corporate_client=corporate_client,
+    )
+    active_member = _create_organization_actor('client', 'detail-active-member')
+    inactive_member = _create_organization_actor('client', 'detail-inactive-member')
+    OrganizationMembership.objects.create(organization=organization, user=active_member, role='MEMBER')
+    OrganizationMembership.objects.create(
+        organization=organization,
+        user=inactive_member,
+        role='MEMBER',
+        is_active=False,
+    )
+    OrganizationInvitation.objects.create(
+        organization=organization,
+        invited_user=inactive_member,
+        invited_by=corporate_client,
+        status='PENDING',
+        expires_at=ORGANIZATION_DETAIL_NOW - timedelta(days=1),
+    )
+    request_type = CorporateRequestType.objects.create(name='Round five detail request type')
+    recent_request = CorporateRequest.objects.create(
+        client=active_member,
+        organization=organization,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        title='Boundary request',
+        description='Included at the 30-day boundary',
+        priority='MEDIUM',
+        status='PENDING',
+    )
+    old_request = CorporateRequest.objects.create(
+        client=active_member,
+        organization=organization,
+        corporate_client=corporate_client,
+        request_type=request_type,
+        title='Older request',
+        description='Excluded before the 30-day boundary',
+        priority='MEDIUM',
+        status='PENDING',
+    )
+    CorporateRequest.objects.filter(pk=recent_request.pk).update(
+        created_at=ORGANIZATION_DETAIL_NOW - timedelta(days=30),
+    )
+    CorporateRequest.objects.filter(pk=old_request.pk).update(
+        created_at=ORGANIZATION_DETAIL_NOW - timedelta(days=31),
+    )
+    empty_organization = Organization.objects.create(
+        title='Round five empty detail organization',
+        description='Empty detail serializer fixture',
+        corporate_client=corporate_client,
+    )
+    return organization, empty_organization, active_member
+
+
+def _organization_detail_snapshot(items):
+    """Return the concrete detail fields protected by preloaded serializer relations."""
+    return {
+        item['id']: (
+            item['member_count'],
+            item['pending_invitations_count'],
+            item['recent_requests_count'],
+            [member['id'] for member in item['members']],
+        )
+        for item in items
+    }
 
 
 def _organization_list_items(response):
@@ -1517,3 +1678,233 @@ def test_personal_invitation_list_has_constant_query_budget(
     ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
     assert len(single_row_queries) == len(fifty_row_queries)
     assert len(fifty_row_queries) <= MAX_PERSONAL_INVITATION_LIST_QUERIES
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_my_memberships_preserves_annotated_organization_summary(api_client, role):
+    """Fails if memberships lose annotated summaries or exclude inactive organizations."""
+    actor = _create_organization_actor(role, 'membership-summary')
+    memberships = _create_membership_organizations(actor, f'{role}-summary', 2)
+    inactive_organization = memberships[0].organization
+    inactive_organization.is_active = False
+    inactive_organization.save(update_fields=['is_active'])
+    _add_membership_summary_relations(inactive_organization, role)
+    inactive_membership = _create_membership_organizations(actor, f'{role}-summary-hidden', 1)[0]
+    inactive_membership.is_active = False
+    inactive_membership.save(update_fields=['is_active'])
+    api_client.force_authenticate(user=actor)
+
+    response = api_client.get(reverse('get-my-memberships'))
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['total_count'] == 2
+    assert [
+        (
+            item['title'],
+            item['corporate_client_info']['email'],
+            item['member_count'],
+            item['pending_invitations_count'],
+            item['is_active'],
+        )
+        for item in response.data['organizations']
+    ] == [
+        (
+            memberships[1].organization.title,
+            memberships[1].organization.corporate_client.email,
+            1,
+            0,
+            True,
+        ),
+        (
+            inactive_organization.title,
+            inactive_organization.corporate_client.email,
+            2,
+            1,
+            False,
+        ),
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('role', ['client', 'basic'])
+def test_my_memberships_has_constant_query_budget(api_client, role):
+    """Fails if membership organizations lose their annotated prefetch relations."""
+    actor = _create_organization_actor(role, 'membership-budget')
+    _create_membership_organizations(actor, f'{role}-membership-budget', 1)
+    api_client.force_authenticate(user=actor)
+    url = reverse('get-my-memberships')
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _create_membership_organizations(actor, f'{role}-membership-budget-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organizations']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organizations']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_MY_MEMBERSHIPS_QUERIES
+
+
+@pytest.mark.django_db
+def test_organization_detail_serializer_uses_preloaded_relations():
+    """Fails if detail serialization queries preloaded members or annotated counts again."""
+    from unittest.mock import patch
+
+    from gym_app.serializers.organization import OrganizationSerializer
+    from gym_app.views.organization import _with_organization_detail_relations
+
+    organization, empty_organization, active_member = _create_detail_organizations()
+
+    with patch('gym_app.views.organization.timezone.now', return_value=ORGANIZATION_DETAIL_NOW):
+        organizations = list(
+            _with_organization_detail_relations(Organization.objects.all())
+            .filter(pk__in=[organization.pk, empty_organization.pk])
+            .order_by('pk')
+        )
+    with CaptureQueriesContext(connection) as serializer_queries:
+        payload = OrganizationSerializer(organizations, many=True).data
+
+    assert len(serializer_queries) == 0
+    assert _organization_detail_snapshot(payload) == {
+        organization.pk: (1, 1, 1, [active_member.pk]),
+        empty_organization.pk: (0, 0, 0, []),
+    }
+
+
+@pytest.mark.django_db
+def test_private_organization_detail_has_constant_query_budget(api_client):
+    """Fails if private organization detail restores member serialization queries."""
+    corporate_client = _create_organization_actor('corporate_client', 'private-detail-owner')
+    organization = Organization.objects.create(
+        title='Round five private detail organization',
+        description='Private detail budget fixture',
+        corporate_client=corporate_client,
+    )
+    _add_active_detail_members(organization, 'private-detail', 1)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse('get-organization-detail', kwargs={'organization_id': organization.pk})
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _add_active_detail_members(organization, 'private-detail-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organization']['members']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organization']['members']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_PRIVATE_ORGANIZATION_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+def test_public_leader_organization_detail_has_constant_query_budget(api_client):
+    """Fails if leader public detail restores member serialization queries."""
+    corporate_client = _create_organization_actor('corporate_client', 'public-leader-owner')
+    organization = Organization.objects.create(
+        title='Round five public leader organization',
+        description='Public leader detail budget fixture',
+        corporate_client=corporate_client,
+    )
+    _add_active_detail_members(organization, 'public-leader-detail', 1)
+    api_client.force_authenticate(user=corporate_client)
+    url = reverse('get-organization-public-detail', kwargs={'organization_id': organization.pk})
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _add_active_detail_members(organization, 'public-leader-detail-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organization']['members']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organization']['members']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_PUBLIC_LEADER_ORGANIZATION_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+def test_public_member_organization_detail_has_constant_query_budget(api_client):
+    """Fails if member public detail restores member serialization queries."""
+    corporate_client = _create_organization_actor('corporate_client', 'public-member-owner')
+    member = _create_organization_actor('client', 'public-member-actor')
+    organization = Organization.objects.create(
+        title='Round five public member organization',
+        description='Public member detail budget fixture',
+        corporate_client=corporate_client,
+    )
+    _add_active_detail_members(organization, 'public-member-detail', 1, first_member=member)
+    api_client.force_authenticate(user=member)
+    url = reverse('get-organization-public-detail', kwargs={'organization_id': organization.pk})
+
+    with CaptureQueriesContext(connection) as single_row_queries:
+        single_row_response = api_client.get(url)
+    _add_active_detail_members(organization, 'public-member-detail-extra', 49)
+    with CaptureQueriesContext(connection) as fifty_row_queries:
+        fifty_row_response = api_client.get(url)
+
+    assert (
+        single_row_response.status_code,
+        len(single_row_response.data['organization']['members']),
+        fifty_row_response.status_code,
+        len(fifty_row_response.data['organization']['members']),
+    ) == (status.HTTP_200_OK, 1, status.HTTP_200_OK, 50)
+    assert len(single_row_queries) == len(fifty_row_queries)
+    assert len(fifty_row_queries) <= MAX_PUBLIC_MEMBER_ORGANIZATION_DETAIL_QUERIES
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    'url_name',
+    ['get-organization-detail', 'get-organization-public-detail'],
+)
+def test_organization_detail_requires_authentication(api_client, url_name):
+    """Fails if either organization detail endpoint accepts an anonymous request."""
+    _, organization = _create_owned_organization(f'anonymous-{url_name}')
+
+    response = api_client.get(
+        reverse(url_name, kwargs={'organization_id': organization.pk})
+    )
+
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_public_organization_detail_hides_inactive_organization(api_client):
+    """Fails if public detail exposes an inactive organization to its owner."""
+    corporate_client, organization = _create_owned_organization(
+        'inactive-public', is_active=False
+    )
+    api_client.force_authenticate(user=corporate_client)
+
+    response = api_client.get(
+        reverse('get-organization-public-detail', kwargs={'organization_id': organization.pk})
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.django_db
+def test_private_organization_detail_hides_other_corporate_client(api_client):
+    """Fails if private detail exposes an organization to another corporate client."""
+    _, organization = _create_owned_organization('private-owner')
+    outsider = _create_organization_actor('corporate_client', 'private-outsider')
+    api_client.force_authenticate(user=outsider)
+
+    response = api_client.get(
+        reverse('get-organization-detail', kwargs={'organization_id': organization.pk})
+    )
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND

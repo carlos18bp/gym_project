@@ -158,6 +158,15 @@ sin `to_attr`, permite que `responses.count()` reutilice la caché de la relaci�
 Estos contratos sin paginación de procesos/respuestas mantienen su payload;
 la constancia de consultas no impone un límite de memoria o tamaño de respuesta.
 
+Las organizaciones para crear solicitudes unen su corporativo desde la membresía.
+El listado de membresías usa Prefetch de organizaciones anotadas, sin un
+select_related competidor, y conserva el orden de ingreso de las membresías.
+Los detalles organizacionales reutilizan esos conteos independientes y agregan
+solicitudes recientes; precargan miembros activos con usuarios en
+`_active_memberships`. El serializer acepta anotaciones cero y precargas vacías,
+con fallback para creación, edición e instancias directas. El control de acceso
+público conserva su consulta de pertenencia y su distinción entre 403 y 404.
+
 ### 3.2 Document PDF resource boundary
 
 Security remediation completed on 2026-08-26 after `pip-audit` reported 85
