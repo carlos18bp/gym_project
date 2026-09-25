@@ -489,7 +489,6 @@ flowchart TD
 
     subgraph DashStores["Dashboard"]
         AF["activity_feed.js"]
-        RD["recentDocument.js"]
         RP["recentProcess.js"]
         RE["reports.js"]
     end
