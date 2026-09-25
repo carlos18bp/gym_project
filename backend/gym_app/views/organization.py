@@ -632,7 +632,12 @@ def get_my_memberships(request):
     memberships = OrganizationMembership.objects.filter(
         user=request.user,
         is_active=True
-    ).select_related('organization')
+    ).prefetch_related(
+        Prefetch(
+            'organization',
+            queryset=_with_organization_list_relations(Organization.objects.all()),
+        ),
+    )
     
     organizations = [membership.organization for membership in memberships]
     
